@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Startet/stoppt die LinuxMos Conky-Widgets.
+# Usage: linuxmos-widgets [start|stop|restart]
+set -euo pipefail
+
+CONKY_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/linuxmos/conky"
+
+stop_widgets() {
+  # Nur unsere eigenen Conky-Instanzen beenden, keine fremden Configs.
+  pkill -u "$(id -u)" -f -- "conky .*-c ${CONKY_DIR}/" 2>/dev/null || true
+}
+
+start_widgets() {
+  command -v conky >/dev/null || { echo "conky ist nicht installiert." >&2; exit 1; }
+  shopt -s nullglob
+  for conf in "${CONKY_DIR}"/*.conf; do
+    conky -d -q -c "${conf}"
+  done
+}
+
+case "${1:-start}" in
+  start)   stop_widgets; start_widgets ;;
+  stop)    stop_widgets ;;
+  restart) stop_widgets; sleep 0.5; start_widgets ;;
+  *)       echo "Usage: $(basename "$0") [start|stop|restart]" >&2; exit 2 ;;
+esac

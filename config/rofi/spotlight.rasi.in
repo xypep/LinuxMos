@@ -1,0 +1,95 @@
+/* LinuxMos: Spotlight-artiger Launcher für rofi (>= 1.7)
+ * Template: Die Platzhalter (Farben, Icons) ersetzt install.sh.
+ * Start: Super+Space, Modus wechseln: Shift+Rechts
+ * Läuft nur, solange er offen ist -> 0 % CPU im Hintergrund.
+ */
+
+configuration {
+    modi:                "drun,run,window,filebrowser";
+    show-icons:          true;
+    icon-theme:          "@ICONS@";
+    font:                "Inter 13";
+    drun-display-format: "{name}";
+    display-drun:        "Apps";
+    display-run:         "Run";
+    display-window:      "Fenster";
+    display-filebrowser: "Dateien";
+    matching:            "fuzzy";
+    sort:                true;
+    kb-cancel:           "Escape,Super+space";
+}
+
+* {
+    bg:               @BG@;
+    fg:               @FG@;
+    fg-dim:           @FG2@;
+    accent:           #0a84ff;
+    border-col:       @BORDER@;
+
+    background-color: transparent;
+    text-color:       @fg;
+}
+
+window {
+    location:         north;
+    anchor:           north;
+    y-offset:         22%;
+    width:            640px;
+    border:           1px;
+    border-color:     @border-col;
+    border-radius:    14px;
+    background-color: @bg;
+}
+
+mainbox {
+    padding:  10px;
+    spacing:  8px;
+    children: [ inputbar, listview ];
+}
+
+inputbar {
+    padding:  6px 8px;
+    spacing:  10px;
+    children: [ prompt, entry ];
+}
+
+prompt {
+    text-color: @fg-dim;
+}
+
+entry {
+    placeholder:       "Spotlight-Suche";
+    placeholder-color: @fg-dim;
+    cursor:            text;
+}
+
+listview {
+    lines:        7;
+    columns:      1;
+    dynamic:      true;
+    fixed-height: false;
+    scrollbar:    false;
+    spacing:      2px;
+}
+
+element {
+    padding:       7px 10px;
+    spacing:       12px;
+    border-radius: 8px;
+}
+
+element selected.normal,
+element selected.active {
+    background-color: @accent;
+    text-color:       #ffffff;
+}
+
+element-icon {
+    size:       26px;
+    text-color: inherit;
+}
+
+element-text {
+    vertical-align: 0.5;
+    text-color:     inherit;
+}

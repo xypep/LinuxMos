@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Misst die CPU-Last der Desktop-Komponenten über ein paar Sekunden.
+# Usage: linuxmos-perf [SEKUNDEN]   (Default: 5)
+set -euo pipefail
+
+SECONDS_TO_SAMPLE="${1:-5}"
+PROCS='^(cinnamon|Xorg|plank|conky|rofi|nemo-desktop|csd-.*|muffin)$'
+
+echo "Messe ${SECONDS_TO_SAMPLE} s lang ... (Desktop dabei nicht benutzen)"
+
+# top liefert im zweiten Durchlauf die echte Last im Messintervall
+# (der erste Durchlauf ist der Durchschnitt seit Prozessstart).
+LC_ALL=C top -b -n 2 -d "${SECONDS_TO_SAMPLE}" -w 200 \
+  | awk -v procs="${PROCS}" '
+      /^top -/      { frame++ }
+      frame < 2     { next }
+      /^%Cpu\(s\)/  { for (i = 1; i < NF; i++) if ($(i+1) ~ /^id,?$/) idle = $i }
+      /^ *PID /     { header = 1; next }
+      header && $12 ~ procs {
+        cpu[$12] += $9; mem[$12] += $10
+      }
+      END {
+        printf "\n%-16s %8s %8s\n", "PROCESS", "CPU %", "MEM %"
+        for (p in cpu) { printf "%-16s %8.1f %8.1f\n", p, cpu[p], mem[p]; total += cpu[p] }
+        printf "%-16s %8.1f\n", "SUMME", total
+        if (idle != "") printf "\nSystem idle: %s %%\n", idle
+        if (total > 10) print "\nHinweis: >10 % im Leerlauf ist zu viel – siehe README, Abschnitt Performance."
+      }'
