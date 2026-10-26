@@ -35,6 +35,10 @@ DEFAULT_CONFIG = {
     "screenshot_save": True,
     "screenshot_dir": "",
     "screenshot_open_editor": False,
+    # Text from the screen (tesseract languages, joined with +) and QR codes
+    "ocr_languages": "deu+eng",
+    "ocr_keep_linebreaks": False,
+    "qr_open_links": False,
     # Water reminder
     "water_goal_ml": 2000,
     "water_portion_ml": 250,

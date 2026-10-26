@@ -60,6 +60,8 @@
 #island button.tile-button { padding: 10px 12px; }
 
 /* ---- cards ------------------------------------------------------------ */
+/* The folded island as a card (recognised text, QR code) */
+#island .card-body { font-size: 10pt; color: rgba(245, 245, 247, 0.85); }
 #island .card {
     background: rgba(255, 255, 255, 0.07);
     border-radius: 16px;

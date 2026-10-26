@@ -64,6 +64,7 @@ class Tray:
         check(_("Lautstärke & Helligkeit anzeigen"), cfg.get("osd", True), self._set_osd)
         menu.append(self._autodelete_menu(cfg.get("clipboard_autodelete_min", 0)))
         menu.append(self._screenshot_menu(cfg))
+        menu.append(self._read_menu(cfg))
         menu.append(self._language_menu(cfg.get("language", "auto")))
         menu.append(Gtk.SeparatorMenuItem())
         item(_("Über MosIsland"), self._about)
@@ -113,6 +114,24 @@ class Tray:
         folder.connect("activate", lambda *_: screenshot.open_folder(self.island.config))
         sub.append(folder)
         parent = Gtk.MenuItem(label="Screenshot")
+        parent.set_submenu(sub)
+        return parent
+
+    def _read_menu(self, cfg):
+        sub = Gtk.Menu()
+        for text, kind in ((_("Text erkennen  (Ctrl+Alt+O)"), "text"),
+                           (_("QR-Code lesen  (Ctrl+Alt+Q)"), "qr")):
+            mi = Gtk.MenuItem(label=text)
+            mi.connect("activate", lambda _w, k=kind: self.island.read_screen(k))
+            sub.append(mi)
+        sub.append(Gtk.SeparatorMenuItem())
+        for text, key in ((_("Zeilenumbrüche behalten"), "ocr_keep_linebreaks"),
+                          (_("Links aus QR-Codes sofort öffnen"), "qr_open_links")):
+            mi = Gtk.CheckMenuItem(label=text)
+            mi.set_active(cfg.get(key, False))
+            mi.connect("toggled", lambda w, k=key: self.island.set_option(k, w.get_active()))
+            sub.append(mi)
+        parent = Gtk.MenuItem(label=_("Text & QR"))
         parent.set_submenu(sub)
         return parent
 

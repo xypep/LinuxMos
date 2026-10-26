@@ -245,6 +245,7 @@ Eingeklappt zeigt sie immer das Wichtigste (Priorität von oben nach unten):
 
 | Zustand          | Inhalt                                                        |
 |------------------|---------------------------------------------------------------|
+| Karte            | Größer als die Pille, mit Text und Buttons: **erkannter Text** (`Ctrl+Alt+O`), **QR-Code** (`Ctrl+Alt+Q`) |
 | Live-Aktivität   | **Lautstärke** & **Helligkeit** (ersetzt Cinnamons OSD), **Feststelltaste**, **Tastatur-Sprache**, **Ladegerät eingesteckt**, **WLAN weg / wieder da**, **Kopfhörer verbunden (mit Akku)**, Datei abgelegt, Regen in etwa 1 Std., Aufgabe fällig, Wasser-Erinnerung, Timer/Pomodoro |
 | Timer            | Countdown live in der Pille (Timer, Fokus oder Pause)          |
 | Lyrics           | Die Zeile, die gerade gesungen wird (optional)                 |
@@ -286,10 +287,25 @@ Der Klick öffnet den **Markup-Editor** – schwarz und abgerundet wie die Insel
 | Marker     | `M`   | Freihand, wie ein Textmarker (der Text darunter bleibt lesbar)   |
 | Text       | `T`   | Klicken, tippen, `Enter`                                        |
 | Verpixeln  | `B`   | Rahmen über Passwörter, Namen, Adressen ziehen – grobe Blöcke statt Weichzeichner, damit sich nichts zurückrechnen lässt |
+| Text       | `O`   | Button neben Rückgängig: erkennt den Text der Aufnahme und kopiert ihn (siehe „Text & QR-Codes“) |
 
 `1`–`6` wählt die Farbe, `Ctrl+Z` macht rückgängig, `Ctrl+C` kopiert die markierte Fassung, `Ctrl+S` bzw. „Fertig“ speichert sie (überschreibt die Aufnahme), kopiert sie ebenfalls und schließt. `Esc` oder ✕ schließt den Editor; gibt es ungespeicherte Markierungen, wird ✕ rot („Verwerfen?“) und erst der zweite Druck verwirft – wie bei Neustart/Aus in der Insel.
 
 Abbrechen während der Auswahl: `Esc` oder denselben Hotkey nochmal drücken. Läuft die Insel nicht, funktionieren die Hotkeys trotzdem: dann übernimmt ein kurzlebiger Prozess, der Hinweis kommt als Benachrichtigung mit „Bearbeiten“-Knopf.
+
+#### Text & QR-Codes vom Bildschirm
+
+`Ctrl+Alt+O` – Bereich aufziehen, tesseract erkennt den Text (Deutsch + Englisch, komplett lokal). Er liegt sofort in der Zwischenablage, die Insel zeigt ihn als **Karte**: die ersten Zeilen, die Zeichenzahl, „In Notiz“ (hängt ihn an die Notiz im Tab „Notiz & Fokus“) und „Kopieren“. Die Karte verschwindet nach ein paar Sekunden von selbst und bleibt, solange die Maus darauf liegt; ✕ schließt sie sofort. Kleine Bereiche werden vor der Erkennung doppelt so groß gerechnet, das hilft bei kleiner UI-Schrift deutlich.
+
+Die Zeilen eines Absatzes werden zu einer Zeile zusammengefügt, Trennstriche am Zeilenende verschwinden („fort-/zufahren“ → „fortzufahren“, „E-/Mail“ bleibt „E-Mail“), Absätze und Aufzählungen bleiben erhalten. Wer den Text zeilengenau braucht (Code, Tabellen): Tray → „Text & QR“ → „Zeilenumbrüche behalten“.
+
+`Ctrl+Alt+Q` – liest QR-Codes und Barcodes (EAN, Code 128 …) im Bereich. Der Inhalt landet in der Zwischenablage; bei einem Link bietet die Karte „Öffnen“, bei einem WLAN-Code („WIFI:…“) wird das Passwort kopiert und „Verbinden“ angeboten (per `nmcli`). Mehrere Codes im Bereich werden zeilenweise kopiert.
+
+<img src="img/island-ocr.png" alt="Karten für erkannten Text und einen QR-Code" width="50%">
+
+Im **Screenshot-Editor** macht der Button „Text“ (oder `O`) dasselbe mit der ganzen Aufnahme – erkannt wird das Original ohne Markierungen.
+
+Andere Sprachen: Sprachpaket installieren und in `config.json` ergänzen, z. B. `sudo apt install tesseract-ocr-fra` und `"ocr_languages": "deu+eng+fra"` (mehr Sprachen = etwas langsamer). Ohne laufende Insel funktionieren beide Hotkeys auch, das Ergebnis kommt dann als Benachrichtigung.
 
 ### Tray-Menü
 
@@ -303,6 +319,7 @@ Das MosIsland-Icon liegt in der Top Bar neben der Uhr (Rechtsklick):
 | Lautstärke & Helligkeit anzeigen  | MosIsland-Overlays statt Cinnamons eigenem OSD (aus = Cinnamon-OSD zurück) |
 | Zwischenablage automatisch leeren | Nicht angepinnte Einträge nach 15 min, 1 h oder 24 h löschen (Standard: nie) |
 | Screenshot                        | Bereich/Bildschirm aufnehmen, „Im Ordner speichern“, „Editor sofort öffnen“, Ordner öffnen |
+| Text & QR                         | Text erkennen, QR-Code lesen, „Zeilenumbrüche behalten“, „Links aus QR-Codes sofort öffnen“ |
 | Sprache / Language                | Automatisch (Systemsprache), Deutsch oder English – die Insel startet dabei kurz neu |
 | Über MosIsland · Beenden          |                                                                 |
 
@@ -317,6 +334,7 @@ Ein Linksklick aufs Icon klappt die Insel auf.
 | MosIsland öffnen/schließen    | `Ctrl+Alt+I`                                            |
 | Zwischenablage                | `Ctrl+Alt+V` → tippen zum Suchen → `Enter` fügt ein     |
 | Screenshot Bereich / Bildschirm | `Ctrl+Alt+S` / `Ctrl+Alt+Shift+S`                     |
+| Text erkennen / QR-Code lesen | `Ctrl+Alt+O` / `Ctrl+Alt+Q`                             |
 | Lautstärke                    | Mausrad auf der eingeklappten Pille                     |
 | Dateien ablegen               | Datei aus Nemo/Desktop auf die Pille ziehen             |
 | Spulen                        | Klick auf den Fortschrittsbalken oder eine Lyrics-Zeile |
@@ -350,6 +368,9 @@ Die meisten Schalter liegen im Tray-Menü bzw. im Wasser-Tab (⚙). Alles steht 
 | `screenshot_save`    | `true`    | Screenshots zusätzlich als PNG ablegen (`false` = nur Zwischenablage) |
 | `screenshot_dir`     | `""`      | Ordner für Screenshots (leer = `~/Bilder/LinuxMos`)           |
 | `screenshot_open_editor` | `false` | Editor direkt nach der Aufnahme öffnen                      |
+| `ocr_languages`      | `"deu+eng"` | tesseract-Sprachen für die Texterkennung, mit `+` verbunden |
+| `ocr_keep_linebreaks` | `false`  | Erkannten Text zeilengenau lassen (statt Absätze zusammenzufügen) |
+| `qr_open_links`      | `false`   | Links aus QR-Codes sofort öffnen statt „Öffnen“-Button       |
 | `water_portion_ml` / `water_goal_ml` | `250` / `2000` | Portion und Tagesziel                     |
 | `water_start` / `water_end` | `09:00` / `21:00` | Aktive Stunden für Erinnerungen                     |
 | `water_interval_min` | `60`      | Erinnerung frühestens so lange nach dem letzten Schluck       |
@@ -378,6 +399,7 @@ Möglich wird das, weil es keinen Polling-Loop gibt. Jede Quelle meldet sich von
 | Maskottchen            | Muffins IdleMonitor (D-Bus)                                    |
 | Aufgaben, Wasser       | Ein einziger Timer bis zur nächsten fälligen Erinnerung        |
 | Screenshots            | Nur auf Hotkey; der Editor wird erst beim ersten Öffnen geladen |
+| Text & QR              | Nur auf Hotkey; tesseract/zbarimg laufen als eigener Prozess und beenden sich danach |
 | Uhr                    | Einmal pro Minute                                              |
 
 Gezeichnet wird nur, während sich etwas bewegt: beim Auf- und Zuklappen (~240 ms) oder beim Blinzeln des Maskottchens (~180 ms alle paar Sekunden).
@@ -531,7 +553,8 @@ linuxmos-island --quit; linuxmos-island
 Typische Ursache: Python aus pyenv/conda statt System-Python. Die Insel nutzt bewusst `/usr/bin/python3`, weil nur dort PyGObject (`python3-gi`) installiert ist. Fehlen Pakete, hilft:
 
 ```bash
-sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-wnck-3.0 xdotool maim slop xclip
+sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-wnck-3.0 xdotool maim slop xclip \
+  tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng zbar-tools
 ```
 
 </details>
@@ -578,13 +601,13 @@ island/                    MosIsland (Python + GTK3)
   pages.py                 Die acht Tabs
   tray.py                  Tray-Icon mit den Schaltern
   editor.py                Markup-Editor für Screenshots (wird erst beim ersten Öffnen geladen)
-  shot.py                  Screenshot ohne laufende Insel (Fallback der Hotkeys)
+  shot.py                  Screenshot, Text & QR ohne laufende Insel (Fallback der Hotkeys)
   i18n.py                  Oberflächen-Texte Deutsch → Englisch, Datumsformate
   widgets.py               Pillen-Form, Animation, Helfer
   style.css                Look (unabhängig vom GTK-Theme)
   services/                MPRIS, Lyrics, UPower, Overlays (Ton, Helligkeit, Tastatur, Netz, Bluetooth),
                            Leerlauf, Clipboard, Ablage, Aufgaben, Wasser, Wetter, Timer, System-Controls,
-                           Screenshot (maim/slop/xclip)
+                           Screenshot (maim/slop/xclip), Text & QR (tesseract/zbarimg)
 ```
 
 Gesichert wird nach `~/.local/share/linuxmos/backup/`, der Download-Cache liegt in `~/.cache/linuxmos/`.
@@ -595,6 +618,7 @@ Gesichert wird nach `~/.local/share/linuxmos/backup/`, der Download-Cache liegt 
 - [Plank](https://launchpad.net/plank), [Conky](https://github.com/brndnmtthws/conky), [rofi](https://github.com/davatorium/rofi), [Inter](https://rsms.me/inter/)
 - MosIsland ist inspiriert von [Island](https://github.com/exuupery/island) von exuupery und [Nusa](https://rama2555.github.io/nusa/) von Rama (beide Windows, Closed Source). Code und Grafiken sind eigenständig, es besteht keine Verbindung zu den Originalen.
 - Lyrics: [LRCLIB](https://lrclib.net)
+- Texterkennung: [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) (Apache-2.0), QR-Codes: [ZBar](https://github.com/mchehab/zbar) (LGPL-2.1)
 - Wetterdaten: [MET Norway](https://www.met.no/en) (CC BY 4.0), Ortssuche: [OpenStreetMap](https://www.openstreetmap.org/copyright)-Mitwirkende (ODbL)
 
 LinuxMos selbst steht unter der [MIT-Lizenz](../LICENSE).

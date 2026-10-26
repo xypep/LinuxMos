@@ -5,6 +5,8 @@
 #   linuxmos-island --toggle        auf-/zuklappen
 #   linuxmos-island --tab NAME      Tab öffnen: home|clipboard|shelf|note|weather|controls
 #   linuxmos-island --shot MODE     Screenshot: area (Bereich) | screen (Monitor unter der Maus)
+#   linuxmos-island --ocr           Text aus einem Bereich erkennen -> Zwischenablage
+#   linuxmos-island --qr            QR-Code/Barcode aus einem Bereich lesen -> Zwischenablage
 #   linuxmos-island --quit          beenden
 #   linuxmos-island --set-city ORT  Wetter-Ort festlegen
 set -euo pipefail
@@ -36,6 +38,10 @@ case "${1:-}" in
     # Insel läuft nicht: kurzlebiger Prozess nur für den Screenshot
     cd /
     PYTHONPATH="${APP_DIR}" exec "${PYTHON}" -m island.shot "$2" ;;
+  --ocr|--qr)
+    action "${1#--}" "[]" && exit 0
+    cd /
+    PYTHONPATH="${APP_DIR}" exec "${PYTHON}" -m island.shot "${1#--}" ;;
   --quit)
     action quit "[]" || true
     exit 0 ;;

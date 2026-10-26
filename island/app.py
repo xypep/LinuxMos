@@ -1,6 +1,7 @@
 """The island window and application.
 
 States of the pill (in priority order while folded):
+  card      a bigger live event with text and buttons (recognised text, QR code)
   activity  short live event (volume, brightness, Caps Lock, layout, charging,
             network, headphones, timer/Pomodoro, to-do due, water, rain, ...)
   timer     a running countdown (timer or Pomodoro)
@@ -31,7 +32,7 @@ gi.require_version("Gdk", "3.0")
 gi.require_version("GdkPixbuf", "2.0")
 gi.require_version("GdkX11", "3.0")
 import cairo  # noqa: E402
-from gi.repository import Gdk, GdkX11, Gio, GLib, Gtk  # noqa: E402
+from gi.repository import Gdk, GdkX11, Gio, GLib, Gtk, Pango  # noqa: E402
 
 try:
     gi.require_version("Wnck", "3.0")
@@ -43,7 +44,7 @@ from island import APP_ID, __version__, i18n  # noqa: E402
 from island.i18n import _, n_  # noqa: E402
 from island.pages import (ClipboardPage, ControlsPage, HomePage, NotePage, ShelfPage,  # noqa: E402
                           TodoPage, URI_TARGETS, WaterPage, WeatherPage)
-from island.services import art, screenshot, system  # noqa: E402
+from island.services import art, ocr, screenshot, system  # noqa: E402
 from island.services.clipboard import ClipboardHistory  # noqa: E402
 from island.services.idle import IdleWatcher  # noqa: E402
 from island.services.indicators import Indicators, volume_icon  # noqa: E402
@@ -57,18 +58,22 @@ from island.services.water import Water  # noqa: E402
 from island.services.weather import Weather  # noqa: E402
 from island.storage import Config  # noqa: E402
 from island.tray import Tray  # noqa: E402
-from island.widgets import Animator, Eyes, Pill, clear, css_class, icon, label, rounded_image  # noqa: E402
+from island.widgets import Animator, Eyes, Pill, button, clear, css_class, icon, label, rounded_image  # noqa: E402
 
 EXPANDED_W, EXPANDED_H, EXPANDED_R = 660, 350, 30
 COLLAPSED_H = 34
 COLLAPSED_W = {"idle": 196, "mascot": 196, "media": 320, "lyrics": 440, "timer": 220, "activity": 340}
 COMPACT_W, COMPACT_H = 110, 8
+CARD_W, CARD_H, CARD_R = 460, 150, 26
 WIN_W, WIN_H = EXPANDED_W, EXPANDED_H
 
 HOVER_OPEN_MS = 160
 HOVER_CLOSE_MS = 320
 # Time for the compositor to drop the hidden island from the screen before maim shoots
 SHOT_HIDE_MS = 200
+# A card stays this long, longer while the pointer is on it, and a little after it leaves
+CARD_MS = 9000
+CARD_LEAVE_MS = 3000
 
 # Tooltips are German source strings, translated when the tab bar is built
 TABS = [
@@ -107,6 +112,9 @@ class IslandWindow(Gtk.Window):
         self._pomodoro_count = 0
         self._shooting = False
         self._shot_proc = None
+        self._card = None           # dict(icon, title, body, meta, actions)
+        self._card_id = 0
+        self._card_shown = None     # the card the widgets were built for
         # Lyrics: fetched lazily, advanced by one timeout per line (no polling)
         self._lyrics_view = False
         self._lyrics_key = None
@@ -139,6 +147,7 @@ class IslandWindow(Gtk.Window):
                                transition_duration=140)
         self.stack.add_named(Gtk.Box(), "blank")
         self.stack.add_named(self._build_collapsed(), "collapsed")
+        self.stack.add_named(self._build_card(), "card")
         self.stack.add_named(self._build_expanded(), "expanded")
         self.pill.add(self.stack)
 
@@ -253,6 +262,8 @@ class IslandWindow(Gtk.Window):
                 cairo.Region(cairo.RectangleInt(x, 0, int(math.ceil(w)), int(math.ceil(h)))))
 
     def _collapsed_kind(self):
+        if self._card:
+            return "card"
         if self._activity:
             return "activity"
         if self.timer.running:
@@ -271,6 +282,8 @@ class IslandWindow(Gtk.Window):
         kind = self._collapsed_kind()
         if kind == "compact":
             return (COMPACT_W, COMPACT_H, COMPACT_H / 2)
+        if kind == "card":
+            return (CARD_W, CARD_H, CARD_R)
         return (COLLAPSED_W[kind], COLLAPSED_H, COLLAPSED_H / 2)
 
     def _show_collapsed(self):
@@ -278,6 +291,8 @@ class IslandWindow(Gtk.Window):
         self._fill_collapsed(kind)
         if kind == "compact":
             self.stack.set_visible_child_full("blank", Gtk.StackTransitionType.NONE)
+        elif kind == "card":
+            self.stack.set_visible_child_full("card", Gtk.StackTransitionType.CROSSFADE)
         else:
             self.stack.set_visible_child_full("collapsed", Gtk.StackTransitionType.CROSSFADE)
 
@@ -363,6 +378,9 @@ class IslandWindow(Gtk.Window):
 
     def _fill_collapsed(self, kind):
         self._shown_kind = kind
+        if kind == "card":
+            self._fill_card()
+            return
         clear(self.c_left)
         clear(self.c_right)
         self.c_center_stack.set_visible_child_name("eyes" if kind == "mascot" else "text")
@@ -434,6 +452,84 @@ class IslandWindow(Gtk.Window):
         self._activity = None
         self.refresh_collapsed()
         return GLib.SOURCE_REMOVE
+
+    # ---- cards: a live event with a few lines of text and buttons ------------------
+    def _build_card(self):
+        self.card_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6,
+                                margin_top=12, margin_bottom=14, margin_start=18, margin_end=12)
+        # Margins come on top of the size request -> subtract them
+        self.card_box.set_size_request(CARD_W - 30, CARD_H - 26)
+        return self.card_box
+
+    def show_card(self, icon_name, title, body, meta="", actions=()):
+        """Show a card in place of the folded pill.
+
+        actions: (label, callback, primary) buttons; a click runs the callback and closes the card.
+        """
+        self._card = {"icon": icon_name, "title": title, "body": body, "meta": meta, "actions": list(actions)}
+        self._start_card_timer(CARD_MS)
+        self.refresh_collapsed()
+
+    def dismiss_card(self):
+        if self._drop_card():
+            self.refresh_collapsed()
+
+    def _drop_card(self):
+        """Forget the card without redrawing; True if there was one."""
+        if self._card_id:
+            GLib.source_remove(self._card_id)
+            self._card_id = 0
+        had, self._card, self._card_shown = self._card is not None, None, None
+        return had
+
+    def _start_card_timer(self, ms):
+        if self._card_id:
+            GLib.source_remove(self._card_id)
+        self._card_id = GLib.timeout_add(ms, self._on_card_timeout)
+
+    def _on_card_timeout(self):
+        if self._pointer_inside() and not self.expanded:
+            return GLib.SOURCE_CONTINUE  # still reading: ask again later
+        self._card_id = 0
+        self.dismiss_card()
+        return GLib.SOURCE_REMOVE
+
+    def _fill_card(self):
+        card = self._card
+        if self._card_shown is card:
+            return  # already built (e.g. an activity arrived meanwhile)
+        self._card_shown = card
+        clear(self.card_box)
+        # Small max widths keep the labels' natural size below the card's, so the pill never grows
+        head = Gtk.Box(spacing=8)
+        head.pack_start(icon(card["icon"], 16), False, False, 0)
+        head.pack_start(label(card["title"], ("title",), max_chars=20), True, True, 0)
+        if card["meta"]:
+            head.pack_start(label(card["meta"], ("dim", "small"), ellipsize=False), False, False, 0)
+        head.pack_start(button("window-close-symbolic", tooltip=_("Schließen"), css=("mini",), size=14,
+                               on_click=self.dismiss_card), False, False, 0)
+        self.card_box.pack_start(head, False, False, 0)
+
+        body = label(card["body"], ("card-body",), max_chars=30)
+        body.set_line_wrap(True)
+        body.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
+        body.set_lines(3)
+        body.set_yalign(0.0)
+        if len(card["body"]) > 120:
+            body.set_tooltip_text(card["body"][:1000])
+        self.card_box.pack_start(body, True, True, 0)
+
+        if card["actions"]:
+            row = Gtk.Box(spacing=6, halign=Gtk.Align.END)
+            for text, callback, primary in card["actions"]:
+                row.pack_start(button(text=text, css=("accent",) if primary else (),
+                                      on_click=lambda c=callback: self._card_action(c)), False, False, 0)
+            self.card_box.pack_end(row, False, False, 0)
+        self.card_box.show_all()
+
+    def _card_action(self, callback):
+        self.dismiss_card()
+        callback()
 
     # =========================================================================
     # Opened content
@@ -579,6 +675,8 @@ class IslandWindow(Gtk.Window):
         if self._close_id:
             GLib.source_remove(self._close_id)
             self._close_id = 0
+        if self._card and not self.expanded:
+            return False  # reading the card: don't open the tabs over it
         if not self.expanded and not self._open_id and event.mode == Gdk.CrossingMode.NORMAL:
             self._open_id = GLib.timeout_add(HOVER_OPEN_MS, self._hover_open)
         return False
@@ -595,6 +693,8 @@ class IslandWindow(Gtk.Window):
         if self._open_id:
             GLib.source_remove(self._open_id)
             self._open_id = 0
+        if self._card and not self.expanded:
+            self._start_card_timer(CARD_LEAVE_MS)
         self._schedule_close()
         return False
 
@@ -633,6 +733,8 @@ class IslandWindow(Gtk.Window):
     def _on_button_press(self, _w, event):
         if self.expanded:
             return False
+        if self._card:
+            return True  # only the card's own buttons act
         if self._activity and (self._activity.get("sticky") or self._activity.get("on_click")):
             callback = self._activity.get("on_click")
             self._end_activity()  # e.g. dismiss "Time's up"
@@ -847,21 +949,29 @@ class IslandWindow(Gtk.Window):
     # ---- screenshots ---------------------------------------------------------------
     def screenshot(self, mode):
         """Area or monitor under the pointer -> clipboard (+ pictures folder), without the island in it."""
-        if mode not in ("area", "screen"):
-            return
-        if self._shooting:
-            # The hotkey again during the selection: give up and bring the island back
-            if self._shot_proc:
-                self._shot_proc.force_exit()
+        if mode not in ("area", "screen") or self._cancel_capture():
             return
         missing = screenshot.missing(mode)
         if missing:
             self.show_activity("dialog-warning-symbolic",
                                _("Für Screenshots fehlt: {programs}").format(programs=", ".join(missing)), seconds=5)
             return
-        self._shooting = True
         geometry = screenshot.pointer_monitor_geometry() if mode == "screen" else None
         path = screenshot.new_path(self.config)
+        self._capture(screenshot.capture_argv(mode, geometry, path), lambda ok: self._on_shot(ok, path))
+
+    def _cancel_capture(self):
+        """The hotkey again during the selection: give up and bring the island back. True if one ran."""
+        if not self._shooting:
+            return False
+        if self._shot_proc:
+            self._shot_proc.force_exit()
+        return True
+
+    def _capture(self, argv, on_done):
+        """Run maim (argv) with the island out of the picture, then on_done(ok)."""
+        self._shooting = True
+        self._drop_card()
         if self.expanded:
             self.collapse()
         # Fold at once (no animation while hidden), then step out of the picture
@@ -869,21 +979,26 @@ class IslandWindow(Gtk.Window):
         self._show_collapsed()
         self.hide()
 
+        def finish(ok):
+            self._shooting = False
+            self._shot_proc = None
+            self.show()
+            self._place()
+            on_done(ok)
+
         def done(proc, result):
             try:
                 ok = proc.wait_check_finish(result)
             except GLib.Error:
                 ok = False  # cancelled (Esc, or killed above)
-            self._shot_proc = None
-            self._on_shot(ok, path)
+            finish(ok)
 
         def shoot():
             try:
-                self._shot_proc = Gio.Subprocess.new(screenshot.capture_argv(mode, geometry, path),
-                                                     Gio.SubprocessFlags.STDOUT_SILENCE
+                self._shot_proc = Gio.Subprocess.new(argv, Gio.SubprocessFlags.STDOUT_SILENCE
                                                      | Gio.SubprocessFlags.STDERR_SILENCE)
             except GLib.Error:
-                self._on_shot(False, path)
+                finish(False)
                 return GLib.SOURCE_REMOVE
             self._shot_proc.wait_check_async(None, done)
             return GLib.SOURCE_REMOVE
@@ -891,9 +1006,6 @@ class IslandWindow(Gtk.Window):
         GLib.timeout_add(SHOT_HIDE_MS, shoot)
 
     def _on_shot(self, ok, path):
-        self._shooting = False
-        self.show()
-        self._place()
         if not ok or not path.is_file():
             path.unlink(missing_ok=True)
             return  # selection cancelled
@@ -912,7 +1024,127 @@ class IslandWindow(Gtk.Window):
         def saved(_target):
             self.show_activity("document-save-symbolic", _("Gespeichert & kopiert"))
 
-        Editor(path, self.config, application=self.get_application(), on_saved=saved).present()
+        Editor(path, self.config, application=self.get_application(), on_saved=saved,
+               on_text=lambda text: self._on_text(text, None, copy=False)).present()
+
+    # ---- text & QR codes from the screen ----------------------------------------------
+    def read_screen(self, kind):
+        """Pick an area and read its text ('text') or its QR codes ('qr') onto the clipboard."""
+        if kind not in ("text", "qr") or self._cancel_capture():
+            return
+        missing = ocr.missing(kind)
+        if missing:
+            what = _("Texterkennung") if kind == "text" else _("QR-Codes")
+            self.show_activity("dialog-warning-symbolic", _("Für {what} fehlt: {programs}").format(
+                what=what, programs=", ".join(missing)), seconds=5)
+            return
+        path = ocr.temp_path()
+
+        def captured(ok):
+            if not ok or not path.is_file() or path.stat().st_size == 0:
+                path.unlink(missing_ok=True)
+                return  # selection cancelled
+            if kind == "text":
+                self.show_activity("edit-find-symbolic", _("Text wird erkannt …"), seconds=20)
+                ocr.read_text(path, self.config, self._on_text, delete=True)
+            else:
+                ocr.read_codes(path, self._on_codes, delete=True)
+
+        self._capture(screenshot.capture_argv("area", None, path), captured)
+
+    def _clear_activity(self):
+        """Drop a running live activity (e.g. "recognising ...") without redrawing."""
+        if self._activity_id:
+            GLib.source_remove(self._activity_id)
+            self._activity_id = 0
+        self._activity = None
+
+    def _on_text(self, text, error, copy=True):
+        self._clear_activity()
+        if error == "language":
+            self.show_activity("dialog-warning-symbolic", _("Sprachdaten fehlen: {languages}").format(
+                languages=self.config.get("ocr_languages", "deu+eng")), seconds=6)
+            return
+        if error:
+            self.show_activity("dialog-warning-symbolic", _("Texterkennung fehlgeschlagen"), seconds=5)
+            return
+        if not text:
+            self.show_activity("edit-find-symbolic", _("Kein Text gefunden"), seconds=3)
+            return
+        if copy:
+            ocr.copy_text(text)
+        self.show_card("edit-select-all-symbolic", _("Text erkannt · kopiert"), text,
+                       meta=_("{n} Zeichen").format(n=len(text)),
+                       actions=[(_("In Notiz"), lambda: self._to_note(text), False),
+                                (_("Kopieren"), lambda: self._copy_again(text), True)])
+
+    def _on_codes(self, codes, error):
+        if error:
+            self.show_activity("dialog-warning-symbolic", _("QR-Erkennung fehlgeschlagen"), seconds=5)
+            return
+        if not codes:
+            self.show_activity("dialog-question-symbolic", _("Kein QR-Code gefunden"), seconds=3)
+            return
+        meta = n_("{n} Code", "{n} Codes", len(codes)).format(n=len(codes)) if len(codes) > 1 else ""
+        kind, data = codes[0]
+        wifi = ocr.parse_wifi(data) if len(codes) == 1 else None
+        url = ocr.link(data) if len(codes) == 1 else None
+        if wifi:
+            ocr.copy_text(wifi["password"] or wifi["ssid"])
+            title = (_("WLAN „{ssid}“ · Passwort kopiert") if wifi["password"]
+                     else _("WLAN „{ssid}“ · Name kopiert")).format(ssid=wifi["ssid"])
+            body = _("Passwort: {password}").format(password=wifi["password"]) if wifi["password"] \
+                else _("Offenes Netz ohne Passwort")
+            actions = [(_("Verbinden"), lambda: self._join_wifi(wifi), True)] if system.has("nmcli") else []
+            self.show_card("network-wireless-symbolic", title, body, actions=actions)
+            return
+        text = "\n".join(d for _k, d in codes)
+        ocr.copy_text(text)
+        if url and self.config.get("qr_open_links", False):
+            self._open_link(url)
+            return
+        actions = [(_("Öffnen"), lambda: self._open_link(url), True)] if url else \
+            [(_("In Notiz"), lambda: self._to_note(text), False)]
+        if url:
+            title = _("Link kopiert")
+        elif len(codes) == 1:
+            title = _("{kind} · kopiert").format(kind=kind)  # QR-Code, EAN-13, ...
+        else:
+            title = _("Codes kopiert")
+        qr_icon = "qrcode-symbolic" if Gtk.IconTheme.get_default().has_icon("qrcode-symbolic") else "view-grid-symbolic"
+        self.show_card(qr_icon, title, text, meta=meta, actions=actions)
+
+    def _copy_again(self, text):
+        if ocr.copy_text(text):
+            self.show_activity("edit-copy-symbolic", _("Kopiert"))
+
+    def _to_note(self, text):
+        self.pages["note"].append(text)
+        self.show_activity("document-edit-symbolic", _("In Notiz eingefügt · Klick = öffnen"), seconds=4,
+                           on_click=lambda: self.expand(tab="note"))
+
+    def _open_link(self, url):
+        try:
+            Gio.AppInfo.launch_default_for_uri(url, None)
+        except GLib.Error:
+            self.show_activity("dialog-warning-symbolic", _("Link lässt sich nicht öffnen"), seconds=4)
+
+    def _join_wifi(self, wifi):
+        argv = ["nmcli", "device", "wifi", "connect", wifi["ssid"]]
+        if wifi["password"]:
+            argv += ["password", wifi["password"]]
+        self.show_activity("network-wireless-acquiring-symbolic",
+                           _("Verbinde mit {ssid} …").format(ssid=wifi["ssid"]), seconds=20)
+
+        def done(ok, _out):
+            # Success shows up by itself as "Connected · name" (network indicator)
+            if ok:
+                self._end_activity()
+            else:
+                self.show_activity("network-wireless-offline-symbolic", _("WLAN-Verbindung fehlgeschlagen"),
+                                   seconds=5)
+
+        system.run(argv, done)
 
     # ---- options (tray, checkboxes) ----------------------------------------------
     def set_option(self, key, value):
@@ -1050,9 +1282,13 @@ class IslandApp(Gtk.Application):
         tab.connect("activate", lambda _a, param: self.window and self.window.open_tab(param.unpack()))
         shot = Gio.SimpleAction.new("screenshot", GLib.VariantType("s"))
         shot.connect("activate", lambda _a, param: self.window and self.window.screenshot(param.unpack()))
+        read_text = Gio.SimpleAction.new("ocr", None)
+        read_text.connect("activate", lambda *_: self.window and self.window.read_screen("text"))
+        read_qr = Gio.SimpleAction.new("qr", None)
+        read_qr.connect("activate", lambda *_: self.window and self.window.read_screen("qr"))
         quit_action = Gio.SimpleAction.new("quit", None)
         quit_action.connect("activate", lambda *_: self.quit())
-        for action in (toggle, tab, shot, quit_action):
+        for action in (toggle, tab, shot, read_text, read_qr, quit_action):
             self.add_action(action)
 
     def do_activate(self):

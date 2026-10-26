@@ -18,7 +18,7 @@ gi.require_version("PangoCairo", "1.0")
 from gi.repository import Gdk, GLib, Gtk, Pango, PangoCairo  # noqa: E402
 
 from island.i18n import _  # noqa: E402
-from island.services import screenshot  # noqa: E402
+from island.services import ocr, screenshot  # noqa: E402
 
 # (tool, tooltip as German source string, key)
 TOOLS = [
@@ -285,13 +285,17 @@ class Editor(Gtk.Window):
     """A black, borderless window in the island's style with a floating tool pill.
 
     on_saved(path) runs after "Done" wrote the file and put it on the clipboard.
+    on_text(text) runs after "Text" recognised and copied the shot's text (the island shows it as a card).
     """
 
-    def __init__(self, path, config, application=None, on_saved=None):
+    def __init__(self, path, config, application=None, on_saved=None, on_text=None):
         super().__init__(application=application)
         self.path = Path(path)
         self.config = config
         self._on_saved = on_saved
+        self._on_text = on_text
+        self._reading = False
+        self._closed = False
         self._base = cairo.ImageSurface.create_from_png(str(self.path))
         self.iw, self.ih = self._base.get_width(), self._base.get_height()
         # Line width in image pixels: about 5 px on a 1080p shot, more on 4K
@@ -320,6 +324,7 @@ class Editor(Gtk.Window):
         self.connect("button-press-event", self._on_window_press)
         self.connect("key-press-event", self._on_key)
         self.connect("delete-event", lambda *_: not self._request_close())
+        self.connect("destroy", lambda *_: setattr(self, "_closed", True))
         self._build()
         self._size_to_image()
         self.show_all()  # after the default size, or GTK maps it at its minimum size
@@ -386,6 +391,9 @@ class Editor(Gtk.Window):
         self.undo_button = _button("edit-undo-symbolic", _("Rückgängig (Ctrl+Z)"), self.undo)
         self.undo_button.set_sensitive(False)
         pill.pack_start(self.undo_button, False, False, 0)
+        self.text_button = _button("edit-select-all-symbolic", _("Text erkennen und kopieren (O)"), self.read_text,
+                                   _("Text"))
+        pill.pack_start(self.text_button, False, False, 0)
         pill.pack_start(_button("edit-copy-symbolic", _("In die Zwischenablage (Ctrl+C)"), self.copy), False, False, 0)
         pill.pack_start(_button(None, _("Speichern und kopieren (Ctrl+S)"), self.save, _("Fertig"), css="done"),
                         False, False, 0)
@@ -603,6 +611,36 @@ class Editor(Gtk.Window):
         screenshot.copy(out)
         self._show_toast(_("Kopiert"))
 
+    def read_text(self):
+        """OCR on the original shot (markup would only get in the way) -> clipboard."""
+        if self._reading:
+            return
+        if GLib.find_program_in_path("tesseract") is None:
+            self._show_toast(_("Für Texterkennung fehlt: {programs}").format(programs="tesseract"))
+            return
+        self._reading = True
+        self.text_button.set_sensitive(False)
+        self._show_toast(_("Text wird erkannt …"))
+        ocr.read_text(self.path, self.config, self._on_read)
+
+    def _on_read(self, text, error):
+        self._reading = False
+        if self._closed:
+            return
+        self.text_button.set_sensitive(True)
+        if error == "language":
+            self._show_toast(_("Sprachdaten fehlen: {languages}").format(
+                languages=self.config.get("ocr_languages", "deu+eng")))
+        elif error:
+            self._show_toast(_("Texterkennung fehlgeschlagen"))
+        elif not text:
+            self._show_toast(_("Kein Text gefunden"))
+        else:
+            ocr.copy_text(text)
+            self._show_toast(_("Text kopiert ({n} Zeichen)").format(n=len(text)))
+            if self._on_text:
+                self._on_text(text)
+
     def save(self):
         """Overwrite the shot in the pictures folder (a cached shot gets a file there) and copy it."""
         target = screenshot.new_path(self.config, saved=True) if screenshot.is_temp(self.path) else self.path
@@ -646,6 +684,8 @@ class Editor(Gtk.Window):
             self.copy()
         elif ctrl and key == Gdk.KEY_s:
             self.save()
+        elif not ctrl and key == Gdk.KEY_o:
+            self.read_text()
         elif key == Gdk.KEY_Escape:
             if self._request_close():
                 self.destroy()

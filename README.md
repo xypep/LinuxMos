@@ -63,10 +63,12 @@ Macht Linux Mint Cinnamon zum leichtgewichtigen macOS-Look-alike – mit Dock, T
 - **Aufgaben** mit Erinnerung, **Notiz**, **Pomodoro** und Timer, **Wasser-Erinnerung** mit Tagesziel und Diagramm
 - **Wetter** (MET Norway, ohne API-Key) mit Regenwarnung
 - **Screenshots** – Bereich (`Ctrl+Alt+S`) oder Bildschirm unter der Maus (`Ctrl+Alt+Shift+S`), sofort in der Zwischenablage und in `~/Bilder/LinuxMos`; die Insel blendet sich dafür aus. Klick auf den Hinweis öffnet den **Markup-Editor** im Look der Insel (schwarz, schwebende Werkzeug-Pille): Pfeil, Rechteck, Marker, Text und Verpixeln für private Daten
+- **Text vom Bildschirm (OCR)** – `Ctrl+Alt+O`, Bereich aufziehen: tesseract (Deutsch + Englisch) erkennt den Text, er landet in der Zwischenablage und als **Karte** auf der Insel (Vorschau, „In Notiz“, „Kopieren“). Auch im Screenshot-Editor per Button „Text“
+- **QR-Codes & Barcodes** – `Ctrl+Alt+Q`: Inhalt in die Zwischenablage, bei Links ein „Öffnen“-Button, bei WLAN-Codes wird das Passwort kopiert und „Verbinden“ angeboten
 - **Steuerung** – WLAN, Bluetooth, Nicht stören, Dark Mode, Mikro, Lautstärke, Helligkeit, Screenshot, Sperren, Ruhezustand, Neustart, Aus
 - **Live-Hinweise** – Lautstärke, Helligkeit, Feststelltaste, Tastatur-Sprache, Laden, WLAN weg, Kopfhörer verbunden
 - **Maskottchen** – Augen im Leerlauf, die eindösen und winken, wenn du zurückkommst
-- **Tray-Menü** – Autostart, Maskottchen, Minimal-Notch, OSD, Zwischenablage automatisch leeren, Screenshot, Sprache, Beenden
+- **Tray-Menü** – Autostart, Maskottchen, Minimal-Notch, OSD, Zwischenablage automatisch leeren, Screenshot, Text & QR, Sprache, Beenden
 - **Deutsch oder Englisch** – folgt automatisch der Systemsprache, umschaltbar im Tray-Menü (`Sprache / Language`)
 
 **Leichtgewichtig** – gemessen: Conky-Widgets ~0,03 % CPU, MosIsland ~0,1 % CPU (unter Cinnamon 6, Musik läuft). Kein Blur-Compositor, keine Polling-Schleifen.
@@ -142,6 +144,8 @@ linuxmos-perf                # CPU-Last des Desktops messen
 linuxmos-widgets restart     # Conky-Widgets neu starten
 linuxmos-island --tab todo   # MosIsland auf einem Tab öffnen
 linuxmos-island --shot area  # Screenshot: area (Bereich) | screen (Monitor unter der Maus)
+linuxmos-island --ocr        # Text aus einem Bereich erkennen
+linuxmos-island --qr         # QR-Code/Barcode aus einem Bereich lesen
 linuxmos-island --set-city "München"
 ```
 
@@ -155,7 +159,9 @@ linuxmos-island --set-city "München"
 | `Ctrl+Alt+V`     | Zwischenablage-Verlauf (tippen = suchen, `Enter` = einfügen)|
 | `Ctrl+Alt+S`     | Screenshot vom Bereich (`Esc` oder Hotkey nochmal = abbrechen) |
 | `Ctrl+Alt+Shift+S` | Screenshot vom Bildschirm unter der Maus                  |
-| Im Editor        | `A` Pfeil · `R` Rechteck · `M` Marker · `T` Text · `B` Verpixeln · `1`–`6` Farbe · `Ctrl+Z` · `Ctrl+C` · `Ctrl+S` = Fertig |
+| `Ctrl+Alt+O`     | Text aus einem Bereich erkennen (OCR) → Zwischenablage      |
+| `Ctrl+Alt+Q`     | QR-Code/Barcode aus einem Bereich lesen → Zwischenablage    |
+| Im Editor        | `A` Pfeil · `R` Rechteck · `M` Marker · `T` Text · `B` Verpixeln · `O` Text erkennen · `1`–`6` Farbe · `Ctrl+Z` · `Ctrl+C` · `Ctrl+S` = Fertig |
 | `Esc`            | MosIsland zuklappen                                         |
 | Mausrad auf der Pille | Lautstärke ±5 %                                        |
 
@@ -195,6 +201,9 @@ MosIsland: `~/.config/linuxmos/island/config.json` – die meisten Schalter gibt
   "screenshot_save": true,
   "screenshot_dir": "",
   "screenshot_open_editor": false,
+  "ocr_languages": "deu+eng",
+  "ocr_keep_linebreaks": false,
+  "qr_open_links": false,
   "water_goal_ml": 2000,
   "water_portion_ml": 250,
   "water_reminders": true,
@@ -207,6 +216,8 @@ MosIsland: `~/.config/linuxmos/island/config.json` – die meisten Schalter gibt
 `language`: `auto` (Systemsprache: Deutsch bei `de_*`, sonst Englisch), `de` oder `en`. Beim Umschalten im Tray-Menü startet die MosIsland kurz neu (ein laufender Timer geht dabei verloren).
 
 Screenshots: `screenshot_save` legt jede Aufnahme zusätzlich als PNG ab (sonst nur Zwischenablage), `screenshot_dir` ändert den Ordner (leer = `~/Bilder/LinuxMos` bzw. `~/Pictures/LinuxMos`), `screenshot_open_editor` öffnet den Editor direkt nach der Aufnahme. „Fertig“ im Editor überschreibt die Aufnahme mit der markierten Fassung. Alles auch im Tray-Menü unter „Screenshot“.
+
+Text & QR: `ocr_languages` sind tesseract-Sprachen, mit `+` verbunden (weitere per `sudo apt install tesseract-ocr-fra` usw., Liste: `tesseract --list-langs`). Standardmäßig werden die Zeilen eines Absatzes zusammengefügt und Trennstriche am Zeilenende entfernt; `ocr_keep_linebreaks` behält den Text zeilengenau. `qr_open_links` öffnet Links aus QR-Codes sofort im Browser statt nur einen „Öffnen“-Button zu zeigen. Beide Schalter auch im Tray-Menü unter „Text & QR“. Die Erkennung läuft komplett lokal, das Bild wird danach gelöscht.
 
 Weitere Dateien:
 
@@ -228,6 +239,8 @@ Weitere Dateien:
 - **Lyrics/Wetter** hängen von LRCLIB bzw. MET Norway ab – nicht jeder Song hat synchronisierte Lyrics.
 - **Ist die MosIsland beendet**, fehlt das Lautstärke-OSD (weil Cinnamons eigenes abgeschaltet ist) – im Tray-Menü „Lautstärke & Helligkeit anzeigen“ ausschalten bringt Cinnamons OSD zurück.
 - **Einfügen per Klick** funktioniert nicht in Fenstern, die als root laufen – der Eintrag liegt dann trotzdem in der Zwischenablage.
+- **OCR-Qualität** hängt von der Schriftgröße ab – sehr kleiner oder stark stilisierter Text, Schrift auf Bildern und Handschrift werden oft nicht sauber erkannt. Größeren Bereich wählen oder vorher hineinzoomen hilft.
+- **WLAN-Passwörter aus QR-Codes** landen wie alles Kopierte im Clipboard-Verlauf – bei Bedarf dort löschen oder `clipboard_autodelete_min` setzen.
 - **Screenshot-Bild in der Zwischenablage** hält ein kleiner `xclip`-Prozess im Hintergrund, bis du etwas anderes kopierst (so überlebt das Bild auch ein Beenden der Insel).
 
 Weitere Lösungen: [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.md#troubleshooting)
@@ -244,6 +257,7 @@ Weitere Lösungen: [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.md#tro
 - [ ] Kompletter Testlauf auf Linux Mint 22.x
 - [x] Englische Oberfläche für die MosIsland (`language`, Tray-Menü)
 - [x] Screenshot-Tool mit Markup-Editor (`Ctrl+Alt+S`, `Ctrl+Alt+Shift+S`)
+- [x] Text vom Bildschirm (OCR, `Ctrl+Alt+O`) und QR-Codes (`Ctrl+Alt+Q`)
 
 ---
 
@@ -264,6 +278,8 @@ Die WhiteSur-Themes (GPL-3.0) sind nicht Teil dieses Repos, sie werden bei der I
 - [Inter](https://rsms.me/inter/) – Schrift
 - [PyGObject / GTK 3](https://pygobject.gnome.org/) – MosIsland-Oberfläche
 - [maim / slop](https://github.com/naelstrof/maim) – Screenshots und Bereichsauswahl
+- [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) (Apache-2.0) – Texterkennung
+- [ZBar](https://github.com/mchehab/zbar) (LGPL-2.1) – QR-Codes und Barcodes
 - [MET Norway](https://www.met.no/en) (CC BY 4.0), [OpenStreetMap](https://www.openstreetmap.org/copyright) (ODbL), [LRCLIB](https://lrclib.net) – Wetter, Ortssuche, Lyrics
 - Ideen: [Island](https://github.com/exuupery/island) von exuupery und [Nusa](https://rama2555.github.io/nusa/) von Rama (beide Windows, Closed Source) – kein Code und keine Grafiken übernommen
 - Entwickelt mit Unterstützung von Claude (Anthropic)

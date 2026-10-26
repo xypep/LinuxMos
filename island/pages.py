@@ -573,6 +573,16 @@ class NotePage(Page):
             GLib.source_remove(self._save_id)
             self._save_note()
 
+    def append(self, text):
+        """Add text as a new paragraph at the end of the note (e.g. recognised text)."""
+        buf = self.text.get_buffer()
+        current = buf.get_text(buf.get_start_iter(), buf.get_end_iter(), True)
+        if not current.strip() or current.endswith("\n\n"):
+            sep = ""
+        else:
+            sep = "\n" if current.endswith("\n") else "\n\n"
+        buf.insert(buf.get_end_iter(), sep + text)  # "changed" saves it
+
     def update_timer(self, timer):
         self.remaining.set_text(format_seconds(timer.remaining) if timer.running else "00:00")
         self.mode.set_text(timer.label if timer.running else "")

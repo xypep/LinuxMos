@@ -92,6 +92,7 @@ if (( PURGE )); then
   echo "    Pakete bei Bedarf manuell entfernen:"
   echo "      sudo apt remove plank conky-std rofi fonts-inter"
   echo "      sudo apt remove maim slop xclip          # MosIsland-Screenshots"
+  echo "      sudo apt remove tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng zbar-tools   # Text & QR"
 fi
 
 # Screenshots gehören dem Nutzer: nie löschen, nur sagen, wo sie liegen

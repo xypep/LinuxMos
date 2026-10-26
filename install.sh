@@ -52,6 +52,8 @@ ISLAND_PACKAGES=(
   xdotool pulseaudio-utils libnotify-bin sound-theme-freedesktop
   # Screenshot-Tool (Ctrl+Alt+S)
   maim slop xclip
+  # Text (Ctrl+Alt+O) und QR-Codes (Ctrl+Alt+Q) vom Bildschirm
+  tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng zbar-tools
 )
 
 # ---- Defaults ---------------------------------------------------------------
@@ -109,7 +111,7 @@ Usage: ./install.sh [OPTIONS]
   --no-spotlight     Keine Spotlight-Suche (rofi)
   --firefox          Zusätzlich WhiteSur-Theme für Firefox installieren
   --island           MosIsland (Dynamic Island) installieren: Musik, Clipboard,
-                     Ablage, Notiz/Timer, Wetter, Controls, Screenshots oben in der Mitte
+                     Ablage, Notiz/Timer, Wetter, Controls, Screenshots, Text/QR oben in der Mitte
   --snapshot         Vorher Timeshift-Snapshot erstellen (ohne Nachfrage)
   --no-snapshot      Keinen Timeshift-Snapshot erstellen
   -y, --yes          Alle Rückfragen mit "ja" beantworten
@@ -562,9 +564,13 @@ EOF
     "${BIN_DIR}/linuxmos-island --shot area" "<Primary><Alt>s"
   python3 "${TWEAKS}" add-keybinding "MosIsland Screenshot Bildschirm (LinuxMos)" \
     "${BIN_DIR}/linuxmos-island --shot screen" "<Primary><Alt><Shift>s"
+  python3 "${TWEAKS}" add-keybinding "MosIsland Text erkennen (LinuxMos)" \
+    "${BIN_DIR}/linuxmos-island --ocr" "<Primary><Alt>o"
+  python3 "${TWEAKS}" add-keybinding "MosIsland QR-Code lesen (LinuxMos)" \
+    "${BIN_DIR}/linuxmos-island --qr" "<Primary><Alt>q"
 
   setsid "${BIN_DIR}/linuxmos-island" >/dev/null 2>&1 < /dev/null &
-  ok "MosIsland läuft (Ctrl+Alt+I öffnen, Ctrl+Alt+V Zwischenablage, Ctrl+Alt+S Screenshot, Tray-Icon für Einstellungen)"
+  ok "MosIsland läuft (Ctrl+Alt+I öffnen, Ctrl+Alt+V Zwischenablage, Ctrl+Alt+S Screenshot, Ctrl+Alt+O Text, Tray-Icon für Einstellungen)"
 }
 
 install_tools() {
@@ -591,7 +597,7 @@ summary() {
     Dock:        Plank (${PLANK_THEME}), Zoom $( [[ "${EFFECTS}" == minimal ]] && echo aus || echo an )
     Widgets:     $( (( DO_WIDGETS )) && echo "Conky (Uhr + System${WEATHER_CITY:+ + Wetter})" || echo "–" )
     Spotlight:   $( (( DO_SPOTLIGHT )) && echo "Super+Space" || echo "–" )
-    MosIsland:   $( (( DO_ISLAND )) && echo "oben mittig · Ctrl+Alt+I · Ctrl+Alt+V · Ctrl+Alt+S" || echo "– (mit --island)" )
+    MosIsland:   $( (( DO_ISLAND )) && echo "oben mittig · Ctrl+Alt+I · Ctrl+Alt+V · Ctrl+Alt+S · Ctrl+Alt+O" || echo "– (mit --island)" )
 
     Tipps:
       • Einmal ab- und wieder anmelden, damit wirklich alle Apps das Theme nutzen.
