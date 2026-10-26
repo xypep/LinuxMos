@@ -8,7 +8,7 @@ from gi.repository import GLib, Gtk
 
 from island import __version__
 from island.i18n import LANGUAGES, _
-from island.services import screenshot, system
+from island.services import finder, screenshot, system
 
 try:
     gi.require_version("XApp", "1.0")
@@ -65,6 +65,7 @@ class Tray:
               lambda on: self.island.set_option("compact_when_idle", on))
         check(_("Lautstärke & Helligkeit anzeigen"), cfg.get("osd", True), self._set_osd)
         menu.append(self._autodelete_menu(cfg.get("clipboard_autodelete_min", 0)))
+        menu.append(self._search_menu(cfg))
         menu.append(self._screenshot_menu(cfg))
         menu.append(self._read_menu(cfg))
         menu.append(self._notifications_menu())
@@ -99,6 +100,28 @@ class Tray:
             choices.append((current, _("Nach {minutes} Minuten").format(minutes=current)))
         return self._radio_menu(_("Zwischenablage automatisch leeren"), choices, current,
                                 lambda minutes: self.island.set_option("clipboard_autodelete_min", minutes))
+
+    def _search_menu(self, cfg):
+        sub = Gtk.Menu()
+        open_item = Gtk.MenuItem(label=_("Suche öffnen  (Ctrl+Alt+Space)"))
+        open_item.connect("activate", lambda *_: self.island.open_tab("search"))
+        sub.append(open_item)
+        sub.append(Gtk.SeparatorMenuItem())
+        for text, key in ((_("Dateien durchsuchen"), "command_bar_files"),
+                          (_("Währungen (fragt frankfurter.dev)"), "command_bar_currency")):
+            mi = Gtk.CheckMenuItem(label=text)
+            mi.set_active(cfg.get(key, True))
+            mi.connect("toggled", lambda w, k=key: self.island.set_option(k, w.get_active()))
+            sub.append(mi)
+        current = cfg.get("command_bar_engine") or "duckduckgo"
+        choices = [(key, name) for key, (name, _url) in finder.ENGINES.items()]
+        if current not in finder.ENGINES:
+            choices.append((current, finder.engine(cfg)[0]))  # own URL from config.json
+        sub.append(self._radio_menu(_("Websuche mit"), choices, current,
+                                    lambda key: self.island.set_option("command_bar_engine", key)))
+        parent = Gtk.MenuItem(label=_("Suche"))
+        parent.set_submenu(sub)
+        return parent
 
     def _screenshot_menu(self, cfg):
         sub = Gtk.Menu()

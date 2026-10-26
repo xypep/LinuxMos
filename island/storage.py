@@ -52,6 +52,12 @@ DEFAULT_CONFIG = {
     "vpn_lookup": False,
     "downloads_progress": True,
     "downloads_dir": "",
+    # Command bar (Ctrl+Alt+Space): web search engine (duckduckgo | google | startpage | ecosia | bing |
+    # brave, or a URL with %s for the query), file results from the home folder, currencies (ECB rates
+    # via frankfurter.dev: a request to an outside service, only when a conversion is typed)
+    "command_bar_engine": "duckduckgo",
+    "command_bar_files": True,
+    "command_bar_currency": True,
     # Water reminder
     "water_goal_ml": 2000,
     "water_portion_ml": 250,

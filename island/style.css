@@ -118,6 +118,7 @@
 }
 #island textview,
 #island textview text { background: transparent; }
+#island entry.command { font-size: 15px; min-height: 34px; padding: 0 12px; }
 #island spinbutton button { background: transparent; padding: 4px; }
 #island selection { background: #0a84ff; color: #ffffff; }
 

@@ -222,7 +222,7 @@ Bedienung in der Suche:
 - `Shift+→`: Modus wechseln (Apps → Run → Fenster → Dateien)
 - `Esc` oder `Super+Space`: Suche schließen
 
-> Du willst mehr Raycast-Features (Rechner, Erweiterungen)? Dann nimm [Ulauncher](https://ulauncher.io/). Der läuft aber dauerhaft im Hintergrund (~60–100 MB RAM). rofi braucht 0 MB, solange es nicht offen ist.
+> Rechner, Einheiten, Währungen und Websuche stecken in der [Command Bar der MosIsland](#suche-command-bar) (`Ctrl+Alt+Space`, mit `--island`). Für Erweiterungen à la Raycast gibt es [Ulauncher](https://ulauncher.io/), der läuft aber dauerhaft im Hintergrund (~60–100 MB RAM). rofi braucht 0 MB, solange es nicht offen ist.
 
 ---
 
@@ -258,10 +258,11 @@ Eingeklappt zeigt sie immer das Wichtigste (Priorität von oben nach unten):
 
 Manche Hinweise sind klickbar: Ein Klick auf die Wasser-Erinnerung trägt eine Portion ein, „Pause vorbei“ startet die nächste Fokus-Runde, und eine fällige Aufgabe öffnet die Aufgabenliste.
 
-### Aufgeklappt: acht Tabs
+### Aufgeklappt: neun Tabs
 
 | Tab | Inhalt |
 |---|---|
+| 🔍 | **Suche** – die [Command Bar](#suche-command-bar): Apps, Dateien, Rechner, Einheiten, Währungen und Websuche in einem Feld (`Ctrl+Alt+Space`). |
 | ![Jetzt](img/island-home.png) | **Jetzt** – Cover, Titel, ⏮ ⏯ ⏭, **auf den Fortschrittsbalken klicken zum Spulen**; darunter Wetter, Timer, Akku |
 | ![Lyrics](img/island-lyrics.png) | **Synced Lyrics** – Lyrics-Knopf im Player: Jede Zeile leuchtet auf, während sie gesungen wird. **Klick auf eine Zeile springt dorthin.** Optional zeigt die eingeklappte Pille die aktuelle Zeile. Quelle: [LRCLIB](https://lrclib.net) (kostenlos, ohne Konto). |
 | ![Zwischenablage](img/island-clipboard.png) | **Zwischenablage** – Verlauf (Text + Bilder) mit Suche und Pins. **Ein Klick fügt den Eintrag direkt ins Fenster ein, in dem du gerade tippst.** Terminals bekommen automatisch `Ctrl+Shift+V`. Passwörter aus KeePassXC & Co. werden nie gespeichert. Optional werden nicht angepinnte Einträge nach X Minuten automatisch gelöscht (Tray-Menü). |
@@ -271,6 +272,35 @@ Manche Hinweise sind klickbar: Ein Klick auf die Wasser-Erinnerung trägt eine P
 | ![Wasser](img/island-water.png) | **Wasser** – Portion (Flasche/Glas) und Tagesziel einstellen, mit einem Klick trinken, Diagramm pro Stunde. Erinnert nur in deinen aktiven Stunden und nur, solange das Ziel nicht erreicht ist. |
 | ![Wetter](img/island-weather.png) | **Wetter** – jetzt, die nächsten 24 Stunden und 7 Tage. Daten von [MET Norway](https://www.met.no/en), ohne API-Key und ohne Konto; Warnung kurz bevor es zu regnen beginnt. |
 | ![Steuerung](img/island-controls.png) | **Steuerung** – WLAN, Bluetooth, Nicht stören, Dark Mode (schaltet das ganze WhiteSur-Theme um), Mikro aus, Lautstärke, Helligkeit (Laptop), Screenshot, Sperren. Ruhezustand/Neustart/Aus wollen zweimal geklickt werden. |
+
+#### Suche (Command Bar)
+
+`Ctrl+Alt+Space` (oder Klick auf die Lupe ganz links) öffnet die Insel mit einem Eingabefeld. Einfach lostippen, die Treffer kommen beim Tippen:
+
+| Eingabe                          | Treffer                                                         |
+|----------------------------------|-----------------------------------------------------------------|
+| `fire`, `text`, `einst`          | Apps (Name, Beschreibung, Stichwörter, in der Systemsprache); oft gestartete rücken nach oben |
+| `rechnung`, `urlaub 2026`        | Dateien und Ordner: zuletzt benutzte zuerst, dann alles im Home-Ordner (mehrere Wörter = alle müssen im Namen stehen) |
+| `12*7`, `2^10`, `sqrt(2)`, `50*20%`, `(3+4)/2` | Rechner, auch mit `,` als Komma; `sin cos tan ln log exp abs round floor ceil pi e` |
+| `5 km in mi`, `100 f in c`, `1 GiB in MB`, `60 mph in km/h`, `2 h in min`, `3 m2 in sqft` | Einheiten: Länge, Gewicht, Volumen, Fläche, Temperatur, Zeit, Daten, Geschwindigkeit |
+| `20 usd in eur`, `$20 in €`, `100 franken nach euro` | Währungen mit den EZB-Referenzkursen |
+| `github.com`                     | „Website öffnen“                                                 |
+| alles                            | als letzter Treffer: Websuche in der eingestellten Suchmaschine |
+
+| Taste          | Wirkung                                                                   |
+|----------------|---------------------------------------------------------------------------|
+| `↑` / `↓`      | Treffer wählen                                                            |
+| `Enter`/Klick  | App starten, Datei/Ordner/Website öffnen, Rechen-Ergebnis kopieren        |
+| `Ctrl+Enter`   | Rechen-Ergebnis direkt ins vorige Fenster einfügen, Datei im Ordner zeigen |
+| `Esc`          | Zuklappen (die letzte Eingabe bleibt markiert stehen, Tippen ersetzt sie)  |
+
+Leeres Feld = deine meistgestarteten Apps. Die rofi-Suche (`Super+Space`) bleibt unverändert, für Fenster und die ganze Platte ist sie die bessere Wahl.
+
+**Dateien:** Beim ersten Tippen liest ein Thread einmal den Home-Ordner ein (bis 5 Ebenen, ohne versteckte Ordner wie `.cache`, ohne `node_modules`, `venv`, `snap`, höchstens 20 000 Einträge, typisch < 1 s). Die Liste ist kompakt (~1 MB) und wird 3 Minuten nach der letzten Suche wieder verworfen; nach 10 Minuten wird neu eingelesen. Kein Indexdienst, nichts läuft im Hintergrund.
+
+**Währungen:** Die Kurse holt die Insel bei api.frankfurter.dev (die Referenzkurse der EZB, ohne Konto) – nur, wenn du eine Währungsumrechnung tippst, und höchstens alle 12 Stunden (Cache in `~/.cache/linuxmos/island/rates.json`). Abschalten: Tray → „Suche“ → „Währungen“.
+
+**Suchmaschine:** Tray → „Suche“ → „Websuche mit“: DuckDuckGo (Standard), Google, Startpage, Ecosia, Bing, Brave Search – oder eine eigene URL in `config.json`, z. B. `"command_bar_engine": "https://de.wikipedia.org/w/index.php?search=%s"`.
 
 #### Screenshots
 
@@ -354,6 +384,7 @@ Das MosIsland-Icon liegt in der Top Bar neben der Uhr (Rechtsklick):
 | Minimal-Notch                     | Eingeklappt nur ein dünner Strich, z. B. für Laptops mit dickem Rand oben oder damit Browser-Tabs frei bleiben |
 | Lautstärke & Helligkeit anzeigen  | MosIsland-Overlays statt Cinnamons eigenem OSD (aus = Cinnamon-OSD zurück) |
 | Zwischenablage automatisch leeren | Nicht angepinnte Einträge nach 15 min, 1 h oder 24 h löschen (Standard: nie) |
+| Suche                             | Suche öffnen, „Dateien durchsuchen“, „Währungen (fragt frankfurter.dev)“, „Websuche mit“ (Suchmaschine) |
 | Screenshot                        | Bereich/Bildschirm aufnehmen, „Im Ordner speichern“, „Editor sofort öffnen“, Ordner öffnen |
 | Text & QR                         | Text erkennen, QR-Code lesen, „Zeilenumbrüche behalten“, „Links aus QR-Codes sofort öffnen“ |
 | Benachrichtigungen                | „Auf der Insel anzeigen“ (aus = Cinnamons Banner zurück), „Nicht stören“, zuletzt gesehene Apps zum Ausblenden |
@@ -370,6 +401,7 @@ Ein Linksklick aufs Icon klappt die Insel auf.
 | Aufklappen                    | Maus auf die Pille (oder klicken)                       |
 | Zuklappen                     | Maus weg, `Esc`                                         |
 | MosIsland öffnen/schließen    | `Ctrl+Alt+I`                                            |
+| Suche (Command Bar)           | `Ctrl+Alt+Space` → tippen → `↑`/`↓` → `Enter`           |
 | Zwischenablage                | `Ctrl+Alt+V` → tippen zum Suchen → `Enter` fügt ein     |
 | Screenshot Bereich / Bildschirm | `Ctrl+Alt+S` / `Ctrl+Alt+Shift+S`                     |
 | Text erkennen / QR-Code lesen | `Ctrl+Alt+O` / `Ctrl+Alt+Q`                             |
@@ -383,7 +415,7 @@ Per Terminal steuern:
 
 ```bash
 linuxmos-island --toggle
-linuxmos-island --tab todo          # home|clipboard|shelf|todo|note|water|weather|controls
+linuxmos-island --tab todo          # search|home|clipboard|shelf|todo|note|water|weather|controls
 linuxmos-island --set-city "München"
 linuxmos-island --quit
 ```
@@ -417,12 +449,15 @@ Die meisten Schalter liegen im Tray-Menü bzw. im Wasser-Tab (⚙). Alles steht 
 | `vpn_lookup`         | `false`   | Land und IP des VPN bei ipinfo.io abfragen (externe Anfrage)   |
 | `downloads_progress` | `true`    | Download-Ring und „Download fertig“                           |
 | `downloads_dir`      | `""`      | Beobachteter Download-Ordner (leer = `~/Downloads` bzw. der XDG-Download-Ordner) |
+| `command_bar_engine` | `"duckduckgo"` | Suchmaschine der Command Bar: `duckduckgo`, `google`, `startpage`, `ecosia`, `bing`, `brave` oder eine URL mit `%s` |
+| `command_bar_files`  | `true`    | Dateien in der Command Bar suchen (zuletzt benutzte + Home-Ordner) |
+| `command_bar_currency` | `true`  | Währungen umrechnen (EZB-Kurse über api.frankfurter.dev, nur beim Tippen einer Umrechnung) |
 | `water_portion_ml` / `water_goal_ml` | `250` / `2000` | Portion und Tagesziel                     |
 | `water_start` / `water_end` | `09:00` / `21:00` | Aktive Stunden für Erinnerungen                     |
 | `water_interval_min` | `60`      | Erinnerung frühestens so lange nach dem letzten Schluck       |
 | `water_reminders`    | `true`    | Wasser-Erinnerungen an/aus                                   |
 
-Alle Daten (Notiz, Aufgaben, Wasser-Log, Verlauf, Ablage) liegen nur lokal in `~/.local/share/linuxmos/island/`. Es gibt kein Konto und kein Tracking. Ins Netz gehen nur der Wetter-Abruf (MET Norway, nur die Koordinaten) und die Lyrics-Suche (LRCLIB: Titel, Künstler, Länge), und die nur, wenn du die Lyrics nutzt. Mit `vpn_lookup` kommt nach jedem VPN-Verbinden eine Anfrage an ipinfo.io dazu (sieht die Ausgangs-IP des VPN).
+Alle Daten (Notiz, Aufgaben, Wasser-Log, Verlauf, Ablage) liegen nur lokal in `~/.local/share/linuxmos/island/`. Es gibt kein Konto und kein Tracking. Ins Netz gehen nur der Wetter-Abruf (MET Norway, nur die Koordinaten) und die Lyrics-Suche (LRCLIB: Titel, Künstler, Länge), und die nur, wenn du die Lyrics nutzt. Mit `vpn_lookup` kommt nach jedem VPN-Verbinden eine Anfrage an ipinfo.io dazu (sieht die Ausgangs-IP des VPN). Die Command Bar fragt api.frankfurter.dev nach Wechselkursen, wenn du eine Währungsumrechnung tippst (höchstens alle 12 Stunden), und schickt deine Eingabe nur bei `Enter` auf „im Web suchen“ an die Suchmaschine. Gespeichert wird nur, wie oft du welche App über die Suche gestartet hast (`command.json`).
 
 ### Performance
 
@@ -446,6 +481,7 @@ Möglich wird das, weil es keinen Polling-Loop gibt. Jede Quelle meldet sich von
 | Aufgaben, Wasser       | Ein einziger Timer bis zur nächsten fälligen Erinnerung        |
 | Screenshots            | Nur auf Hotkey; der Editor wird erst beim ersten Öffnen geladen |
 | Text & QR              | Nur auf Hotkey; tesseract/zbarimg laufen als eigener Prozess und beenden sich danach |
+| Suche (Command Bar)    | Wird erst beim ersten Öffnen gebaut; sucht nur beim Tippen. Die Dateiliste entsteht einmal in einem Thread und wird 3 min nach der letzten Suche verworfen |
 | Benachrichtigungen     | D-Bus-Monitor (`BecomeMonitor`) auf genau drei Nachrichtentypen – meldet sich nur, wenn eine Benachrichtigung kommt |
 | Mikrofon               | Dasselbe `pactl subscribe` wie die Lautstärke; Abfrage der Streams nur bei einem Ereignis |
 | Kamera                 | inotify auf `/dev/video*` (öffnen/schließen) und `/dev` (Kamera eingesteckt); `/proc`-Suche nur danach |
@@ -455,11 +491,11 @@ Möglich wird das, weil es keinen Polling-Loop gibt. Jede Quelle meldet sich von
 
 Gezeichnet wird nur, während sich etwas bewegt: beim Auf- und Zuklappen (~240 ms) oder beim Blinzeln des Maskottchens (~180 ms alle paar Sekunden).
 
-**RAM: ~115 MB.** Ehrlich gesagt ist das der größte Posten. Er kommt fast komplett von Python + GTK3 selbst: Ein leeres GTK-Fenster in Python braucht schon ~93 MB. Nusa schafft ~30 MB, weil es in Rust geschrieben ist. Dafür braucht MosIsland keinen Compiler und lässt sich direkt anpassen.
+**RAM: ~115 MB.** Ehrlich gesagt ist das der größte Posten. Er kommt fast komplett von Python + GTK3 selbst: Ein leeres GTK-Fenster in Python braucht schon ~93 MB. Nusa schafft ~30 MB, weil es in Rust geschrieben ist. Dafür braucht MosIsland keinen Compiler und lässt sich direkt anpassen. Die Command Bar kostet nichts, bis du sie zum ersten Mal öffnest, danach ~5 MB (gemessen unter Xvfb: 113,7 → 118,8 MB, mit 13 000 Dateien im Home-Ordner).
 
 ### Was nicht dabei ist
 
-KI-Chat, Bildschirmaufnahme (Video), die „Ferrofluid“-Animation und 25 Charaktere (bewusst weggelassen, weil sie dauerhaft CPU kosten), Antworten direkt aus der Benachrichtigungs-Karte. Die Command Bar übernimmt in LinuxMos die [Spotlight-Suche](#9-spotlight--raycast). Läuft nur unter X11, dem Standard bei Linux Mint Cinnamon.
+KI-Chat, Bildschirmaufnahme (Video), die „Ferrofluid“-Animation und 25 Charaktere (bewusst weggelassen, weil sie dauerhaft CPU kosten), Antworten direkt aus der Benachrichtigungs-Karte. Neben der eigenen [Command Bar](#suche-command-bar) bleibt die [Spotlight-Suche](#9-spotlight--raycast) mit rofi. Läuft nur unter X11, dem Standard bei Linux Mint Cinnamon.
 
 ---
 
@@ -674,7 +710,8 @@ bin/linuxmos-perf          CPU-Last messen
 bin/linuxmos-island        MosIsland starten/steuern (Hotkeys gehen per D-Bus direkt an die laufende Insel)
 island/                    MosIsland (Python + GTK3)
   app.py                   Fenster, Zustände, Hover/Fokus/Einfügen, Drag & Drop, Lyrics-Takt, Pomodoro
-  pages.py                 Die acht Tabs
+  pages.py                 Die Tabs (Jetzt, Zwischenablage, Ablage, Aufgaben, Notiz, Wasser, Wetter, Steuerung)
+  commandbar.py            Such-Tab / Command Bar (wird erst beim ersten Öffnen geladen)
   tray.py                  Tray-Icon mit den Schaltern
   editor.py                Markup-Editor für Screenshots (wird erst beim ersten Öffnen geladen)
   shot.py                  Screenshot, Text & QR ohne laufende Insel (Fallback der Hotkeys)
@@ -683,7 +720,8 @@ island/                    MosIsland (Python + GTK3)
   style.css                Look (unabhängig vom GTK-Theme)
   services/                MPRIS, Lyrics, UPower, Overlays (Ton, Helligkeit, Tastatur, Netz, Bluetooth),
                            Leerlauf, Clipboard, Ablage, Aufgaben, Wasser, Wetter, Timer, System-Controls,
-                           Screenshot (maim/slop/xclip), Text & QR (tesseract/zbarimg)
+                           Screenshot (maim/slop/xclip), Text & QR (tesseract/zbarimg),
+                           Rechner/Einheiten/Währungen (calc.py), Apps/Dateien/Websuche (finder.py)
 ```
 
 Gesichert wird nach `~/.local/share/linuxmos/backup/`, der Download-Cache liegt in `~/.cache/linuxmos/`.

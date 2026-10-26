@@ -93,7 +93,7 @@ if (( PURGE )); then
          "${DATA_DIR}/backgrounds/linuxmos" \
          "${CACHE_DIR}" \
          "${STATE_DIR}/island" "${CONFIG_DIR}/linuxmos"
-  ok "Gelöscht (inkl. MosIsland-Daten: Notiz, Clipboard-Verlauf, Ablage)"
+  ok "Gelöscht (inkl. MosIsland-Daten: Notiz, Clipboard-Verlauf, Ablage, App-Zähler der Suche)"
   echo
   echo "    Pakete bei Bedarf manuell entfernen:"
   echo "      sudo apt remove plank conky-std rofi fonts-inter"
@@ -101,6 +101,7 @@ if (( PURGE )); then
   echo "      sudo apt remove tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng zbar-tools   # Text & QR"
   # iso-codes (Ländernamen im VPN-Hinweis) bewusst nicht: viele Systempakete hängen davon ab.
   # Die Live-Hinweise (Mikro/Kamera, VPN, Downloads) hinterlassen keine eigenen Dateien.
+  # Die Command Bar braucht keine Pakete; ihre Wechselkurse liegen in ~/.cache/linuxmos (oben gelöscht).
 fi
 
 # Screenshots gehören dem Nutzer: nie löschen, nur sagen, wo sie liegen

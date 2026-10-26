@@ -66,12 +66,13 @@ Macht Linux Mint Cinnamon zum leichtgewichtigen macOS-Look-alike – mit Dock, T
 - **Text vom Bildschirm (OCR)** – `Ctrl+Alt+O`, Bereich aufziehen: tesseract (Deutsch + Englisch) erkennt den Text, er landet in der Zwischenablage und als **Karte** auf der Insel (Vorschau, „In Notiz“, „Kopieren“). Auch im Screenshot-Editor per Button „Text“
 - **QR-Codes & Barcodes** – `Ctrl+Alt+Q`: Inhalt in die Zwischenablage, bei Links ein „Öffnen“-Button, bei WLAN-Codes wird das Passwort kopiert und „Verbinden“ angeboten
 - **Benachrichtigungen als Karte** – jede Benachrichtigung erscheint oben auf der Insel: App-Icon, Bild (Avatar, Cover), Titel, Text, verschwindet von selbst; kommen mehrere, ersetzt die neueste die alte und zählt mit („+2“). Klick holt die App nach vorne, 🔕 blendet eine App aus. Cinnamon bleibt der Benachrichtigungs-Dienst, die Insel liest nur mit; der Verlauf bleibt im Benachrichtigungs-Applet
+- **Command Bar** – `Ctrl+Alt+Space` oder der Lupen-Tab: ein Eingabefeld für Apps, Dateien (zuletzt benutzte + Home-Ordner), Rechner (`12*7`, `sqrt(2)`, `50*20%`), Einheiten (`5 km in mi`, `100 f in c`, `1 GiB in MB`), Währungen (`20 usd in eur`, EZB-Kurse) und Websuche (DuckDuckGo, Google, Startpage …). `Enter` öffnet bzw. kopiert, `Ctrl+Enter` fügt das Ergebnis ins vorige Fenster ein oder zeigt die Datei im Ordner. Die rofi-Spotlight-Suche (`Super+Space`) bleibt als Alternative
 - **Steuerung** – WLAN, Bluetooth, Nicht stören, Dark Mode, Mikro, Lautstärke, Helligkeit, Screenshot, Sperren, Ruhezustand, Neustart, Aus
 - **Live-Hinweise** – Lautstärke, Helligkeit, Feststelltaste, Tastatur-Sprache, Laden, WLAN weg, Kopfhörer verbunden, VPN an/aus (optional mit Land und IP)
 - **Mikrofon & Kamera in Benutzung** – oranger Punkt, solange eine App aufnimmt, grüner bei aktiver Kamera (wie bei iOS), mit App-Namen; aufgeklappt sitzt oben ein Mikro-Button zum Stummschalten
 - **Download-Fortschritt** – kleiner Ring auf der Insel, solange Firefox oder Chromium/Chrome lädt (bei Chromium mit Prozent), „Download fertig“ mit Klick zur Datei
 - **Maskottchen** – Augen im Leerlauf, die eindösen und winken, wenn du zurückkommst
-- **Tray-Menü** – Autostart, Maskottchen, Minimal-Notch, OSD, Zwischenablage automatisch leeren, Screenshot, Text & QR, Benachrichtigungen (an/aus, Nicht stören, Apps ausblenden), Live-Hinweise (Mikro & Kamera, VPN, Downloads), Sprache, Beenden
+- **Tray-Menü** – Autostart, Maskottchen, Minimal-Notch, OSD, Zwischenablage automatisch leeren, Suche (Dateien, Währungen, Suchmaschine), Screenshot, Text & QR, Benachrichtigungen (an/aus, Nicht stören, Apps ausblenden), Live-Hinweise (Mikro & Kamera, VPN, Downloads), Sprache, Beenden
 - **Deutsch oder Englisch** – folgt automatisch der Systemsprache, umschaltbar im Tray-Menü (`Sprache / Language`)
 
 **Leichtgewichtig** – gemessen: Conky-Widgets ~0,03 % CPU, MosIsland ~0,1 % CPU (unter Cinnamon 6, Musik läuft). Kein Blur-Compositor, keine Polling-Schleifen.
@@ -160,6 +161,7 @@ linuxmos-island --set-city "München"
 | `Shift+→`        | In der Suche: Modus wechseln (Apps, Run, Fenster, Dateien)  |
 | `Ctrl+Alt+I`     | MosIsland öffnen/schließen                                  |
 | `Ctrl+Alt+V`     | Zwischenablage-Verlauf (tippen = suchen, `Enter` = einfügen)|
+| `Ctrl+Alt+Space` | Command Bar der MosIsland: Apps, Dateien, Rechner, Einheiten, Währungen, Web (`↑`/`↓`, `Enter`, `Ctrl+Enter`) |
 | `Ctrl+Alt+S`     | Screenshot vom Bereich (`Esc` oder Hotkey nochmal = abbrechen) |
 | `Ctrl+Alt+Shift+S` | Screenshot vom Bildschirm unter der Maus                  |
 | `Ctrl+Alt+O`     | Text aus einem Bereich erkennen (OCR) → Zwischenablage      |
@@ -179,7 +181,7 @@ linuxmos-island --set-city "München"
 > `install.sh` lädt die WhiteSur-Themes direkt von GitHub (vinceliuice) und führt deren Installer aus, außerdem installiert es Pakete per `sudo apt`. Nicht mit `sudo` starten – das Script fragt selbst nach dem Passwort.
 
 > [!IMPORTANT]
-> Netzwerkzugriffe: Wetter über api.met.no und nominatim.openstreetmap.org (MosIsland) bzw. wttr.in (Conky), Lyrics über lrclib.net – jeweils nur, wenn du die Funktion nutzt. Land und IP des VPN fragt die Insel bei ipinfo.io ab – nur mit `vpn_lookup` (standardmäßig aus), einmal pro VPN-Verbindung; ipinfo.io sieht dabei die Ausgangs-IP des VPN. Der Clipboard-Verlauf liegt unverschlüsselt in `~/.local/share/linuxmos/island/clipboard.json`; Kopien aus Passwort-Managern werden nur übersprungen, wenn diese sie als geheim markieren (KeePassXC & Co.).
+> Netzwerkzugriffe: Wetter über api.met.no und nominatim.openstreetmap.org (MosIsland) bzw. wttr.in (Conky), Lyrics über lrclib.net – jeweils nur, wenn du die Funktion nutzt. Wechselkurse holt die Command Bar von api.frankfurter.dev (EZB-Kurse, ohne Konto) – nur, wenn du eine Währungsumrechnung tippst, höchstens alle 12 Stunden; abschaltbar mit `command_bar_currency`. Die Websuche öffnet deine Eingabe erst bei `Enter` in der gewählten Suchmaschine. Land und IP des VPN fragt die Insel bei ipinfo.io ab – nur mit `vpn_lookup` (standardmäßig aus), einmal pro VPN-Verbindung; ipinfo.io sieht dabei die Ausgangs-IP des VPN. Der Clipboard-Verlauf liegt unverschlüsselt in `~/.local/share/linuxmos/island/clipboard.json`; Kopien aus Passwort-Managern werden nur übersprungen, wenn diese sie als geheim markieren (KeePassXC & Co.).
 
 > [!IMPORTANT]
 > Solange die MosIsland Benachrichtigungen als Karte zeigt, schaltet sie Cinnamons eigene Banner ab (`org.cinnamon.desktop.notifications display-notifications`) – Benachrichtigungen landen dann ohne Popup im Benachrichtigungs-Applet, die Karte zeigt die Insel. Beim Beenden der Insel oder mit Tray → „Benachrichtigungen“ → „Auf der Insel anzeigen“ aus kommen Cinnamons Banner zurück. „Nicht stören“ (Steuerung-Tab, Tray) gilt dann für die Insel; kritische Meldungen (z. B. Akku fast leer) kommen trotzdem durch. Die Karten zeigen Nachrichteninhalte groß oben in der Mitte – bei Bildschirmfreigaben ggf. „Nicht stören“ einschalten.
@@ -218,6 +220,9 @@ MosIsland: `~/.config/linuxmos/island/config.json` – die meisten Schalter gibt
   "vpn_lookup": false,
   "downloads_progress": true,
   "downloads_dir": "",
+  "command_bar_engine": "duckduckgo",
+  "command_bar_files": true,
+  "command_bar_currency": true,
   "water_goal_ml": 2000,
   "water_portion_ml": 250,
   "water_reminders": true,
@@ -236,6 +241,8 @@ Text & QR: `ocr_languages` sind tesseract-Sprachen, mit `+` verbunden (weitere p
 Benachrichtigungen: `notifications_on_island` zeigt sie als Karte auf der Insel (und schaltet dafür Cinnamons Banner ab), `notifications_dnd` ist „Nicht stören“ der Insel, `notifications_exclude` eine Liste von App-Namen (wie in der Karte angezeigt) oder Desktop-IDs (`firefox`, `org.telegram.desktop`), die nie als Karte erscheinen – z. B. `["Spotify", "Thunderbird"]`. Alles auch im Tray-Menü unter „Benachrichtigungen“, dort stehen die zuletzt gesehenen Apps zum Abhaken. Die Insel liest die Benachrichtigungen per D-Bus-Monitor nur mit, nichts davon wird gespeichert (nur die App-Namen für die Liste, in `~/.local/share/linuxmos/island/notifications.json`).
 
 Live-Hinweise: `privacy_indicator` zeigt den orangen (Mikrofon) und grünen (Kamera) Punkt; das Mikrofon kommt aus PipeWire/PulseAudio (`pactl subscribe`, Pegelanzeigen wie pavucontrol zählen nicht), die Kamera über inotify auf `/dev/video*`. `vpn_status` meldet VPN an/aus (NetworkManager-VPNs, WireGuard sowie tun/wg-Schnittstellen anderer VPN-Apps wie Mullvad), `vpn_lookup` holt dazu Land und IP von ipinfo.io (externe Anfrage, deshalb standardmäßig aus). `downloads_progress` beobachtet den Download-Ordner (`downloads_dir`, leer = XDG-Download-Ordner, z. B. `~/Downloads`) auf `.part` (Firefox) und `.crdownload` (Chromium/Chrome). Alles auch im Tray-Menü unter „Live-Hinweise“.
+
+Command Bar: `command_bar_engine` ist die Suchmaschine (`duckduckgo`, `google`, `startpage`, `ecosia`, `bing`, `brave` oder eine eigene URL mit `%s` für die Suche, z. B. `"https://de.wikipedia.org/w/index.php?search=%s"`). `command_bar_files` sucht Dateien: zuletzt benutzte und alles im Home-Ordner bis 5 Ebenen tief (ohne versteckte Ordner, höchstens 20 000 Einträge); die Liste entsteht beim ersten Tippen in einem Thread und wird 3 Minuten nach der letzten Suche wieder verworfen. `command_bar_currency` rechnet Währungen mit den EZB-Kursen um (siehe Netzwerkzugriffe oben). Apps, die du über die Command Bar startest, rücken nach oben (Zähler in `~/.local/share/linuxmos/island/command.json`). Alles auch im Tray-Menü unter „Suche“.
 
 Weitere Dateien:
 
@@ -263,6 +270,7 @@ Weitere Dateien:
 - **Stürzt die MosIsland ab** (oder wird mit `kill -9` beendet), bleiben Cinnamons Banner aus, bis die Insel wieder läuft. Sofort zurück: `gsettings set org.cinnamon.desktop.notifications display-notifications true` (oder einfach `linuxmos-island` starten und im Tray die Karten ausschalten). `uninstall.sh` stellt sie ebenfalls wieder her.
 - **Vor Vollbild-Apps** (Videos, Spiele) bleibt die Insel unsichtbar, also auch die Karten – Benachrichtigungen findest du danach im Applet.
 - **Download-Prozent** gibt es nur, wenn der Browser seinen Fortschritt meldet (Chromium/Chrome tun das); Firefox-Downloads zeigen Größe und Tempo. Downloads in andere Ordner als `downloads_dir` sieht die Insel nicht.
+- **Dateien in der Command Bar** findet die Insel nur im Home-Ordner (bis 5 Ebenen, keine versteckten Ordner) und in der Liste zuletzt benutzter Dateien – für die ganze Platte bleibt die rofi-Suche (`Super+Space`, Modus „Dateien“). Neue Dateien tauchen spätestens 10 Minuten später auf.
 - **Kamera-App** erkennt die Insel nur bei Programmen des eigenen Benutzers; läuft die Kamera über PipeWire (z. B. Flatpak-Apps über das Portal), steht dort „PipeWire“ statt der App. Den Kamera-Punkt kann man nicht abschalten wie das Mikrofon – dafür gibt es keinen Systemschalter.
 - **Screenshot-Bild in der Zwischenablage** hält ein kleiner `xclip`-Prozess im Hintergrund, bis du etwas anderes kopierst (so überlebt das Bild auch ein Beenden der Insel).
 
@@ -283,6 +291,7 @@ Weitere Lösungen: [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.md#tro
 - [x] Text vom Bildschirm (OCR, `Ctrl+Alt+O`) und QR-Codes (`Ctrl+Alt+Q`)
 - [x] Benachrichtigungen als Karte auf der Insel (`notifications_on_island`, Ausschlussliste)
 - [x] Mikrofon-/Kamera-Punkt mit Stumm-Button, VPN-Status, Download-Fortschritt (`privacy_indicator`, `vpn_status`, `downloads_progress`)
+- [x] Command Bar in der Insel (`Ctrl+Alt+Space`): Apps, Dateien, Rechner, Einheiten, Währungen, Websuche
 
 ---
 

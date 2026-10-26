@@ -359,6 +359,36 @@ EN = {
     "Download · {name}": "Download · {name}",
     "Download fertig · {name}": "Download finished · {name}",
 
+    # Command bar
+    "Suche  (Ctrl+Alt+Space)": "Search  (Ctrl+Alt+Space)",
+    "Suche": "Search",
+    "Suche öffnen  (Ctrl+Alt+Space)": "Open search  (Ctrl+Alt+Space)",
+    "Dateien durchsuchen": "Search files",
+    "Währungen (fragt frankfurter.dev)": "Currencies (asks frankfurter.dev)",
+    "Websuche mit": "Search the web with",
+    "Apps, Dateien, Rechnen, Web …": "Apps, files, maths, web …",
+    "Apps starten · Dateien finden · 12*7 · 5 km in mi · 20 usd in eur · Websuche":
+        "Launch apps · find files · 12*7 · 5 km in mi · 20 usd in eur · web search",
+    "↵ öffnen · Ctrl+↵ einfügen bzw. im Ordner zeigen · Esc schließt":
+        "↵ open · Ctrl+↵ paste or show in folder · Esc closes",
+    "App": "App",
+    "Datei": "File",
+    "Ordner": "Folder",
+    "Web": "Web",
+    "Rechner": "Calculator",
+    "Einheit": "Unit",
+    "Umrechnung": "Conversion",
+    "Währung": "Currency",
+    "Dateien werden gesucht …": "Searching files …",
+    "Website öffnen": "Open website",
+    "„{query}“ im Web suchen": "Search the web for “{query}”",
+    "Wechselkurse werden geladen …": "Loading exchange rates …",
+    "Wechselkurse nicht erreichbar (offline?)": "Exchange rates not reachable (offline?)",
+    "EZB-Kurs vom {date}": "ECB rate of {date}",
+    "{app} lässt sich nicht starten": "Can't start {app}",
+    "Lässt sich nicht öffnen": "Can't open it",
+    "Kopiert · {text}": "Copied · {text}",
+
     # Command line
     "Wetter-Ort gesetzt: {city}": "Weather location set: {city}",
 }

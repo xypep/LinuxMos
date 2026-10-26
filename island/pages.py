@@ -29,6 +29,30 @@ class Page(Gtk.Box):
         """Called every time the tab becomes visible on the opened island."""
 
 
+class LazyPage(Page):
+    """A tab whose content is built the first time it is needed (start-up time and memory)."""
+
+    def __init__(self, island, factory):
+        super().__init__(island, spacing=0)
+        self._factory = factory
+        self._page = None
+
+    @property
+    def built(self):
+        return self._page is not None
+
+    @property
+    def page(self):
+        if self._page is None:
+            self._page = self._factory(self.island)
+            self.pack_start(self._page, True, True, 0)
+            self._page.show_all()
+        return self._page
+
+    def on_show(self):
+        self.page.on_show()
+
+
 # =============================================================================
 # Now: music, weather, timer, battery
 # =============================================================================

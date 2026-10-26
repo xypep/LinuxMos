@@ -15,7 +15,9 @@ Live marks sit at the folded island's right end in every state but a card:
 an orange dot while a microphone records, a green one while a camera is on,
 a ring while a download runs (details and the mute button in the opened
 island's header). "compact" gives way to "idle" while one shows.
-Hovering, clicking or a hotkey opens it into the tab view.
+Hovering, clicking or a hotkey opens it into the tab view. The first tab is
+the command bar (Ctrl+Alt+Space): apps, files, calculator, units, currencies
+and web search in one field, built on first use.
 
 Idle cost: no polling. The clock ticks once a minute; everything else is
 D-Bus signals or X11 events (notifications: a D-Bus monitor that only wakes
@@ -48,7 +50,7 @@ except (ValueError, ImportError):
 
 from island import APP_ID, __version__, i18n  # noqa: E402
 from island.i18n import _, n_  # noqa: E402
-from island.pages import (ClipboardPage, ControlsPage, HomePage, NotePage, ShelfPage,  # noqa: E402
+from island.pages import (ClipboardPage, ControlsPage, HomePage, LazyPage, NotePage, ShelfPage,  # noqa: E402
                           TodoPage, URI_TARGETS, WaterPage, WeatherPage)
 from island.services import art, ocr, screenshot, system  # noqa: E402
 from island.services.clipboard import ClipboardHistory  # noqa: E402
@@ -99,6 +101,7 @@ BANNERS = ("org.cinnamon.desktop.notifications", "display-notifications")
 
 # Tooltips are German source strings, translated when the tab bar is built
 TABS = [
+    ("search", "system-search-symbolic", "Suche  (Ctrl+Alt+Space)"),
     ("home", "audio-x-generic-symbolic", "Jetzt"),
     ("clipboard", "edit-paste-symbolic", "Zwischenablage"),
     ("shelf", "folder-symbolic", "Ablage"),
@@ -396,6 +399,8 @@ class IslandWindow(Gtk.Window):
         self.expand(tab=name, focus=True)
         if name == "clipboard":
             self.pages["clipboard"].focus_search()
+        elif name == "search":
+            self.pages["search"].page.focus_entry()
 
     # =========================================================================
     # Folded content
@@ -643,6 +648,7 @@ class IslandWindow(Gtk.Window):
     # =========================================================================
     def _build_expanded(self):
         self.pages = {
+            "search": LazyPage(self, _command_page),
             "home": HomePage(self),
             "clipboard": ClipboardPage(self),
             "shelf": ShelfPage(self),
@@ -661,7 +667,7 @@ class IslandWindow(Gtk.Window):
             btn.add(icon(icon_name, 16))
             btn.set_tooltip_text(_(tooltip))
             css_class(btn, "tab")
-            btn.connect("clicked", lambda _b, n=name: self.select_tab(n))
+            btn.connect("clicked", lambda _b, n=name: self._on_tab_clicked(n))
             tabs.pack_start(btn, False, False, 0)
             self.tab_buttons[name] = btn
 
@@ -684,6 +690,13 @@ class IslandWindow(Gtk.Window):
         view.pack_start(self.body, True, True, 0)
         self.select_tab("home")
         return view
+
+    def _on_tab_clicked(self, name):
+        self.select_tab(name)
+        if name == "search":
+            # A click on the tab means "I want to type" (hovering never takes the focus)
+            self.request_focus()
+            self.pages["search"].page.focus_entry()
 
     def select_tab(self, name):
         if name not in self.pages:
@@ -754,8 +767,15 @@ class IslandWindow(Gtk.Window):
 
     def paste(self, item):
         """Copy a clipboard entry and type it into the window the user came from."""
-        if not self.clipboard.copy(item):
-            return
+        if self.clipboard.copy(item):
+            self._paste_into_previous()
+
+    def paste_text(self, text):
+        """Copy a text (e.g. a result of the command bar) and type it into the window the user came from."""
+        if ocr.copy_text(text):
+            self._paste_into_previous()
+
+    def _paste_into_previous(self):
         target = self._prev_window
         self.collapse()
         if target is None or not system.has("xdotool"):
@@ -770,6 +790,17 @@ class IslandWindow(Gtk.Window):
 
         # Give the window manager a moment to hand the focus back
         GLib.timeout_add(180, send)
+
+    def leave(self):
+        """Fold away without handing the focus back: an app, file or website opens and takes it."""
+        self._prev_window = None
+        self.collapse()
+
+    def launch_context(self):
+        """Lets the window manager give the focus to what the island starts."""
+        context = Gdk.Display.get_default().get_app_launch_context()
+        context.set_timestamp(self._server_time())
+        return context
 
     # =========================================================================
     # Pointer, keyboard, drag & drop
@@ -1150,16 +1181,24 @@ class IslandWindow(Gtk.Window):
 
     def reveal_file(self, path):
         """Show the file selected in the file manager (Nemo), else open its folder."""
+        path = Path(path)
+
+        def open_folder():
+            try:
+                Gio.AppInfo.launch_default_for_uri(path.parent.as_uri(), self.launch_context())
+            except GLib.Error:
+                pass
+
         def done(bus, result):
             try:
                 bus.call_finish(result)
             except GLib.Error:
-                self.open_downloads()
+                open_folder()
 
         try:
             bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
         except GLib.Error:
-            self.open_downloads()
+            open_folder()
             return
         bus.call("org.freedesktop.FileManager1", "/org/freedesktop/FileManager1", "org.freedesktop.FileManager1",
                  "ShowItems", GLib.Variant("(ass)", ([path.as_uri()], "")), None, Gio.DBusCallFlags.NONE,
@@ -1584,6 +1623,8 @@ class IslandWindow(Gtk.Window):
             self._apply_live_switches()
         elif key == "vpn_lookup" and value:
             self.vpn.refresh_info()
+        elif key.startswith("command_bar_") and self.pages["search"].built:
+            self.pages["search"].page.refresh()
         self.refresh_collapsed()
 
     def set_language(self, choice):
@@ -1689,6 +1730,11 @@ class IslandWindow(Gtk.Window):
             self._update_header_time()
         self._schedule_clock()
         return GLib.SOURCE_REMOVE
+
+
+def _command_page(island):
+    from island.commandbar import CommandPage  # loaded on first use only
+    return CommandPage(island)
 
 
 class IslandApp(Gtk.Application):

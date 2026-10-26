@@ -562,6 +562,8 @@ EOF
   python3 "${TWEAKS}" add-keybinding "MosIsland (LinuxMos)" "${BIN_DIR}/linuxmos-island --toggle" "<Primary><Alt>i"
   python3 "${TWEAKS}" add-keybinding "MosIsland Zwischenablage (LinuxMos)" \
     "${BIN_DIR}/linuxmos-island --tab clipboard" "<Primary><Alt>v"
+  python3 "${TWEAKS}" add-keybinding "MosIsland Suche (LinuxMos)" \
+    "${BIN_DIR}/linuxmos-island --tab search" "<Primary><Alt>space"
   python3 "${TWEAKS}" add-keybinding "MosIsland Screenshot Bereich (LinuxMos)" \
     "${BIN_DIR}/linuxmos-island --shot area" "<Primary><Alt>s"
   python3 "${TWEAKS}" add-keybinding "MosIsland Screenshot Bildschirm (LinuxMos)" \
@@ -572,7 +574,7 @@ EOF
     "${BIN_DIR}/linuxmos-island --qr" "<Primary><Alt>q"
 
   setsid "${BIN_DIR}/linuxmos-island" >/dev/null 2>&1 < /dev/null &
-  ok "MosIsland läuft (Ctrl+Alt+I öffnen, Ctrl+Alt+V Zwischenablage, Ctrl+Alt+S Screenshot, Ctrl+Alt+O Text, Tray-Icon für Einstellungen)"
+  ok "MosIsland läuft (Ctrl+Alt+I öffnen, Ctrl+Alt+Space Suche, Ctrl+Alt+V Zwischenablage, Ctrl+Alt+S Screenshot, Ctrl+Alt+O Text, Tray-Icon für Einstellungen)"
 }
 
 install_tools() {
@@ -599,7 +601,7 @@ summary() {
     Dock:        Plank (${PLANK_THEME}), Zoom $( [[ "${EFFECTS}" == minimal ]] && echo aus || echo an )
     Widgets:     $( (( DO_WIDGETS )) && echo "Conky (Uhr + System${WEATHER_CITY:+ + Wetter})" || echo "–" )
     Spotlight:   $( (( DO_SPOTLIGHT )) && echo "Super+Space" || echo "–" )
-    MosIsland:   $( (( DO_ISLAND )) && echo "oben mittig · Ctrl+Alt+I · Ctrl+Alt+V · Ctrl+Alt+S · Ctrl+Alt+O" || echo "– (mit --island)" )
+    MosIsland:   $( (( DO_ISLAND )) && echo "oben mittig · Ctrl+Alt+I · Ctrl+Alt+Space · Ctrl+Alt+V · Ctrl+Alt+S · Ctrl+Alt+O" || echo "– (mit --island)" )
 
     Tipps:
       • Einmal ab- und wieder anmelden, damit wirklich alle Apps das Theme nutzen.

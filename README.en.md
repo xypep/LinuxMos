@@ -66,12 +66,13 @@ Turns Linux Mint Cinnamon into a lightweight macOS look-alike – dock, top bar,
 - **Text from the screen (OCR)** – `Ctrl+Alt+O`, drag an area: tesseract (German + English) recognises the text, it goes to the clipboard and shows as a **card** on the island (preview, "To note", "Copy"). Also in the screenshot editor via the "Text" button
 - **QR codes & barcodes** – `Ctrl+Alt+Q`: content to the clipboard, an "Open" button for links; for Wi-Fi codes the password is copied and "Connect" is offered
 - **Notifications as cards** – every notification shows on top of the island: app icon, picture (avatar, cover), title, text, hides by itself; when several arrive, the newest replaces the old one and counts along ("+2"). A click brings the app to the front, 🔕 hides an app. Cinnamon stays the notification service, the island only listens in; the history stays in the notifications applet
+- **Command bar** – `Ctrl+Alt+Space` or the magnifier tab: one input field for apps, files (recently used + home folder), calculator (`12*7`, `sqrt(2)`, `50*20%`), units (`5 km in mi`, `100 f in c`, `1 GiB in MB`), currencies (`20 usd in eur`, ECB rates) and web search (DuckDuckGo, Google, Startpage …). `Enter` opens or copies, `Ctrl+Enter` pastes the result into the previous window or shows the file in its folder. The rofi Spotlight search (`Super+Space`) stays as an alternative
 - **Controls** – Wi-Fi, Bluetooth, Do Not Disturb, dark mode, mic, volume, brightness, screenshot, lock, suspend, restart, power off
 - **Live activities** – volume, brightness, Caps Lock, keyboard layout, charging, Wi-Fi lost, headphones connected, VPN on/off (optionally with country and IP)
 - **Microphone & camera in use** – an orange dot while an app records, a green one while the camera is on (like iOS), with the app's name; opened, the header has a mic button to mute
 - **Download progress** – a small ring on the island while Firefox or Chromium/Chrome downloads (with a percentage for Chromium), "Download finished" with a click to the file
 - **Mascot** – a pair of eyes while you are away; they doze off and wave when you come back
-- **Tray menu** – autostart, mascot, minimal notch, OSD, clipboard auto-clear, screenshot, text & QR, notifications (on/off, do not disturb, hide apps), live hints (mic & camera, VPN, downloads), language, quit
+- **Tray menu** – autostart, mascot, minimal notch, OSD, clipboard auto-clear, search (files, currencies, search engine), screenshot, text & QR, notifications (on/off, do not disturb, hide apps), live hints (mic & camera, VPN, downloads), language, quit
 - **English or German** – follows the system language automatically, switchable in the tray menu (`Sprache / Language`)
 
 **Lightweight** – measured: Conky widgets ~0.03 % CPU, MosIsland ~0.1 % CPU (Cinnamon 6, music playing). No blur compositor, no polling loops.
@@ -160,6 +161,7 @@ linuxmos-island --set-city "Munich"
 | `Shift+→`        | In the search: switch mode (apps, run, windows, files)      |
 | `Ctrl+Alt+I`     | Open/close MosIsland                                        |
 | `Ctrl+Alt+V`     | Clipboard history (type to search, `Enter` pastes)          |
+| `Ctrl+Alt+Space` | MosIsland's command bar: apps, files, calculator, units, currencies, web (`↑`/`↓`, `Enter`, `Ctrl+Enter`) |
 | `Ctrl+Alt+S`     | Screenshot of an area (`Esc` or the hotkey again cancels)   |
 | `Ctrl+Alt+Shift+S` | Screenshot of the monitor under the pointer               |
 | `Ctrl+Alt+O`     | Recognise the text in an area (OCR) → clipboard             |
@@ -179,7 +181,7 @@ linuxmos-island --set-city "Munich"
 > `install.sh` downloads the WhiteSur themes straight from GitHub (vinceliuice) and runs their installers; it also installs packages via `sudo apt`. Do not run it with `sudo` – it asks for the password itself.
 
 > [!IMPORTANT]
-> Network access: weather via api.met.no and nominatim.openstreetmap.org (MosIsland) or wttr.in (Conky), lyrics via lrclib.net – only when you use the feature. The VPN's country and IP come from ipinfo.io – only with `vpn_lookup` (off by default), once per VPN connection; ipinfo.io sees the VPN's exit IP. The clipboard history is stored unencrypted in `~/.local/share/linuxmos/island/clipboard.json`; copies from password managers are only skipped if they mark them as secret (KeePassXC and similar).
+> Network access: weather via api.met.no and nominatim.openstreetmap.org (MosIsland) or wttr.in (Conky), lyrics via lrclib.net – only when you use the feature. The command bar gets exchange rates from api.frankfurter.dev (ECB rates, no account) – only when you type a currency conversion, at most every 12 hours; switch it off with `command_bar_currency`. The web search sends what you typed to the chosen search engine only when you press `Enter`. The VPN's country and IP come from ipinfo.io – only with `vpn_lookup` (off by default), once per VPN connection; ipinfo.io sees the VPN's exit IP. The clipboard history is stored unencrypted in `~/.local/share/linuxmos/island/clipboard.json`; copies from password managers are only skipped if they mark them as secret (KeePassXC and similar).
 
 > [!IMPORTANT]
 > While MosIsland shows notifications as cards, it turns Cinnamon's own banners off (`org.cinnamon.desktop.notifications display-notifications`) – notifications then go to the notifications applet without a popup, the island shows the card. Quitting the island or switching off tray → "Notifications" → "Show on the island" brings Cinnamon's banners back. "Do not disturb" (controls tab, tray) then applies to the island; critical ones (e.g. battery almost empty) still come through. The cards show message contents large at the top centre – consider "Do not disturb" while sharing your screen.
@@ -218,6 +220,9 @@ MosIsland: `~/.config/linuxmos/island/config.json` – most switches are also in
   "vpn_lookup": false,
   "downloads_progress": true,
   "downloads_dir": "",
+  "command_bar_engine": "duckduckgo",
+  "command_bar_files": true,
+  "command_bar_currency": true,
   "water_goal_ml": 2000,
   "water_portion_ml": 250,
   "water_reminders": true,
@@ -236,6 +241,8 @@ Text & QR: `ocr_languages` are tesseract languages joined with `+` (more via `su
 Notifications: `notifications_on_island` shows them as cards on the island (and turns Cinnamon's banners off for that), `notifications_dnd` is the island's "do not disturb", `notifications_exclude` a list of app names (as shown on the card) or desktop IDs (`firefox`, `org.telegram.desktop`) that never show as a card – e.g. `["Spotify", "Thunderbird"]`. All of it is also in the tray menu under "Notifications", which lists the recently seen apps to tick off. The island only listens in via a D-Bus monitor and stores none of it (only the app names for that list, in `~/.local/share/linuxmos/island/notifications.json`).
 
 Live hints: `privacy_indicator` shows the orange (microphone) and green (camera) dot; the microphone comes from PipeWire/PulseAudio (`pactl subscribe`, level meters like pavucontrol don't count), the camera from inotify on `/dev/video*`. `vpn_status` reports VPN on/off (NetworkManager VPNs, WireGuard and the tun/wg interfaces of other VPN apps such as Mullvad), `vpn_lookup` adds country and IP from ipinfo.io (an outside request, hence off by default). `downloads_progress` watches the download folder (`downloads_dir`, empty = the XDG download folder, e.g. `~/Downloads`) for `.part` (Firefox) and `.crdownload` (Chromium/Chrome) files. All of it is also in the tray menu under "Live hints".
+
+Command bar: `command_bar_engine` is the search engine (`duckduckgo`, `google`, `startpage`, `ecosia`, `bing`, `brave` or your own URL with `%s` for the query, e.g. `"https://en.wikipedia.org/w/index.php?search=%s"`). `command_bar_files` searches files: recently used ones and everything in the home folder up to 5 levels deep (no hidden folders, at most 20,000 entries); the list is built in a thread when you first type and dropped again 3 minutes after the last search. `command_bar_currency` converts currencies with the ECB rates (see network access above). Apps you start from the command bar move up (counter in `~/.local/share/linuxmos/island/command.json`). All of it is also in the tray menu under "Search".
 
 Other files:
 
@@ -263,6 +270,7 @@ Other files:
 - **If MosIsland crashes** (or is killed with `kill -9`), Cinnamon's banners stay off until the island runs again. Back right away: `gsettings set org.cinnamon.desktop.notifications display-notifications true` (or start `linuxmos-island` and switch the cards off in the tray). `uninstall.sh` restores them as well.
 - **In front of fullscreen apps** (videos, games) the island stays hidden, and so do the cards – the notifications are in the applet afterwards.
 - **Download percentages** only exist when the browser reports its progress (Chromium/Chrome do); Firefox downloads show size and speed. Downloads into other folders than `downloads_dir` are not seen.
+- **Files in the command bar** are only found in the home folder (up to 5 levels, no hidden folders) and in the recently used list – for the whole disk there is still the rofi search (`Super+Space`, "Files" mode). New files show up 10 minutes later at the latest.
 - **The camera's app** is only found for your own user's programs; when the camera runs through PipeWire (e.g. Flatpak apps via the portal) it says "PipeWire" instead of the app. The camera can't be muted like the microphone – there is no system switch for it.
 - **A screenshot on the clipboard** is held by a small `xclip` process in the background until you copy something else (so the image survives quitting the island).
 
@@ -283,6 +291,7 @@ More solutions (German): [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.
 - [x] Text from the screen (OCR, `Ctrl+Alt+O`) and QR codes (`Ctrl+Alt+Q`)
 - [x] Notifications as cards on the island (`notifications_on_island`, exclusion list)
 - [x] Microphone/camera dot with mute button, VPN status, download progress (`privacy_indicator`, `vpn_status`, `downloads_progress`)
+- [x] Command bar in the island (`Ctrl+Alt+Space`): apps, files, calculator, units, currencies, web search
 
 ---
 

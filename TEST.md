@@ -13,7 +13,7 @@ Abhaken, was klappt. Was nicht klappt: Nummer + was passiert ist notieren (unten
 cd ~/LinuxMos
 git fetch && git checkout claude/affectionate-feynman-573ubj && git pull
 ./update.sh
-linuxmos-island --version          # erwartet: MosIsland 1.7.0
+linuxmos-island --version          # erwartet: MosIsland 1.8.0
 ```
 
 - [ ] **V1** `update.sh` läuft ohne Fehler durch, die Insel startet neu
@@ -248,6 +248,47 @@ mv "$D/test.bin.part" "$D/test.bin"
 - [ ] **R5** Leerlauf (kein Download, kein Mikro): `linuxmos-perf 20` → `linuxmos-island` ≤ 0,2 % CPU wie vorher
 - [ ] **R6** Während Q4 läuft: `linuxmos-perf 10` → `linuxmos-island` bleibt unter ~1 % CPU
 - [ ] **R7** Mit laufender Aufnahme (N1) eine Minute warten: `linuxmos-perf 20` → ebenfalls ≤ 0,2 %
+
+---
+
+## Paket 7 – Command Bar
+
+### S. Öffnen und Tastatur
+
+- [ ] **S1** `update.sh` hat den Hotkey angelegt: Systemeinstellungen → Tastatur → Tastenkürzel → Eigene Tastenkürzel → „MosIsland Suche (LinuxMos)“ = `Ctrl+Alt+Space`
+- [ ] **S2** `Ctrl+Alt+Space` in einem beliebigen Fenster → Insel klappt auf, Lupen-Tab aktiv, Cursor im Eingabefeld, sofort tippbar
+- [ ] **S3** Hotkey nochmal → Insel klappt zu, das vorige Fenster hat wieder den Fokus
+- [ ] **S4** Wieder öffnen → letzte Eingabe steht markiert drin, Tippen ersetzt sie
+- [ ] **S5** `↑`/`↓` wechseln den Treffer, `Esc` klappt zu
+- [ ] **S6** Insel per Maus öffnen, auf die Lupe klicken → Cursor im Feld (Hovern allein nimmt **nicht** den Fokus)
+- [ ] **S7** `Super+Space` öffnet weiterhin die rofi-Suche
+
+### T. Treffer
+
+- [ ] **T1** `fire` → Firefox ganz oben, `Enter` startet ihn und Firefox bekommt den Fokus
+- [ ] **T2** `einst` (bzw. `sett`) → Systemeinstellungen; Apps, die du öfter startest, rutschen bei gleicher Trefferart nach oben
+- [ ] **T3** Leeres Feld → die zuletzt über die Suche gestarteten Apps
+- [ ] **T4** Name einer Datei im Home-Ordner (z. B. aus `~/Dokumente`) → Datei mit Ordner darunter; `Enter` öffnet sie mit der Standard-App
+- [ ] **T5** Gleicher Treffer, `Ctrl+Enter` → Nemo öffnet sich mit der Datei markiert
+- [ ] **T6** Eine gerade in LibreOffice/Xed geöffnete Datei steht oben (zuletzt benutzt)
+- [ ] **T7** `12*7` → „= 84“; `Enter` → Hinweis „Kopiert · 84“, `Ctrl+V` in einem Editor fügt 84 ein
+- [ ] **T8** In Xed: `Ctrl+Alt+Space`, `2^10`, `Ctrl+Enter` → „1024“ steht direkt in Xed
+- [ ] **T9** `1,5*2` → „= 3“; `50*20%` → „= 10“; `sqrt(2)` → „= 1,41421356237“
+- [ ] **T10** `5 km in mi` → „5 km = 3,10686 mi“; `100 f in c` → „37,7778 °C“; `1 GiB in MB` → „1073,74 MB“
+- [ ] **T11** `20 usd in eur` → nach kurzem „Wechselkurse werden geladen …“ der Betrag in EUR mit „EZB-Kurs vom …“; danach liegt `~/.cache/linuxmos/island/rates.json`
+- [ ] **T12** Ohne Netz (WLAN aus) und ohne `rates.json` → „Wechselkurse nicht erreichbar (offline?)“, die Insel hängt nicht
+- [ ] **T13** `github.com` → „Website öffnen“ öffnet https://github.com im Browser
+- [ ] **T14** `linux mint wallpaper` → letzter Treffer „… im Web suchen · DuckDuckGo“, `Enter` öffnet die Suche im Browser
+
+### U. Schalter, Sprache, Leistung
+
+- [ ] **U1** Tray → „Suche“ → „Websuche mit“ → Google: der Web-Treffer heißt jetzt Google; in `config.json` steht `"command_bar_engine": "google"`
+- [ ] **U2** „Dateien durchsuchen“ aus → keine Datei-Treffer mehr; „Währungen“ aus → `20 usd in eur` zeigt nur noch die Websuche
+- [ ] **U3** Eigene URL in `config.json`: `"command_bar_engine": "https://de.wikipedia.org/w/index.php?search=%s"`, Insel neu starten → Web-Treffer heißt „de.wikipedia.org“
+- [ ] **U4** English: Tab-Tooltip „Search“, Platzhalter „Apps, files, maths, web …“, `5 km in mi` → „3.10686 mi“ (Punkt statt Komma)
+- [ ] **U5** Leerlauf ohne die Suche je geöffnet zu haben: `linuxmos-perf 20` → `linuxmos-island` ≤ 0,2 % CPU wie vorher
+- [ ] **U6** Suche benutzt (Datei gesucht), zugeklappt, 1 Minute warten: `linuxmos-perf 20` → ebenfalls ≤ 0,2 %
+- [ ] **U7** RAM: `ps -o rss= -C linuxmos-island` vor der ersten Suche und danach notieren (erwartet: etwa +5 MB)
 
 ---
 
