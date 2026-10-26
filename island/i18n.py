@@ -215,6 +215,7 @@ EN = {
     "{hour} Uhr": "{hour}:00",
     "Daten: MET Norway (CC BY 4.0)": "Data: MET Norway (CC BY 4.0)",
     "Wetter nicht verfügbar": "Weather unavailable",
+    "Antwort nicht lesbar": "Unreadable answer",
     "Ort „{city}“ nicht gefunden": "Place “{city}” not found",
     "Klar": "Clear",
     "Heiter": "Fair",

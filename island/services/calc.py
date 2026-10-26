@@ -6,21 +6,17 @@
 
 Expressions are parsed with ast and only numbers, + - * / // % ^ and a few
 math functions are allowed: no eval(), no names, no attribute access.
-Exchange rates come from the ECB via frankfurter (no API key), fetched in a
-thread only when a currency conversion is typed, cached for 12 hours.
+Exchange rates come from the ECB via frankfurter (no API key), fetched through
+curl only when a currency conversion is typed, cached for 12 hours.
 """
 
 import ast
-import json
 import math
 import operator
 import re
-import threading
 import time
-import urllib.request
 
-from gi.repository import GLib
-
+from island.services import http
 from island.storage import CACHE_DIR, load_json, save_json
 
 MAX_INPUT = 200
@@ -30,7 +26,6 @@ RATES_URLS = ("https://api.frankfurter.dev/v1/latest", "https://api.frankfurter.
 RATES_PATH = CACHE_DIR / "rates.json"
 RATES_MAX_AGE = 12 * 3600
 RATES_RETRY = 5 * 60
-USER_AGENT = "LinuxMos-Island/1.0 (+https://github.com/xypep/LinuxMos)"
 
 _BINARY = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul, ast.Div: operator.truediv,
            ast.FloorDiv: operator.floordiv, ast.Mod: operator.mod, ast.Pow: operator.pow}
@@ -264,21 +259,18 @@ class Rates:
         self._waiting.append(callback)
         if not self._busy:
             self._busy = True
-            threading.Thread(target=self._worker, daemon=True).start()
+            self._fetch(RATES_URLS)
         return True
 
-    def _worker(self):
-        data = None
-        for url in RATES_URLS:
-            try:
-                req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-                with urllib.request.urlopen(req, timeout=8) as resp:
-                    data = json.load(resp)
-                if isinstance(data.get("rates"), dict):
-                    break
-            except (OSError, ValueError, AttributeError):
-                data = None
-        GLib.idle_add(self._done, data)
+    def _fetch(self, urls):
+        """Ask the first mirror; the next one only if it brings nothing usable."""
+        def done(_status, data):
+            if (isinstance(data, dict) and isinstance(data.get("rates"), dict)) or len(urls) == 1:
+                self._done(data if isinstance(data, dict) else None)
+            else:
+                self._fetch(urls[1:])
+
+        http.get_json(urls[0], done, timeout=8)
 
     def _done(self, data):
         self._busy = False
@@ -293,4 +285,3 @@ class Rates:
         waiting, self._waiting = self._waiting, []
         for callback in waiting:
             callback(ok)
-        return GLib.SOURCE_REMOVE

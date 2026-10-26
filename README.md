@@ -76,7 +76,16 @@ Macht Linux Mint Cinnamon zum leichtgewichtigen macOS-Look-alike – mit Dock, T
 - **Tray-Menü** – Autostart, Maskottchen, Minimal-Notch, OSD, Zwischenablage automatisch leeren, Suche (Dateien, Währungen, Suchmaschine), Screenshot, Text & QR, Benachrichtigungen (an/aus, Nicht stören, Apps ausblenden), Live-Hinweise (Mikro & Kamera, VPN, Downloads), Monitor, Sprache, Beenden
 - **Deutsch oder Englisch** – folgt automatisch der Systemsprache, umschaltbar im Tray-Menü (`Sprache / Language`)
 
-**Leichtgewichtig** – gemessen: Conky-Widgets ~0,03 % CPU, MosIsland ~0,1 % CPU (unter Cinnamon 6, Musik läuft). Kein Blur-Compositor, keine Polling-Schleifen.
+**Leichtgewichtig** – gemessen: Conky-Widgets ~0,03 % CPU, MosIsland ~0,1 % CPU (unter Cinnamon 6, Musik läuft) und ~60 MB RAM. Kein Blur-Compositor, keine Polling-Schleifen.
+
+| MosIsland-RAM (Xvfb, frisches Profil, 10 s nach dem Start) | vorher (1.9.0) | nachher (1.10.0) |
+|------------------------------------------------------------|----------------|------------------|
+| RSS (was `top` zeigt)                                      | 116 MB         | **60 MB**        |
+| PSS (geteilte Bibliotheken anteilig)                       | 87 MB          | **49 MB**        |
+| Alle Tabs einmal geöffnet                                  | –              | 62 MB            |
+| CPU im Leerlauf (60 s, Xvfb)                               | 0,2 %          | 0,2 %            |
+
+Der größte Brocken (−49 MB) war Mesa: GTK lädt beim Start den OpenGL-Treiber samt LLVM, nur um ein Fenster-Format auszusuchen – die Insel zeichnet aber gar nicht mit OpenGL. Der Rest (−7 MB): Tabs werden erst beim ersten Öffnen gebaut, Wetter/Lyrics/Cover/Kurse kommen über `curl` statt über Pythons HTTPS-Stack, und freier Speicher geht nach dem Zuklappen zurück ans System. Auf echter Hardware hängt die Ersparnis vom Grafiktreiber ab – `linuxmos-perf` zeigt den RAM der Insel.
 
 ---
 
@@ -145,7 +154,7 @@ Danach **einmal ab- und wieder anmelden**.
 ./update.sh --full           # zusätzlich das Design neu anwenden
 ./uninstall.sh               # alles zurücksetzen
 ./uninstall.sh --purge       # zusätzlich Themes und MosIsland-Daten löschen
-linuxmos-perf                # CPU-Last des Desktops messen
+linuxmos-perf                # CPU-Last des Desktops und RAM der Insel messen
 linuxmos-widgets restart     # Conky-Widgets neu starten
 linuxmos-island --tab todo   # MosIsland auf einem Tab öffnen
 linuxmos-island --shot area  # Screenshot: area (Bereich) | screen (Monitor unter der Maus)
@@ -262,7 +271,7 @@ Weitere Dateien:
 ## Bekannte Probleme
 
 - **Kompletter `install.sh`-Lauf auf echtem Mint 22 noch nicht getestet** – MosIsland, Panel-Umbau, Update und Uninstall sind unter Cinnamon 6 getestet, der WhiteSur-Installationsschritt nicht. Bitte Fehler melden.
-- **MosIsland braucht ~115 MB RAM** – fast komplett Python + GTK3 selbst.
+- **MosIsland braucht ~60 MB RAM** (bis 1.9 ~115 MB) – fast komplett Python + GTK3 selbst; Nusa (Rust) schafft ~30 MB.
 - **Kein echtes „Genie“ und kein Blur** – bewusst, weil beides dauerhaft Leistung kostet.
 - **MosIsland nur unter X11** (Standard bei Mint Cinnamon). Oberfläche auf Deutsch und Englisch; `install.sh`, `update.sh` und `uninstall.sh` sprechen nur Deutsch.
 - **Lyrics/Wetter** hängen von LRCLIB bzw. MET Norway ab – nicht jeder Song hat synchronisierte Lyrics.
@@ -298,6 +307,7 @@ Weitere Lösungen: [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.md#tro
 - [x] Mikrofon-/Kamera-Punkt mit Stumm-Button, VPN-Status, Download-Fortschritt (`privacy_indicator`, `vpn_status`, `downloads_progress`)
 - [x] Command Bar in der Insel (`Ctrl+Alt+Space`): Apps, Dateien, Rechner, Einheiten, Währungen, Websuche
 - [x] Mehrere Monitore: Hauptmonitor, fester Monitor oder der mit der Maus (`monitor`, Tray-Menü), folgt dem Ein- und Ausstecken
+- [x] Weniger RAM: 116 → 60 MB (ohne OpenGL-Test, Tabs erst bei Bedarf, HTTP über `curl`, Cover verkleinert im Cache)
 
 ---
 

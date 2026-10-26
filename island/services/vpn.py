@@ -12,12 +12,11 @@ The country/IP lookup asks ipinfo.io once per connect – only with
 
 import gettext
 import json
-import threading
-import urllib.request
 
 from gi.repository import Gio, GLib
 
 from island import i18n
+from island.services import http
 
 NM = ("org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager", "org.freedesktop.NetworkManager")
 ACTIVE_IFACE = "org.freedesktop.NetworkManager.Connection.Active"
@@ -30,7 +29,6 @@ SCAN_DEBOUNCE_MS = 500
 LOOKUP_DELAY_S = 2       # routes and DNS settle after the tunnel comes up
 LOOKUP_URL = "https://ipinfo.io/json"
 ISO_3166 = "/usr/share/iso-codes/json/iso_3166-1.json"
-USER_AGENT = "LinuxMos-Island/1.0 (+https://github.com/xypep/LinuxMos)"
 
 
 def flag(code):
@@ -203,28 +201,16 @@ class Vpn:
     def _lookup(self):
         self._lookup_id = 0
         generation = self._generation
-
-        def work():
-            try:
-                req = urllib.request.Request(LOOKUP_URL, headers={"User-Agent": USER_AGENT,
-                                                                  "Accept": "application/json"})
-                with urllib.request.urlopen(req, timeout=8) as resp:
-                    data = json.load(resp)
-            except (OSError, ValueError):
-                return
-            GLib.idle_add(self._got_lookup, generation, data)
-
-        threading.Thread(target=work, daemon=True).start()
+        http.get_json(LOOKUP_URL, lambda _status, data: self._got_lookup(generation, data), timeout=8)
         return GLib.SOURCE_REMOVE
 
     def _got_lookup(self, generation, data):
         if generation != self._generation or not self.names or not isinstance(data, dict):
-            return GLib.SOURCE_REMOVE
+            return
         code = str(data.get("country") or "")
         self.info = {"ip": str(data.get("ip") or ""), "flag": flag(code),
                      "country": country_name(code) if code else ""}
         self._on_change("info")
-        return GLib.SOURCE_REMOVE
 
 
 def vpn_names(conns, devices):

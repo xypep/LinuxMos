@@ -490,11 +490,24 @@ Möglich wird das, weil es keinen Polling-Loop gibt. Jede Quelle meldet sich von
 | VPN                    | NetworkManager-Signale (aktive Verbindungen, Geräte)            |
 | Downloads              | inotify auf den Download-Ordner, max. 1 Update/s; nur während eines Downloads alle 15 s ein Blick auf hängende |
 | Monitore               | GDK-Signal `monitors-changed` beim Ein-/Ausstecken; im Modus `pointer` wird die Maus nur beim Hotkey gefragt |
+| Wetter, Lyrics, Cover  | `curl` als kurzer eigener Prozess, nur bei Bedarf (Wetter alle 30 min) |
 | Uhr                    | Einmal pro Minute                                              |
 
 Gezeichnet wird nur, während sich etwas bewegt: beim Auf- und Zuklappen (~240 ms) oder beim Blinzeln des Maskottchens (~180 ms alle paar Sekunden).
 
-**RAM: ~115 MB.** Ehrlich gesagt ist das der größte Posten. Er kommt fast komplett von Python + GTK3 selbst: Ein leeres GTK-Fenster in Python braucht schon ~93 MB. Nusa schafft ~30 MB, weil es in Rust geschrieben ist. Dafür braucht MosIsland keinen Compiler und lässt sich direkt anpassen. Die Command Bar kostet nichts, bis du sie zum ersten Mal öffnest, danach ~5 MB (gemessen unter Xvfb: 113,7 → 118,8 MB, mit 13 000 Dateien im Home-Ordner).
+**RAM: ~60 MB** (bis Version 1.9: ~115 MB, gemessen unter Xvfb mit frischem Profil). Der Rest kommt fast komplett von Python + GTK3 selbst: Ein leeres GTK-Fenster in Python braucht schon ~37 MB. Nusa schafft ~30 MB, weil es in Rust geschrieben ist. Dafür braucht MosIsland keinen Compiler und lässt sich direkt anpassen.
+
+Was die Hälfte gespart hat:
+
+| Maßnahme | Ersparnis (RSS) |
+|----------|-----------------|
+| GTK startet ohne OpenGL-Test (`GDK_GL=disable`, nur für die Insel selbst – gestartete Apps behalten OpenGL). GTK lädt sonst den Mesa-Treiber samt LLVM, nur um ein Fenster-Format auszusuchen; die Insel zeichnet alles mit Cairo | −49 MB |
+| Tabs außer „Jetzt“ werden erst beim ersten Öffnen gebaut | ~−1 MB (mehr mit vollem Verlauf) |
+| Wetter, Lyrics, Cover, Kurse und VPN-Lookup über `curl` statt über Pythons HTTPS-Stack; SHA-1 aus GLib statt aus OpenSSL | ~−5 MB |
+| Freier Speicher geht 5 s nach dem Zuklappen ans System zurück (`malloc_trim`) | ~−0,5 MB |
+| Cover werden einmal in 144 px dekodiert und verkleinert gecacht (wenige KB statt bis zu 5 MB pro Cover) | Platte, weniger Spitzen |
+
+Die Command Bar kostet nichts, bis du sie zum ersten Mal öffnest, danach ~5 MB (mit 13 000 Dateien im Home-Ordner). Wie viel der OpenGL-Test auf deinem Rechner kostet, hängt vom Grafiktreiber ab – `linuxmos-perf` zeigt den RAM der Insel. Wer GTK den OpenGL-Test doch erlauben will, startet die Insel mit `GDK_GL=` (leer) – ein gesetztes `GDK_GL` wird nie überschrieben.
 
 ### Was nicht dabei ist
 
@@ -550,14 +563,14 @@ Hast du im Repo selbst Dateien geändert, überspringt `update.sh` den `git pull
 | Conky System (`stats.conf`) | ~0,03 % | ~15 MB   |
 | Plank (ohne Hover)      | ~0 %     | ~30 MB   |
 | rofi                    | 0 % (nicht aktiv) | 0 MB |
-| MosIsland (optional)    | ~0,1 %   | ~115 MB  |
+| MosIsland (optional)    | ~0,1 %   | ~60 MB   |
 
 Die Conky-Werte wurden 30 s lang unter Xorg gemessen, die MosIsland-Werte 20 s lang unter Cinnamon 6. Für Plank und rofi sind es typische Erfahrungswerte.
 
 ### Selbst messen
 
 ```bash
-linuxmos-perf        # misst 5 s lang cinnamon, Xorg, plank, conky, ...
+linuxmos-perf        # misst 5 s lang cinnamon, Xorg, plank, conky, ... und den RAM der Insel
 linuxmos-perf 15     # 15 s
 ```
 
@@ -719,7 +732,7 @@ config/conky/              Uhr- und System-Widget
 config/rofi/               Spotlight-Theme (Template)
 bin/linuxmos-widgets       Widgets starten/stoppen
 bin/linuxmos-spotlight     Spotlight öffnen/schließen
-bin/linuxmos-perf          CPU-Last messen
+bin/linuxmos-perf          CPU-Last und Insel-RAM messen
 bin/linuxmos-island        MosIsland starten/steuern (Hotkeys gehen per D-Bus direkt an die laufende Insel)
 island/                    MosIsland (Python + GTK3)
   app.py                   Fenster, Zustände, Hover/Fokus/Einfügen, Drag & Drop, Lyrics-Takt, Pomodoro

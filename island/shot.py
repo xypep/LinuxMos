@@ -12,9 +12,12 @@ import sys
 
 import gi
 
+from island import without_gl
+
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
-from gi.repository import Gio, GLib, Gtk  # noqa: E402
+with without_gl():   # GTK starts on import (see island/__init__.py)
+    from gi.repository import Gio, GLib, Gtk
 
 from island import i18n  # noqa: E402
 from island.i18n import _  # noqa: E402

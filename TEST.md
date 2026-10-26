@@ -13,7 +13,7 @@ Abhaken, was klappt. Was nicht klappt: Nummer + was passiert ist notieren (unten
 cd ~/LinuxMos
 git fetch && git checkout claude/affectionate-feynman-573ubj && git pull
 ./update.sh
-linuxmos-island --version          # erwartet: MosIsland 1.9.0
+linuxmos-island --version          # erwartet: MosIsland 1.10.0
 ```
 
 - [ ] **V1** `update.sh` läuft ohne Fehler durch, die Insel startet neu
@@ -325,6 +325,38 @@ Braucht einen zweiten Monitor (oder Laptop + externer Bildschirm). `xrandr --lis
 
 - [ ] **Z1** Leerlauf: `linuxmos-perf 20` → `linuxmos-island` ≤ 0,2 % CPU wie vorher, mit `"primary"` und mit `"pointer"`
 - [ ] **Z2** Englisch: Tray → „Monitor“ heißt „Monitor“, Einträge „Primary monitor“, „Monitor with the mouse (when opened)“
+
+---
+
+## Paket 9 – RAM und Performance
+
+### R. Speicher
+
+```bash
+linuxmos-perf 10                   # unten steht „MosIsland RAM: RSS … MB · PSS … MB“
+grep -c -E "libLLVM|libgallium" /proc/$(pgrep -x -n linuxmos-island)/maps    # erwartet: 0
+```
+
+- [ ] **R1** Gleich nach dem Anmelden (Insel noch nicht geöffnet): RSS deutlich unter 115 MB (unter Xvfb: ~60 MB) – Wert notieren: ______ MB
+- [ ] **R2** Kein `libLLVM`/`libgallium` in der Insel (Befehl oben → `0`)
+- [ ] **R3** Alle Tabs einmal öffnen, zuklappen, 10 s warten, neu messen → höchstens ein paar MB mehr als R1: ______ MB
+- [ ] **R4** Leerlauf: `linuxmos-perf 20` → `linuxmos-island` ≤ 0,2 % CPU wie vorher
+
+### S. Tabs bei Bedarf
+
+- [ ] **S1** Jeder Tab (Zwischenablage, Ablage, Aufgaben, Notiz, Wasser, Wetter, Steuerung) zeigt beim ersten Öffnen sofort seinen Inhalt, kein leerer Bereich
+- [ ] **S2** Timer starten (Jetzt-Tab → Timer-Kachel → Notiz & Fokus) **nach** einem frischen Start: die Restzeit läuft im Notiz-Tab
+- [ ] **S3** Etwas kopieren, bevor die Zwischenablage je offen war → beim Öffnen steht es oben
+- [ ] **S4** Text per `Ctrl+Alt+O` erkennen → „In Notiz“, bevor der Notiz-Tab je offen war → der Text steht in der Notiz
+
+### T. Netz über curl
+
+- [ ] **T1** Wetter: Ort neu setzen (`linuxmos-island --set-city Hamburg`, Insel neu starten) → Wetter erscheint
+- [ ] **T2** Lyrics-Ansicht bei einem bekannten Song → Lyrics laufen mit
+- [ ] **T3** Spotify-/Browser-Cover erscheinen in Pille und Jetzt-Tab; `ls -la ~/.cache/linuxmos/island/art` → neue Dateien nur wenige KB groß
+- [ ] **T4** Command Bar: `20 usd in eur` → Ergebnis mit Kurs
+- [ ] **T5** WLAN aus → Wetter-Tab „Aktualisieren“ → „Keine Verbindung“, keine Fehlermeldung, Insel läuft weiter
+- [ ] **T6** Über die Command Bar eine App mit 3D/Video starten (z. B. ein Spiel, Blender oder Celluloid) → läuft normal (sie erbt `GDK_GL` nicht)
 
 ---
 

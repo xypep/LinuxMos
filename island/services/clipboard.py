@@ -1,6 +1,5 @@
 """Clipboard history (text and images) driven by the X11 owner-change event."""
 
-import hashlib
 import time
 
 from gi.repository import Gdk, GdkPixbuf, GLib, Gtk
@@ -61,7 +60,8 @@ class ClipboardHistory:
         ok, data = pixbuf.save_to_bufferv("png", [], [])
         if not ok:
             return
-        digest = hashlib.sha1(data).hexdigest()[:16]
+        # GLib's SHA-1 (same file names as hashlib's) keeps OpenSSL's libcrypto out of memory
+        digest = GLib.compute_checksum_for_bytes(GLib.ChecksumType.SHA1, GLib.Bytes.new(data))[:16]
         name = f"{digest}.png"
         IMAGE_DIR.mkdir(parents=True, exist_ok=True)
         path = IMAGE_DIR / name

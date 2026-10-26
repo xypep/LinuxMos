@@ -30,7 +30,11 @@ class Page(Gtk.Box):
 
 
 class LazyPage(Page):
-    """A tab whose content is built the first time it is needed (start-up time and memory)."""
+    """A tab whose content is built the first time it is needed (start-up time and memory).
+
+    The factory gets the island (a Page class fits) and reads the services' state while building,
+    so the island only forwards service updates to pages that are built (IslandWindow._built).
+    """
 
     def __init__(self, island, factory):
         super().__init__(island, spacing=0)
@@ -194,7 +198,7 @@ class HomePage(Page):
             clear(self.cover_slot)
             self.cover_slot.add(placeholder_cover(self.COVER))
             self.cover_slot.show_all()
-            art.load(track.art_url, self.COVER * 2, self._on_cover)
+            art.load(track.art_url, self._on_cover)
 
     def _on_cover(self, pixbuf):
         if pixbuf is None:
@@ -579,6 +583,7 @@ class NotePage(Page):
         self.stop_btn.set_no_show_all(True)
         timer_box.pack_end(self.stop_btn, False, False, 0)
         row.pack_start(timer_box, False, False, 0)
+        self.update_timer(island.timer)   # built lazily: a timer may run already
 
     def _on_note_changed(self, _buffer):
         if self._save_id:
@@ -862,6 +867,7 @@ class WeatherPage(Page):
         self.status = label("", ("dim", "small"), xalign=1.0)
         data.pack_end(self.status, False, False, 0)
         self.stack.add_named(data, "data")
+        self.update(island.weather)   # built lazily: the forecast may be in already
 
     def _save_city(self):
         city = self.city_entry.get_text().strip()

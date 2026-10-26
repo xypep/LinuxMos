@@ -25,9 +25,13 @@ Idle cost: no polling. The clock ticks once a minute; everything else is
 D-Bus signals or X11 events (notifications: a D-Bus monitor that only wakes
 up when one is sent; camera and downloads: inotify). Animations run on the frame clock only while
 the island changes size.
+Memory: GTK starts without the OpenGL probe (island/__init__.py), the tabs
+but "Now" are built on first use, HTTP goes through curl (services/http.py)
+and freed memory is handed back a few seconds after the island folds.
 """
 
 import ctypes
+import gc
 import math
 import os
 import signal
@@ -37,12 +41,15 @@ from pathlib import Path
 
 import gi
 
+from island import without_gl
+
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 gi.require_version("GdkPixbuf", "2.0")
 gi.require_version("GdkX11", "3.0")
-import cairo  # noqa: E402
-from gi.repository import Gdk, GdkX11, Gio, GLib, Gtk, Pango  # noqa: E402
+with without_gl():   # GTK starts on import: ~49 MB less (see island/__init__.py)
+    import cairo
+    from gi.repository import Gdk, GdkX11, Gio, GLib, Gtk, Pango
 
 try:
     gi.require_version("Wnck", "3.0")
@@ -98,6 +105,9 @@ NOTIFY_MIN_MS, NOTIFY_MAX_MS = 4000, 15000
 LIVE_SWITCHES = {"privacy_indicator": "privacy", "vpn_status": "vpn", "downloads_progress": "downloads"}
 # A new download is announced after this delay (Chrome names it "Unconfirmed 123" at first)
 DOWNLOAD_HINT_MS = 1200
+# Memory freed while the island was open (tabs, results, editor) goes back to the system this long after it
+# folds; the first time a little after start-up
+TRIM_MS, TRIM_START_MS = 5000, 15000
 # Cinnamon's switch for its own banners; the island turns it off while it shows the cards
 BANNERS = ("org.cinnamon.desktop.notifications", "display-notifications")
 
@@ -148,6 +158,7 @@ class IslandWindow(Gtk.Window):
         self._downloads_seen = False
         self._download_hint_id = 0
         self._header_live_dirty = False
+        self._trim_id = 0
         # Lyrics: fetched lazily, advanced by one timeout per line (no polling)
         self._lyrics_view = False
         self._lyrics_key = None
@@ -213,6 +224,7 @@ class IslandWindow(Gtk.Window):
             for key in ("panels-enabled", "panels-height", "panels-autohide"):
                 self._panel_settings.connect(f"changed::{key}", lambda *_: self._place_soon())
         self._place_soon(4000)
+        self._schedule_trim(TRIM_START_MS)
 
         if Wnck:
             Wnck.set_client_type(Wnck.ClientType.PAGER)
@@ -417,10 +429,25 @@ class IslandWindow(Gtk.Window):
         self._cancel_hover_timers()
         self.expanded = False
         self._pinned = False
-        self.pages["note"].flush()
+        if note := self._built("note"):
+            note.flush()
         self.stack.set_visible_child_full("blank", Gtk.StackTransitionType.NONE)
         self._release_focus()
         self.anim.to(self._collapsed_geometry(), on_done=lambda: None if self.expanded else self._show_collapsed())
+        self._schedule_trim()
+
+    def _schedule_trim(self, delay_ms=TRIM_MS):
+        """Give freed memory back once things settle (one pending at a time, never while open)."""
+        if self._trim_id:
+            GLib.source_remove(self._trim_id)
+
+        def trim():
+            self._trim_id = 0
+            if not self.expanded:
+                _trim_memory()
+            return GLib.SOURCE_REMOVE
+
+        self._trim_id = GLib.timeout_add(delay_ms, trim)
 
     def toggle(self, focus=False):
         if self.expanded:
@@ -435,7 +462,7 @@ class IslandWindow(Gtk.Window):
             return
         self.expand(tab=name, focus=True)
         if name == "clipboard":
-            self.pages["clipboard"].focus_search()
+            self.pages["clipboard"].page.focus_search()
         elif name == "search":
             self.pages["search"].page.focus_entry()
 
@@ -485,7 +512,7 @@ class IslandWindow(Gtk.Window):
             slot = Gtk.Box()
             slot.add(icon("audio-x-generic-symbolic", 16))
             self.c_left.add(slot)
-            art.load(self.track.art_url, 44, lambda pix: self._set_pill_cover(slot, pix))
+            art.load(self.track.art_url, lambda pix: self._set_pill_cover(slot, pix))
             if kind == "lyrics":
                 text = self._lyrics_lines[self._lyric_idx][1] or "♪"
                 self.c_right.add(icon("media-view-subtitles-symbolic", 14))
@@ -684,16 +711,17 @@ class IslandWindow(Gtk.Window):
     # Opened content
     # =========================================================================
     def _build_expanded(self):
+        # Only "Now" is built up front: the others the first time they open (memory, start-up time)
         self.pages = {
             "search": LazyPage(self, _command_page),
             "home": HomePage(self),
-            "clipboard": ClipboardPage(self),
-            "shelf": ShelfPage(self),
-            "todo": TodoPage(self),
-            "note": NotePage(self),
-            "water": WaterPage(self),
-            "weather": WeatherPage(self),
-            "controls": ControlsPage(self),
+            "clipboard": LazyPage(self, ClipboardPage),
+            "shelf": LazyPage(self, ShelfPage),
+            "todo": LazyPage(self, TodoPage),
+            "note": LazyPage(self, NotePage),
+            "water": LazyPage(self, WaterPage),
+            "weather": LazyPage(self, WeatherPage),
+            "controls": LazyPage(self, ControlsPage),
         }
         self.tab_buttons = {}
         tabs = Gtk.Box(spacing=2)
@@ -745,6 +773,11 @@ class IslandWindow(Gtk.Window):
             (ctx.add_class if tab == name else ctx.remove_class)("active")
         if self.expanded:
             self.pages[name].on_show()
+
+    def _built(self, name):
+        """The page of a tab that was opened before, else None (it reads the state when it is built)."""
+        page = self.pages[name]
+        return page.page if page.built else None
 
     def _update_header_time(self):
         self.header_time.set_text(i18n.header_date(datetime.now()))
@@ -993,10 +1026,12 @@ class IslandWindow(Gtk.Window):
                 self.refresh_collapsed()
 
     def _on_clipboard(self):
-        self.pages["clipboard"].mark_dirty()
+        if page := self._built("clipboard"):
+            page.mark_dirty()
 
     def _on_shelf(self):
-        self.pages["shelf"].rebuild()
+        if page := self._built("shelf"):
+            page.rebuild()
 
     def _on_battery(self, battery, just_plugged):
         self.pages["home"].update_battery(battery)
@@ -1008,14 +1043,16 @@ class IslandWindow(Gtk.Window):
 
     def _on_weather(self, weather, rain_started):
         self.pages["home"].update_weather(weather)
-        self.pages["weather"].update(weather)
+        if page := self._built("weather"):
+            page.update(weather)
         if rain_started:
             self.show_activity("weather-showers-symbolic", _("Regen in etwa 1 Std."), seconds=6)
         elif self._shown_kind == "idle" and not self.expanded:
             self._fill_collapsed("idle")
 
     def _on_timer_tick(self):
-        self.pages["note"].update_timer(self.timer)
+        if note := self._built("note"):
+            note.update_timer(self.timer)
         self.pages["home"].update_timer(self.timer)
         if self.expanded:
             return
@@ -1051,7 +1088,8 @@ class IslandWindow(Gtk.Window):
 
     # ---- to-do, water --------------------------------------------------------
     def _on_todo(self):
-        self.pages["todo"].rebuild()
+        if page := self._built("todo"):
+            page.rebuild()
 
     def _on_todo_due(self, task):
         system.play_sound()
@@ -1060,7 +1098,8 @@ class IslandWindow(Gtk.Window):
                            on_click=lambda: self.expand(tab="todo"))
 
     def _on_water(self):
-        self.pages["water"].update()
+        if page := self._built("water"):
+            page.update()
 
     def _on_water_remind(self):
         portion = self.water.portion
@@ -1436,7 +1475,7 @@ class IslandWindow(Gtk.Window):
             self.show_activity("edit-copy-symbolic", _("Kopiert"))
 
     def _to_note(self, text):
-        self.pages["note"].append(text)
+        self.pages["note"].page.append(text)
         self.show_activity("document-edit-symbolic", _("In Notiz eingefügt · Klick = öffnen"), seconds=4,
                            on_click=lambda: self.expand(tab="note"))
 
@@ -1642,7 +1681,8 @@ class IslandWindow(Gtk.Window):
         self.tray.refresh_notifications()
 
     def shutdown(self):
-        self.pages["note"].flush()
+        if note := self._built("note"):
+            note.flush()
         self.notifications.stop()
         self.restore_banners()
 
@@ -1662,8 +1702,8 @@ class IslandWindow(Gtk.Window):
             self._place()
         elif key == "vpn_lookup" and value:
             self.vpn.refresh_info()
-        elif key.startswith("command_bar_") and self.pages["search"].built:
-            self.pages["search"].page.refresh()
+        elif key.startswith("command_bar_") and (page := self._built("search")):
+            page.refresh()
         self.refresh_collapsed()
 
     def set_language(self, choice):
@@ -1832,6 +1872,15 @@ def _set_process_name(name=b"linuxmos-island"):
     """Show up as 'linuxmos-island' in top/htop instead of 'python3'."""
     try:
         ctypes.CDLL("libc.so.6").prctl(15, ctypes.c_char_p(name), 0, 0, 0)  # PR_SET_NAME
+    except (OSError, AttributeError):
+        pass
+
+
+def _trim_memory():
+    """Collect Python's reference cycles (dropped widgets), then return glibc's free heap pages to the system."""
+    gc.collect()
+    try:
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
     except (OSError, AttributeError):
         pass
 
