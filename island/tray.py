@@ -8,7 +8,7 @@ from gi.repository import Gtk
 
 from island import __version__
 from island.i18n import LANGUAGES, _
-from island.services import system
+from island.services import screenshot, system
 
 try:
     gi.require_version("XApp", "1.0")
@@ -63,6 +63,7 @@ class Tray:
               lambda on: self.island.set_option("compact_when_idle", on))
         check(_("Lautstärke & Helligkeit anzeigen"), cfg.get("osd", True), self._set_osd)
         menu.append(self._autodelete_menu(cfg.get("clipboard_autodelete_min", 0)))
+        menu.append(self._screenshot_menu(cfg))
         menu.append(self._language_menu(cfg.get("language", "auto")))
         menu.append(Gtk.SeparatorMenuItem())
         item(_("Über MosIsland"), self._about)
@@ -93,6 +94,27 @@ class Tray:
             choices.append((current, _("Nach {minutes} Minuten").format(minutes=current)))
         return self._radio_menu(_("Zwischenablage automatisch leeren"), choices, current,
                                 lambda minutes: self.island.set_option("clipboard_autodelete_min", minutes))
+
+    def _screenshot_menu(self, cfg):
+        sub = Gtk.Menu()
+        for text, mode in ((_("Bereich aufnehmen  (Ctrl+Alt+S)"), "area"),
+                           (_("Bildschirm aufnehmen  (Ctrl+Alt+Shift+S)"), "screen")):
+            mi = Gtk.MenuItem(label=text)
+            mi.connect("activate", lambda _w, m=mode: self.island.screenshot(m))
+            sub.append(mi)
+        sub.append(Gtk.SeparatorMenuItem())
+        for text, key, default in ((_("Im Ordner speichern"), "screenshot_save", True),
+                                   (_("Editor sofort öffnen"), "screenshot_open_editor", False)):
+            mi = Gtk.CheckMenuItem(label=text)
+            mi.set_active(cfg.get(key, default))
+            mi.connect("toggled", lambda w, k=key: self.island.set_option(k, w.get_active()))
+            sub.append(mi)
+        folder = Gtk.MenuItem(label=_("Ordner öffnen"))
+        folder.connect("activate", lambda *_: screenshot.open_folder(self.island.config))
+        sub.append(folder)
+        parent = Gtk.MenuItem(label="Screenshot")
+        parent.set_submenu(sub)
+        return parent
 
     def _language_menu(self, current):
         # Bilingual on purpose: whoever ends up in the wrong language still finds the way back

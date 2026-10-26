@@ -62,10 +62,11 @@ Macht Linux Mint Cinnamon zum leichtgewichtigen macOS-Look-alike – mit Dock, T
 - **Ablage** – Dateien auf die Insel ziehen und später wieder herausziehen
 - **Aufgaben** mit Erinnerung, **Notiz**, **Pomodoro** und Timer, **Wasser-Erinnerung** mit Tagesziel und Diagramm
 - **Wetter** (MET Norway, ohne API-Key) mit Regenwarnung
+- **Screenshots** – Bereich (`Ctrl+Alt+S`) oder Bildschirm unter der Maus (`Ctrl+Alt+Shift+S`), sofort in der Zwischenablage und in `~/Bilder/LinuxMos`; die Insel blendet sich dafür aus. Klick auf den Hinweis öffnet den **Markup-Editor**: Pfeil, Rechteck, Marker, Text und Verpixeln für private Daten
 - **Steuerung** – WLAN, Bluetooth, Nicht stören, Dark Mode, Mikro, Lautstärke, Helligkeit, Screenshot, Sperren, Ruhezustand, Neustart, Aus
 - **Live-Hinweise** – Lautstärke, Helligkeit, Feststelltaste, Tastatur-Sprache, Laden, WLAN weg, Kopfhörer verbunden
 - **Maskottchen** – Augen im Leerlauf, die eindösen und winken, wenn du zurückkommst
-- **Tray-Menü** – Autostart, Maskottchen, Minimal-Notch, OSD, Zwischenablage automatisch leeren, Sprache, Beenden
+- **Tray-Menü** – Autostart, Maskottchen, Minimal-Notch, OSD, Zwischenablage automatisch leeren, Screenshot, Sprache, Beenden
 - **Deutsch oder Englisch** – folgt automatisch der Systemsprache, umschaltbar im Tray-Menü (`Sprache / Language`)
 
 **Leichtgewichtig** – gemessen: Conky-Widgets ~0,03 % CPU, MosIsland ~0,1 % CPU (unter Cinnamon 6, Musik läuft). Kein Blur-Compositor, keine Polling-Schleifen.
@@ -140,6 +141,7 @@ Danach **einmal ab- und wieder anmelden**.
 linuxmos-perf                # CPU-Last des Desktops messen
 linuxmos-widgets restart     # Conky-Widgets neu starten
 linuxmos-island --tab todo   # MosIsland auf einem Tab öffnen
+linuxmos-island --shot area  # Screenshot: area (Bereich) | screen (Monitor unter der Maus)
 linuxmos-island --set-city "München"
 ```
 
@@ -151,6 +153,9 @@ linuxmos-island --set-city "München"
 | `Shift+→`        | In der Suche: Modus wechseln (Apps, Run, Fenster, Dateien)  |
 | `Ctrl+Alt+I`     | MosIsland öffnen/schließen                                  |
 | `Ctrl+Alt+V`     | Zwischenablage-Verlauf (tippen = suchen, `Enter` = einfügen)|
+| `Ctrl+Alt+S`     | Screenshot vom Bereich (`Esc` oder Hotkey nochmal = abbrechen) |
+| `Ctrl+Alt+Shift+S` | Screenshot vom Bildschirm unter der Maus                  |
+| Im Editor        | `A` Pfeil · `R` Rechteck · `M` Marker · `T` Text · `B` Verpixeln · `1`–`6` Farbe · `Ctrl+Z` · `Ctrl+C` · `Ctrl+S` |
 | `Esc`            | MosIsland zuklappen                                         |
 | Mausrad auf der Pille | Lautstärke ±5 %                                        |
 
@@ -187,6 +192,9 @@ MosIsland: `~/.config/linuxmos/island/config.json` – die meisten Schalter gibt
   "lyrics_in_pill": false,
   "clipboard_limit": 50,
   "clipboard_autodelete_min": 0,
+  "screenshot_save": true,
+  "screenshot_dir": "",
+  "screenshot_open_editor": false,
   "water_goal_ml": 2000,
   "water_portion_ml": 250,
   "water_reminders": true,
@@ -197,6 +205,8 @@ MosIsland: `~/.config/linuxmos/island/config.json` – die meisten Schalter gibt
 ```
 
 `language`: `auto` (Systemsprache: Deutsch bei `de_*`, sonst Englisch), `de` oder `en`. Beim Umschalten im Tray-Menü startet die MosIsland kurz neu (ein laufender Timer geht dabei verloren).
+
+Screenshots: `screenshot_save` legt jede Aufnahme zusätzlich als PNG ab (sonst nur Zwischenablage), `screenshot_dir` ändert den Ordner (leer = `~/Bilder/LinuxMos` bzw. `~/Pictures/LinuxMos`), `screenshot_open_editor` öffnet den Editor direkt nach der Aufnahme. „Speichern“ im Editor überschreibt die Aufnahme mit der markierten Fassung. Alles auch im Tray-Menü unter „Screenshot“.
 
 Weitere Dateien:
 
@@ -218,6 +228,7 @@ Weitere Dateien:
 - **Lyrics/Wetter** hängen von LRCLIB bzw. MET Norway ab – nicht jeder Song hat synchronisierte Lyrics.
 - **Ist die MosIsland beendet**, fehlt das Lautstärke-OSD (weil Cinnamons eigenes abgeschaltet ist) – im Tray-Menü „Lautstärke & Helligkeit anzeigen“ ausschalten bringt Cinnamons OSD zurück.
 - **Einfügen per Klick** funktioniert nicht in Fenstern, die als root laufen – der Eintrag liegt dann trotzdem in der Zwischenablage.
+- **Screenshot-Bild in der Zwischenablage** hält ein kleiner `xclip`-Prozess im Hintergrund, bis du etwas anderes kopierst (so überlebt das Bild auch ein Beenden der Insel).
 
 Weitere Lösungen: [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.md#troubleshooting)
 
@@ -232,6 +243,7 @@ Weitere Lösungen: [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.md#tro
 - [x] Zwischenablage automatisch leeren (`clipboard_autodelete_min`)
 - [ ] Kompletter Testlauf auf Linux Mint 22.x
 - [x] Englische Oberfläche für die MosIsland (`language`, Tray-Menü)
+- [x] Screenshot-Tool mit Markup-Editor (`Ctrl+Alt+S`, `Ctrl+Alt+Shift+S`)
 
 ---
 
@@ -251,6 +263,7 @@ Die WhiteSur-Themes (GPL-3.0) sind nicht Teil dieses Repos, sie werden bei der I
 - [rofi](https://github.com/davatorium/rofi) – Spotlight-Suche
 - [Inter](https://rsms.me/inter/) – Schrift
 - [PyGObject / GTK 3](https://pygobject.gnome.org/) – MosIsland-Oberfläche
+- [maim / slop](https://github.com/naelstrof/maim) – Screenshots und Bereichsauswahl
 - [MET Norway](https://www.met.no/en) (CC BY 4.0), [OpenStreetMap](https://www.openstreetmap.org/copyright) (ODbL), [LRCLIB](https://lrclib.net) – Wetter, Ortssuche, Lyrics
 - Ideen: [Island](https://github.com/exuupery/island) von exuupery und [Nusa](https://rama2555.github.io/nusa/) von Rama (beide Windows, Closed Source) – kein Code und keine Grafiken übernommen
 - Entwickelt mit Unterstützung von Claude (Anthropic)

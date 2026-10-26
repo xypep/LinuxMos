@@ -200,14 +200,6 @@ def poweroff():
     run(["systemctl", "poweroff"])
 
 
-def screenshot_area():
-    """Area screenshot straight to the clipboard."""
-    if has("gnome-screenshot"):
-        run(["gnome-screenshot", "--area", "--clipboard"])
-        return True
-    return False
-
-
 def play_sound():
     for argv in (["canberra-gtk-play", "-i", "complete"],
                  ["paplay", "/usr/share/sounds/freedesktop/stereo/complete.oga"]):

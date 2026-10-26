@@ -91,6 +91,14 @@ if (( PURGE )); then
   echo
   echo "    Pakete bei Bedarf manuell entfernen:"
   echo "      sudo apt remove plank conky-std rofi fonts-inter"
+  echo "      sudo apt remove maim slop xclip          # MosIsland-Screenshots"
+fi
+
+# Screenshots gehören dem Nutzer: nie löschen, nur sagen, wo sie liegen
+SHOT_DIR="$(xdg-user-dir PICTURES 2>/dev/null || echo "$HOME/Pictures")/LinuxMos"
+if [[ -d "${SHOT_DIR}" ]]; then
+  echo
+  echo "    Deine Screenshots bleiben in ${SHOT_DIR}"
 fi
 
 if (( ! PURGE )) && [[ -d "${STATE_DIR}/island" ]]; then

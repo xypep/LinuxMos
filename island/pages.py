@@ -997,13 +997,7 @@ class ControlsPage(Page):
         system.brightness_get(brightness)
 
     def _screenshot(self):
-        self.island.collapse()
-        def shoot():
-            system.screenshot_area()
-            return GLib.SOURCE_REMOVE
-
-        # Let the island fold away before the selection starts
-        GLib.timeout_add(350, shoot)
+        self.island.screenshot("area")
 
     def _on_dangerous(self, btn, key, text, action):
         """Sleep, restart and shut down have to be clicked twice."""

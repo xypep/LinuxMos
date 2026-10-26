@@ -58,6 +58,10 @@ class Animator:
         self._bounce = False
 
     def jump(self, target):
+        if self._tick_id:
+            self._widget.remove_tick_callback(self._tick_id)
+            self._tick_id = 0
+        self._on_done = None
         self.value = self._to = tuple(map(float, target))
         self._apply(*self.value)
 

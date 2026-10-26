@@ -43,7 +43,7 @@ from island import APP_ID, __version__, i18n  # noqa: E402
 from island.i18n import _, n_  # noqa: E402
 from island.pages import (ClipboardPage, ControlsPage, HomePage, NotePage, ShelfPage,  # noqa: E402
                           TodoPage, URI_TARGETS, WaterPage, WeatherPage)
-from island.services import art, system  # noqa: E402
+from island.services import art, screenshot, system  # noqa: E402
 from island.services.clipboard import ClipboardHistory  # noqa: E402
 from island.services.idle import IdleWatcher  # noqa: E402
 from island.services.indicators import Indicators, volume_icon  # noqa: E402
@@ -67,6 +67,8 @@ WIN_W, WIN_H = EXPANDED_W, EXPANDED_H
 
 HOVER_OPEN_MS = 160
 HOVER_CLOSE_MS = 320
+# Time for the compositor to drop the hidden island from the screen before maim shoots
+SHOT_HIDE_MS = 200
 
 # Tooltips are German source strings, translated when the tab bar is built
 TABS = [
@@ -103,6 +105,8 @@ class IslandWindow(Gtk.Window):
         self._idle_state = "active"   # active | idle | sleep | hello
         self._hello_id = 0
         self._pomodoro_count = 0
+        self._shooting = False
+        self._shot_proc = None
         # Lyrics: fetched lazily, advanced by one timeout per line (no polling)
         self._lyrics_view = False
         self._lyrics_key = None
@@ -840,6 +844,76 @@ class IslandWindow(Gtk.Window):
         self.refresh_collapsed()
         return GLib.SOURCE_REMOVE
 
+    # ---- screenshots ---------------------------------------------------------------
+    def screenshot(self, mode):
+        """Area or monitor under the pointer -> clipboard (+ pictures folder), without the island in it."""
+        if mode not in ("area", "screen"):
+            return
+        if self._shooting:
+            # The hotkey again during the selection: give up and bring the island back
+            if self._shot_proc:
+                self._shot_proc.force_exit()
+            return
+        missing = screenshot.missing(mode)
+        if missing:
+            self.show_activity("dialog-warning-symbolic",
+                               _("Für Screenshots fehlt: {programs}").format(programs=", ".join(missing)), seconds=5)
+            return
+        self._shooting = True
+        geometry = screenshot.pointer_monitor_geometry() if mode == "screen" else None
+        path = screenshot.new_path(self.config)
+        if self.expanded:
+            self.collapse()
+        # Fold at once (no animation while hidden), then step out of the picture
+        self.anim.jump(self._collapsed_geometry())
+        self._show_collapsed()
+        self.hide()
+
+        def done(proc, result):
+            try:
+                ok = proc.wait_check_finish(result)
+            except GLib.Error:
+                ok = False  # cancelled (Esc, or killed above)
+            self._shot_proc = None
+            self._on_shot(ok, path)
+
+        def shoot():
+            try:
+                self._shot_proc = Gio.Subprocess.new(screenshot.capture_argv(mode, geometry, path),
+                                                     Gio.SubprocessFlags.STDOUT_SILENCE
+                                                     | Gio.SubprocessFlags.STDERR_SILENCE)
+            except GLib.Error:
+                self._on_shot(False, path)
+                return GLib.SOURCE_REMOVE
+            self._shot_proc.wait_check_async(None, done)
+            return GLib.SOURCE_REMOVE
+
+        GLib.timeout_add(SHOT_HIDE_MS, shoot)
+
+    def _on_shot(self, ok, path):
+        self._shooting = False
+        self.show()
+        self._place()
+        if not ok or not path.is_file():
+            path.unlink(missing_ok=True)
+            return  # selection cancelled
+        screenshot.copy(path)
+        if self.config.get("screenshot_open_editor", False):
+            self.open_editor(path)
+        else:
+            self.show_activity("camera-photo-symbolic", _("Screenshot kopiert · Klick = bearbeiten"), seconds=6,
+                               on_click=lambda: self.open_editor(path))
+
+    def open_editor(self, path):
+        if not path.is_file():
+            return
+        from island.editor import Editor  # loaded on first use only
+
+        def saved(_target):
+            self.show_activity("document-save-symbolic", _("Gespeichert & kopiert"))
+
+        Editor(path, self.config, application=self.get_application(), on_saved=saved).present()
+
     # ---- options (tray, checkboxes) ----------------------------------------------
     def set_option(self, key, value):
         self.config[key] = value
@@ -974,9 +1048,11 @@ class IslandApp(Gtk.Application):
         toggle.connect("activate", lambda *_: self.window and self.window.toggle(focus=True))
         tab = Gio.SimpleAction.new("tab", GLib.VariantType("s"))
         tab.connect("activate", lambda _a, param: self.window and self.window.open_tab(param.unpack()))
+        shot = Gio.SimpleAction.new("screenshot", GLib.VariantType("s"))
+        shot.connect("activate", lambda _a, param: self.window and self.window.screenshot(param.unpack()))
         quit_action = Gio.SimpleAction.new("quit", None)
         quit_action.connect("activate", lambda *_: self.quit())
-        for action in (toggle, tab, quit_action):
+        for action in (toggle, tab, shot, quit_action):
             self.add_action(action)
 
     def do_activate(self):

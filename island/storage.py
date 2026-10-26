@@ -31,6 +31,10 @@ DEFAULT_CONFIG = {
     "mascot": True,
     "osd": True,
     "lyrics_in_pill": False,
+    # Screenshots: keep a copy in the folder ("" = ~/Pictures/LinuxMos), open the editor right away
+    "screenshot_save": True,
+    "screenshot_dir": "",
+    "screenshot_open_editor": False,
     # Water reminder
     "water_goal_ml": 2000,
     "water_portion_ml": 250,

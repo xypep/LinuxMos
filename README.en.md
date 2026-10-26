@@ -62,10 +62,11 @@ Turns Linux Mint Cinnamon into a lightweight macOS look-alike – dock, top bar,
 - **Shelf** – drop files on the island and drag them out again later
 - **To-dos** with reminders, a **note**, **Pomodoro** and timers, a **water reminder** with daily goal and chart
 - **Weather** (MET Norway, no API key) with rain warning
+- **Screenshots** – an area (`Ctrl+Alt+S`) or the monitor under the pointer (`Ctrl+Alt+Shift+S`), straight to the clipboard and `~/Pictures/LinuxMos`; the island hides itself for the shot. Clicking the notice opens the **markup editor**: arrow, rectangle, highlighter, text and pixelate for private data
 - **Controls** – Wi-Fi, Bluetooth, Do Not Disturb, dark mode, mic, volume, brightness, screenshot, lock, suspend, restart, power off
 - **Live activities** – volume, brightness, Caps Lock, keyboard layout, charging, Wi-Fi lost, headphones connected
 - **Mascot** – a pair of eyes while you are away; they doze off and wave when you come back
-- **Tray menu** – autostart, mascot, minimal notch, OSD, clipboard auto-clear, language, quit
+- **Tray menu** – autostart, mascot, minimal notch, OSD, clipboard auto-clear, screenshot, language, quit
 - **English or German** – follows the system language automatically, switchable in the tray menu (`Sprache / Language`)
 
 **Lightweight** – measured: Conky widgets ~0.03 % CPU, MosIsland ~0.1 % CPU (Cinnamon 6, music playing). No blur compositor, no polling loops.
@@ -140,6 +141,7 @@ Then **log out and back in once**.
 linuxmos-perf                # measure the desktop's CPU load
 linuxmos-widgets restart     # restart the Conky widgets
 linuxmos-island --tab todo   # open MosIsland on a tab
+linuxmos-island --shot area  # screenshot: area | screen (monitor under the pointer)
 linuxmos-island --set-city "Munich"
 ```
 
@@ -151,6 +153,9 @@ linuxmos-island --set-city "Munich"
 | `Shift+→`        | In the search: switch mode (apps, run, windows, files)      |
 | `Ctrl+Alt+I`     | Open/close MosIsland                                        |
 | `Ctrl+Alt+V`     | Clipboard history (type to search, `Enter` pastes)          |
+| `Ctrl+Alt+S`     | Screenshot of an area (`Esc` or the hotkey again cancels)   |
+| `Ctrl+Alt+Shift+S` | Screenshot of the monitor under the pointer               |
+| In the editor    | `A` arrow · `R` rectangle · `M` highlighter · `T` text · `B` pixelate · `1`–`6` color · `Ctrl+Z` · `Ctrl+C` · `Ctrl+S` |
 | `Esc`            | Collapse MosIsland                                          |
 | Mouse wheel on the pill | Volume ±5 %                                          |
 
@@ -187,6 +192,9 @@ MosIsland: `~/.config/linuxmos/island/config.json` – most switches are also in
   "lyrics_in_pill": false,
   "clipboard_limit": 50,
   "clipboard_autodelete_min": 0,
+  "screenshot_save": true,
+  "screenshot_dir": "",
+  "screenshot_open_editor": false,
   "water_goal_ml": 2000,
   "water_portion_ml": 250,
   "water_reminders": true,
@@ -197,6 +205,8 @@ MosIsland: `~/.config/linuxmos/island/config.json` – most switches are also in
 ```
 
 `language`: `auto` (system language: German for `de_*`, English otherwise), `de` or `en`. Switching it in the tray menu restarts MosIsland briefly (a running timer is lost).
+
+Screenshots: `screenshot_save` also keeps every shot as a PNG (otherwise clipboard only), `screenshot_dir` changes the folder (empty = `~/Pictures/LinuxMos`, localised like `~/Bilder/LinuxMos`), `screenshot_open_editor` opens the editor right after the shot. "Save" in the editor overwrites the shot with the marked-up version. All of it is also in the tray menu under "Screenshot".
 
 Other files:
 
@@ -218,6 +228,7 @@ Other files:
 - **Lyrics/weather** depend on LRCLIB and MET Norway – not every song has synced lyrics.
 - **While MosIsland is not running** there is no volume OSD (Cinnamon's own is turned off) – switching off "Show volume & brightness" in the tray menu brings Cinnamon's OSD back.
 - **Click-to-paste** does not work in windows running as root – the entry is still on the clipboard.
+- **A screenshot on the clipboard** is held by a small `xclip` process in the background until you copy something else (so the image survives quitting the island).
 
 More solutions (German): [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.md#troubleshooting)
 
@@ -232,6 +243,7 @@ More solutions (German): [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.
 - [x] Clipboard auto-clear (`clipboard_autodelete_min`)
 - [ ] Complete test run on Linux Mint 22.x
 - [x] English UI for MosIsland (`language`, tray menu)
+- [x] Screenshot tool with markup editor (`Ctrl+Alt+S`, `Ctrl+Alt+Shift+S`)
 
 ---
 
@@ -251,6 +263,7 @@ The WhiteSur themes (GPL-3.0) are not part of this repository; they are download
 - [rofi](https://github.com/davatorium/rofi) – Spotlight search
 - [Inter](https://rsms.me/inter/) – font
 - [PyGObject / GTK 3](https://pygobject.gnome.org/) – MosIsland UI
+- [maim / slop](https://github.com/naelstrof/maim) – screenshots and area selection
 - [MET Norway](https://www.met.no/en) (CC BY 4.0), [OpenStreetMap](https://www.openstreetmap.org/copyright) (ODbL), [LRCLIB](https://lrclib.net) – weather, geocoding, lyrics
 - Ideas: [Island](https://github.com/exuupery/island) by exuupery and [Nusa](https://rama2555.github.io/nusa/) by Rama (both Windows, closed source) – no code or artwork reused
 - Built with the help of Claude (Anthropic)

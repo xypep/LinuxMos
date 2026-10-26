@@ -271,6 +271,24 @@ Manche Hinweise sind klickbar: Ein Klick auf die Wasser-Erinnerung trägt eine P
 | ![Wetter](img/island-weather.png) | **Wetter** – jetzt, die nächsten 24 Stunden und 7 Tage. Daten von [MET Norway](https://www.met.no/en), ohne API-Key und ohne Konto; Warnung kurz bevor es zu regnen beginnt. |
 | ![Steuerung](img/island-controls.png) | **Steuerung** – WLAN, Bluetooth, Nicht stören, Dark Mode (schaltet das ganze WhiteSur-Theme um), Mikro aus, Lautstärke, Helligkeit (Laptop), Screenshot, Sperren. Ruhezustand/Neustart/Aus wollen zweimal geklickt werden. |
 
+#### Screenshots
+
+`Ctrl+Alt+S` nimmt einen Bereich auf (ziehen, oder ein Fenster anklicken), `Ctrl+Alt+Shift+S` den ganzen Monitor, auf dem die Maus steht. Die Insel blendet sich dafür kurz aus. Das Bild liegt sofort in der Zwischenablage (und im Clipboard-Verlauf) und als PNG in `~/Bilder/LinuxMos`. Die Insel meldet „Screenshot kopiert · Klick = bearbeiten“.
+
+Der Klick öffnet den **Markup-Editor**:
+
+| Werkzeug   | Taste | Wirkung                                                         |
+|------------|-------|-----------------------------------------------------------------|
+| Pfeil      | `A`   | Ziehen von hinten nach vorne zur Spitze                          |
+| Rechteck   | `R`   | Rahmen ziehen                                                   |
+| Marker     | `M`   | Freihand, wie ein Textmarker (der Text darunter bleibt lesbar)   |
+| Text       | `T`   | Klicken, tippen, `Enter`                                        |
+| Verpixeln  | `B`   | Rahmen über Passwörter, Namen, Adressen ziehen – grobe Blöcke statt Weichzeichner, damit sich nichts zurückrechnen lässt |
+
+`1`–`6` wählt die Farbe, `Ctrl+Z` macht rückgängig, `Ctrl+C` kopiert die markierte Fassung, `Ctrl+S` speichert sie (überschreibt die Aufnahme) und kopiert sie ebenfalls. `Esc` schließt den Editor (fragt, wenn es ungespeicherte Markierungen gibt).
+
+Abbrechen während der Auswahl: `Esc` oder denselben Hotkey nochmal drücken. Läuft die Insel nicht, funktionieren die Hotkeys trotzdem: dann übernimmt ein kurzlebiger Prozess, der Hinweis kommt als Benachrichtigung mit „Bearbeiten“-Knopf.
+
 ### Tray-Menü
 
 Das MosIsland-Icon liegt in der Top Bar neben der Uhr (Rechtsklick):
@@ -282,6 +300,7 @@ Das MosIsland-Icon liegt in der Top Bar neben der Uhr (Rechtsklick):
 | Minimal-Notch                     | Eingeklappt nur ein dünner Strich, z. B. für Laptops mit dickem Rand oben oder damit Browser-Tabs frei bleiben |
 | Lautstärke & Helligkeit anzeigen  | MosIsland-Overlays statt Cinnamons eigenem OSD (aus = Cinnamon-OSD zurück) |
 | Zwischenablage automatisch leeren | Nicht angepinnte Einträge nach 15 min, 1 h oder 24 h löschen (Standard: nie) |
+| Screenshot                        | Bereich/Bildschirm aufnehmen, „Im Ordner speichern“, „Editor sofort öffnen“, Ordner öffnen |
 | Sprache / Language                | Automatisch (Systemsprache), Deutsch oder English – die Insel startet dabei kurz neu |
 | Über MosIsland · Beenden          |                                                                 |
 
@@ -295,6 +314,7 @@ Ein Linksklick aufs Icon klappt die Insel auf.
 | Zuklappen                     | Maus weg, `Esc`                                         |
 | MosIsland öffnen/schließen    | `Ctrl+Alt+I`                                            |
 | Zwischenablage                | `Ctrl+Alt+V` → tippen zum Suchen → `Enter` fügt ein     |
+| Screenshot Bereich / Bildschirm | `Ctrl+Alt+S` / `Ctrl+Alt+Shift+S`                     |
 | Lautstärke                    | Mausrad auf der eingeklappten Pille                     |
 | Dateien ablegen               | Datei aus Nemo/Desktop auf die Pille ziehen             |
 | Spulen                        | Klick auf den Fortschrittsbalken oder eine Lyrics-Zeile |
@@ -325,6 +345,9 @@ Die meisten Schalter liegen im Tray-Menü bzw. im Wasser-Tab (⚙). Alles steht 
 | `lyrics_in_pill`     | `false`   | Aktuelle Lyrics-Zeile in der eingeklappten Pille             |
 | `clipboard_limit`    | `50`      | Einträge im Verlauf (angepinnte zählen nicht)                 |
 | `clipboard_autodelete_min` | `0` | Nicht angepinnte Einträge nach so vielen Minuten löschen (`0` = nie) |
+| `screenshot_save`    | `true`    | Screenshots zusätzlich als PNG ablegen (`false` = nur Zwischenablage) |
+| `screenshot_dir`     | `""`      | Ordner für Screenshots (leer = `~/Bilder/LinuxMos`)           |
+| `screenshot_open_editor` | `false` | Editor direkt nach der Aufnahme öffnen                      |
 | `water_portion_ml` / `water_goal_ml` | `250` / `2000` | Portion und Tagesziel                     |
 | `water_start` / `water_end` | `09:00` / `21:00` | Aktive Stunden für Erinnerungen                     |
 | `water_interval_min` | `60`      | Erinnerung frühestens so lange nach dem letzten Schluck       |
@@ -352,6 +375,7 @@ Möglich wird das, weil es keinen Polling-Loop gibt. Jede Quelle meldet sich von
 | Akku, WLAN, Kopfhörer  | UPower, NetworkManager, BlueZ (D-Bus-Signale)                  |
 | Maskottchen            | Muffins IdleMonitor (D-Bus)                                    |
 | Aufgaben, Wasser       | Ein einziger Timer bis zur nächsten fälligen Erinnerung        |
+| Screenshots            | Nur auf Hotkey; der Editor wird erst beim ersten Öffnen geladen |
 | Uhr                    | Einmal pro Minute                                              |
 
 Gezeichnet wird nur, während sich etwas bewegt: beim Auf- und Zuklappen (~240 ms) oder beim Blinzeln des Maskottchens (~180 ms alle paar Sekunden).
@@ -360,7 +384,7 @@ Gezeichnet wird nur, während sich etwas bewegt: beim Auf- und Zuklappen (~240 m
 
 ### Was nicht dabei ist
 
-KI-Chat, Texterkennung (OCR), Bildschirmaufnahme, die „Ferrofluid“-Animation und 25 Charaktere (bewusst weggelassen, weil sie dauerhaft CPU kosten), Spiegeln fremder Benachrichtigungen. Die Command Bar übernimmt in LinuxMos die [Spotlight-Suche](#9-spotlight--raycast). Läuft nur unter X11, dem Standard bei Linux Mint Cinnamon.
+KI-Chat, Texterkennung (OCR), Bildschirmaufnahme (Video), die „Ferrofluid“-Animation und 25 Charaktere (bewusst weggelassen, weil sie dauerhaft CPU kosten), Spiegeln fremder Benachrichtigungen. Die Command Bar übernimmt in LinuxMos die [Spotlight-Suche](#9-spotlight--raycast). Läuft nur unter X11, dem Standard bei Linux Mint Cinnamon.
 
 ---
 
@@ -505,7 +529,7 @@ linuxmos-island --quit; linuxmos-island
 Typische Ursache: Python aus pyenv/conda statt System-Python. Die Insel nutzt bewusst `/usr/bin/python3`, weil nur dort PyGObject (`python3-gi`) installiert ist. Fehlen Pakete, hilft:
 
 ```bash
-sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-wnck-3.0 xdotool
+sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-wnck-3.0 xdotool maim slop xclip
 ```
 
 </details>
@@ -551,11 +575,14 @@ island/                    MosIsland (Python + GTK3)
   app.py                   Fenster, Zustände, Hover/Fokus/Einfügen, Drag & Drop, Lyrics-Takt, Pomodoro
   pages.py                 Die acht Tabs
   tray.py                  Tray-Icon mit den Schaltern
+  editor.py                Markup-Editor für Screenshots (wird erst beim ersten Öffnen geladen)
+  shot.py                  Screenshot ohne laufende Insel (Fallback der Hotkeys)
   i18n.py                  Oberflächen-Texte Deutsch → Englisch, Datumsformate
   widgets.py               Pillen-Form, Animation, Helfer
   style.css                Look (unabhängig vom GTK-Theme)
   services/                MPRIS, Lyrics, UPower, Overlays (Ton, Helligkeit, Tastatur, Netz, Bluetooth),
-                           Leerlauf, Clipboard, Ablage, Aufgaben, Wasser, Wetter, Timer, System-Controls
+                           Leerlauf, Clipboard, Ablage, Aufgaben, Wasser, Wetter, Timer, System-Controls,
+                           Screenshot (maim/slop/xclip)
 ```
 
 Gesichert wird nach `~/.local/share/linuxmos/backup/`, der Download-Cache liegt in `~/.cache/linuxmos/`.

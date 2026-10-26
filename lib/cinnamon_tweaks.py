@@ -121,9 +121,14 @@ def add_keybinding(name, command, binding):
         target = f"custom{n}"
 
     path = _kb_path(target)
+    if target in entries and gget(path, "binding"):
+        # Existing shortcut: keep the key the user may have picked in the settings
+        binding = gget(path, "binding")
+    else:
+        binding = [binding]
     gset(path, "name", name)
     gset(path, "command", command)
-    gset(path, "binding", [binding])
+    gset(path, "binding", binding)
 
     if target not in entries:
         # Changing custom-list is what makes Cinnamon reload the bindings.
