@@ -1,13 +1,15 @@
-"""The tabs of the opened island: Now, Clipboard, Shelf, Note & Timer, Weather, Controls."""
+"""The tabs of the opened island: Now, Clipboard, Shelf, To-do, Note & Focus, Water, Weather, Controls."""
 
 import time
+from datetime import datetime, timedelta
 
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk, Pango
 
 from island.services import art, system
 from island.services.timer import format_seconds
+from island.services.todo import parse_due
 from island.storage import DATA_DIR
-from island.widgets import (button, clear, css_class, icon, label, placeholder_cover,
+from island.widgets import (BarChart, button, clear, css_class, icon, label, placeholder_cover,
                             rounded_image)
 
 URI_TARGETS = [Gtk.TargetEntry.new("text/uri-list", 0, 0)]
@@ -41,6 +43,10 @@ class HomePage(Page):
         self.title = label("", ("title",), max_chars=40)
         self.artist = label("", ("dim",), max_chars=40)
         self.progress = Gtk.ProgressBar(valign=Gtk.Align.CENTER)
+        # Click on the bar to seek
+        seek = Gtk.EventBox()
+        seek.add(self.progress)
+        seek.connect("button-press-event", self._on_seek)
         self.elapsed = label("0:00", ("dim", "small"), ellipsize=False)
         self.length = label("", ("dim", "small"), xalign=1.0, ellipsize=False)
         times = Gtk.Box()
@@ -48,15 +54,20 @@ class HomePage(Page):
         times.pack_end(self.length, False, False, 0)
 
         info = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3, valign=Gtk.Align.CENTER)
-        for w in (self.title, self.artist, self.progress, times):
+        for w in (self.title, self.artist, seek, times):
             info.pack_start(w, False, False, 0)
 
         self.prev_btn = button("media-skip-backward-symbolic", css=("circle",), size=18, on_click=media.previous)
         self.play_btn = button("media-playback-start-symbolic", css=("circle", "big"), size=22,
                                on_click=media.play_pause)
         self.next_btn = button("media-skip-forward-symbolic", css=("circle",), size=18, on_click=media.next)
+        self.lyrics_btn = css_class(Gtk.ToggleButton(), "circle")
+        self.lyrics_btn.set_can_focus(False)
+        self.lyrics_btn.add(icon("media-view-subtitles-symbolic", 16))
+        self.lyrics_btn.set_tooltip_text("Lyrics")
+        self.lyrics_btn.connect("toggled", lambda b: island.set_lyrics_view(b.get_active()))
         controls = Gtk.Box(spacing=6, valign=Gtk.Align.CENTER)
-        for b in (self.prev_btn, self.play_btn, self.next_btn):
+        for b in (self.lyrics_btn, self.prev_btn, self.play_btn, self.next_btn):
             controls.pack_start(b, False, False, 0)
 
         card = css_class(Gtk.Box(spacing=14), "card")
@@ -86,8 +97,35 @@ class HomePage(Page):
         self.battery_tile = self._tile("emblem-system-symbolic", "Steuerung", "WLAN, Ton, Theme", "controls")
         for t in (self.weather_tile, self.timer_tile, self.battery_tile):
             tiles.pack_start(t["button"], True, True, 0)
-        self.pack_start(tiles, True, True, 0)
+
+        # ---- lyrics (replaces the tiles while the lyrics button is on) ------
+        self.lyrics_list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
+        self.lyrics_list.set_activate_on_single_click(True)
+        self.lyrics_list.connect("row-activated", self._on_lyric_clicked)
+        self.lyrics_scroll = Gtk.ScrolledWindow(vexpand=True)
+        self.lyrics_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.lyrics_scroll.add(self.lyrics_list)
+        self.lyrics_status = label("", ("dim",), xalign=0.5)
+        in_pill = Gtk.CheckButton(label="Aktuelle Zeile in der Pille zeigen")
+        in_pill.set_can_focus(False)
+        in_pill.set_active(bool(island.config.get("lyrics_in_pill")))
+        in_pill.connect("toggled", lambda b: island.set_option("lyrics_in_pill", b.get_active()))
+        lyrics_footer = Gtk.Box(spacing=8)
+        lyrics_footer.pack_start(in_pill, False, False, 0)
+        lyrics_footer.pack_end(label("Lyrics: LRCLIB", ("dim", "small"), ellipsize=False), False, False, 0)
+        lyrics_box = css_class(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6), "card")
+        lyrics_box.pack_start(self.lyrics_status, False, False, 0)
+        lyrics_box.pack_start(self.lyrics_scroll, True, True, 0)
+        lyrics_box.pack_end(lyrics_footer, False, False, 0)
+        self.lyrics_status.set_no_show_all(True)
+
+        self.lower = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE, vexpand=True)
+        self.lower.add_named(tiles, "tiles")
+        self.lower.add_named(lyrics_box, "lyrics")
+        self.pack_start(self.lower, True, True, 0)
         self._art_url = None
+        self._lyric_rows = []
+        self._lyric_idx = -1
 
     def _tile(self, icon_name, value, caption, tab):
         img = icon(icon_name, 22)
@@ -147,6 +185,57 @@ class HomePage(Page):
         self.elapsed.set_text(_fmt_us(position_us))
         self.progress.set_fraction(min(1.0, position_us / track.length_us))
 
+    def _on_seek(self, widget, event):
+        track = self.island.track
+        width = widget.get_allocated_width()
+        if track and track.length_us and width > 0:
+            self.island.media.set_position(track.length_us * max(0.0, min(1.0, event.x / width)))
+            self.set_position(self.island.media.position())
+        return True
+
+    # ---- lyrics --------------------------------------------------------------
+    def _on_lyric_clicked(self, _listbox, row):
+        if row.time_us is not None:  # unsynced lyrics have no time to jump to
+            self.island.media.set_position(row.time_us)
+
+    def show_lyrics_view(self, active):
+        self.lower.set_visible_child_name("lyrics" if active else "tiles")
+        if self.lyrics_btn.get_active() != active:
+            self.lyrics_btn.set_active(active)
+
+    def set_lyrics(self, lines, status):
+        """lines: [(time_us, text)]; status: text shown instead of/above the lines."""
+        clear(self.lyrics_list)
+        self._lyric_rows, self._lyric_idx = [], -1
+        for time_us, text in lines:
+            row = Gtk.ListBoxRow()
+            row.time_us = time_us
+            lbl = label(text or "♪", ("lyric",), xalign=0.5, ellipsize=False)
+            lbl.set_line_wrap(True)
+            row.add(lbl)
+            self.lyrics_list.add(row)
+            self._lyric_rows.append(row)
+        self.lyrics_list.show_all()
+        self.lyrics_status.set_text(status or "")
+        self.lyrics_status.set_visible(bool(status))
+        self.lyrics_scroll.set_visible(bool(lines))
+
+    def highlight_lyric(self, index):
+        if index == self._lyric_idx:
+            return
+        for i in (self._lyric_idx, index):
+            if 0 <= i < len(self._lyric_rows):
+                ctx = self._lyric_rows[i].get_child().get_style_context()
+                (ctx.add_class if i == index else ctx.remove_class)("current")
+        self._lyric_idx = index
+        if 0 <= index < len(self._lyric_rows) and self.get_mapped():
+            # Keep the line being sung in the middle
+            row = self._lyric_rows[index]
+            alloc = row.get_allocation()
+            adj = self.lyrics_scroll.get_vadjustment()
+            target = alloc.y - (adj.get_page_size() - alloc.height) / 2
+            adj.set_value(max(adj.get_lower(), min(target, adj.get_upper() - adj.get_page_size())))
+
     def update_weather(self, weather):
         if weather.current:
             c = weather.current
@@ -157,7 +246,7 @@ class HomePage(Page):
 
     def update_timer(self, timer):
         if timer.running:
-            self._set_tile(self.timer_tile, "alarm-symbolic", format_seconds(timer.remaining), "läuft")
+            self._set_tile(self.timer_tile, "alarm-symbolic", format_seconds(timer.remaining), timer.label)
         else:
             self._set_tile(self.timer_tile, "alarm-symbolic", "Timer", "Kein Timer")
 
@@ -401,7 +490,7 @@ NOTE_FILE = DATA_DIR / "note.txt"
 
 
 class NotePage(Page):
-    PRESETS = [(1, "1 min"), (5, "5 min"), (10, "10 min"), (25, "25 min")]
+    PRESETS = [(1, "1 min"), (5, "5 min"), (10, "10 min")]
 
     def __init__(self, island):
         super().__init__(island)
@@ -423,19 +512,31 @@ class NotePage(Page):
         note_scroll.add(self.text)
         note_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         note_box.pack_start(label("Notiz", ("title",)), False, False, 0)
+        note_box.set_margin_top(12)
         note_box.pack_start(note_scroll, True, True, 0)
         row.pack_start(note_box, True, True, 0)
 
         # ---- timer ----------------------------------------------------------
         timer_box = css_class(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8), "card")
         timer_box.set_size_request(220, -1)
-        timer_box.pack_start(label("Timer", ("title",)), False, False, 0)
+        self.mode = label("", ("dim",), xalign=1.0, ellipsize=False)
+        title = Gtk.Box()
+        title.pack_start(label("Timer", ("title",)), True, True, 0)
+        title.pack_end(self.mode, False, False, 0)
+        timer_box.pack_start(title, False, False, 0)
         self.remaining = label("00:00", ("timer-display", "dim"), xalign=0.5, ellipsize=False)
         timer_box.pack_start(self.remaining, False, False, 0)
 
-        presets = Gtk.Grid(column_spacing=6, row_spacing=6, column_homogeneous=True)
-        for i, (minutes, text) in enumerate(self.PRESETS):
-            presets.attach(button(text=text, on_click=lambda m=minutes: island.timer.start(m * 60)), i % 2, i // 2, 1, 1)
+        # Pomodoro: 25 min focus, then a break (every 4th one is longer)
+        pomodoro = Gtk.Box(spacing=6, homogeneous=True)
+        pomodoro.pack_start(button(text="Fokus 25", css=("accent",), tooltip="Pomodoro: 25 min Fokus, dann Pause",
+                                   on_click=lambda: island.start_pomodoro("focus")), True, True, 0)
+        pomodoro.pack_start(button(text="Pause 5", on_click=lambda: island.start_pomodoro("break")), True, True, 0)
+        timer_box.pack_start(pomodoro, False, False, 0)
+
+        presets = Gtk.Box(spacing=6, homogeneous=True)
+        for minutes, text in self.PRESETS:
+            presets.pack_start(button(text=text, on_click=lambda m=minutes: island.timer.start(m * 60)), True, True, 0)
         timer_box.pack_start(presets, False, False, 0)
 
         custom = Gtk.Box(spacing=6)
@@ -473,9 +574,205 @@ class NotePage(Page):
 
     def update_timer(self, timer):
         self.remaining.set_text(format_seconds(timer.remaining) if timer.running else "00:00")
+        self.mode.set_text(timer.label if timer.running else "")
         ctx = self.remaining.get_style_context()
         (ctx.remove_class if timer.running else ctx.add_class)("dim")
         self.stop_btn.set_visible(timer.running)
+
+
+# =============================================================================
+# To-do with reminders
+# =============================================================================
+def _due_text(due):
+    when = datetime.fromtimestamp(due)
+    today = datetime.now().date()
+    if when.date() == today:
+        return when.strftime("%H:%M")
+    if when.date() == today + timedelta(days=1):
+        return when.strftime("morgen %H:%M")
+    return when.strftime("%d.%m. %H:%M")
+
+
+class TodoPage(Page):
+    def __init__(self, island):
+        super().__init__(island)
+        todo = island.todo
+        self.count = label("", ("dim",), xalign=1.0, ellipsize=False)
+        header = Gtk.Box()
+        header.pack_start(label("Aufgaben", ("title",)), True, True, 0)
+        header.pack_end(self.count, False, False, 0)
+        self.pack_start(header, False, False, 0)
+
+        self.entry = Gtk.Entry(placeholder_text="Neue Aufgabe …", hexpand=True)
+        self.due = Gtk.Entry(placeholder_text="14:30", width_chars=9)
+        self.due.set_tooltip_text("Erinnerung: 14:30 · 9 · in 20 min · in 2 h (leer = keine)")
+        for widget in (self.entry, self.due):
+            island.make_typeable(widget)
+            widget.connect("activate", lambda *_: self._add())
+        add_row = Gtk.Box(spacing=6)
+        add_row.pack_start(self.entry, True, True, 0)
+        add_row.pack_start(self.due, False, False, 0)
+        add_row.pack_start(button("list-add-symbolic", css=("accent",), tooltip="Hinzufügen", on_click=self._add),
+                           False, False, 0)
+        self.pack_start(add_row, False, False, 0)
+        self.hint = label("", ("small", "warning"))
+        self.hint.set_no_show_all(True)
+        self.pack_start(self.hint, False, False, 0)
+
+        self.listbox = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
+        placeholder = label("Nichts zu tun – genieß den Moment.", ("dim",), xalign=0.5)
+        placeholder.show()
+        self.listbox.set_placeholder(placeholder)
+        scrolled = Gtk.ScrolledWindow(vexpand=True)
+        scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scrolled.add(self.listbox)
+        self.pack_start(scrolled, True, True, 0)
+        self.todo = todo
+        self.rebuild()
+
+    def _add(self):
+        text = self.entry.get_text().strip()
+        if not text:
+            return
+        try:
+            due = parse_due(self.due.get_text())
+        except ValueError:
+            self.hint.set_text("Zeit nicht verstanden – z. B. 14:30, 9, in 20 min, in 2 h")
+            self.hint.show()
+            return
+        self.hint.hide()
+        self.todo.add(text, due)
+        self.entry.set_text("")
+        self.due.set_text("")
+        self.entry.grab_focus()
+
+    def rebuild(self):
+        clear(self.listbox)
+        total = len(self.todo.items)
+        self.count.set_text(f"{self.todo.done_today}/{total} heute erledigt" if total else "")
+        now = time.time()
+        for task in self.todo.sorted_items():
+            box = Gtk.Box(spacing=10)
+            check = Gtk.CheckButton()
+            check.set_can_focus(False)
+            check.set_active(bool(task.get("done")))
+            check.connect("toggled", lambda _c, t=task: self.todo.toggle(t))
+            text = label(task["text"], ("done",) if task.get("done") else ())
+            box.pack_start(check, False, False, 0)
+            box.pack_start(text, True, True, 0)
+            if task.get("due"):
+                overdue = not task.get("done") and task["due"] < now
+                box.pack_start(label(_due_text(task["due"]), ("small", "warning" if overdue else "dim"),
+                                     ellipsize=False), False, False, 0)
+            box.pack_start(button("window-close-symbolic", tooltip="Löschen", css=("mini",), size=14,
+                                  on_click=lambda t=task: self.todo.remove(t)), False, False, 0)
+            row = Gtk.ListBoxRow()
+            row.add(box)
+            self.listbox.add(row)
+        self.listbox.show_all()
+
+
+# =============================================================================
+# Water reminder
+# =============================================================================
+class WaterPage(Page):
+    def __init__(self, island):
+        super().__init__(island)
+        water = island.water
+        self.water = water
+        row = Gtk.Box(spacing=12)
+        self.pack_start(row, True, True, 0)
+
+        # ---- today ----------------------------------------------------------
+        today = css_class(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8), "card")
+        today.set_size_request(230, -1)
+        today.pack_start(label("Wasser", ("title",)), False, False, 0)
+        self.amount = label("", ("huge-sm",), ellipsize=False)
+        self.status = label("", ("dim",))
+        self.bar = Gtk.ProgressBar()
+        today.pack_start(self.amount, False, False, 0)
+        today.pack_start(self.status, False, False, 0)
+        today.pack_start(self.bar, False, False, 0)
+        self.drink_btn = button("list-add-symbolic", "Trinken", css=("accent",), on_click=lambda: water.drink())
+        actions = Gtk.Box(spacing=6)
+        actions.pack_start(self.drink_btn, True, True, 0)
+        actions.pack_start(button("edit-undo-symbolic", tooltip="Letzten Eintrag zurücknehmen", on_click=water.undo),
+                           False, False, 0)
+        actions.pack_start(button("emblem-system-symbolic", tooltip="Einstellungen",
+                                  on_click=lambda: self.right.set_visible_child_name(
+                                      "settings" if self.right.get_visible_child_name() == "chart" else "chart")),
+                           False, False, 0)
+        today.pack_end(actions, False, False, 0)
+        row.pack_start(today, False, False, 0)
+
+        # ---- chart / settings -----------------------------------------------
+        self.chart = BarChart(height=150)
+        chart_box = css_class(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6), "card")
+        chart_box.pack_start(label("Heute pro Stunde (ml)", ("dim", "small")), False, False, 0)
+        chart_box.pack_start(self.chart, True, True, 0)
+
+        settings = css_class(Gtk.Grid(column_spacing=10, row_spacing=8), "card")
+        cfg = island.config
+        self._spins = {}
+        rows = [
+            ("Portion (Flasche/Glas)", "water_portion_ml", 50, 2000, 50, "ml"),
+            ("Tagesziel", "water_goal_ml", 500, 6000, 250, "ml"),
+            ("Erinnern alle", "water_interval_min", 15, 240, 15, "min"),
+        ]
+        for i, (text, key, lo, hi, step, unit) in enumerate(rows):
+            spin = Gtk.SpinButton.new_with_range(lo, hi, step)
+            spin.set_value(int(cfg.get(key, lo)))
+            island.make_typeable(spin)
+            spin.connect("value-changed", lambda s, k=key: self._set(k, int(s.get_value())))
+            settings.attach(label(text), 0, i, 1, 1)
+            settings.attach(spin, 1, i, 1, 1)
+            settings.attach(label(unit, ("dim",), ellipsize=False), 2, i, 1, 1)
+        hours = Gtk.Box(spacing=6)
+        for key, default in (("water_start", "09:00"), ("water_end", "21:00")):
+            entry = Gtk.Entry(text=cfg.get(key, default), width_chars=5)
+            island.make_typeable(entry)
+            entry.connect("changed", lambda e, k=key: self._set_time(k, e.get_text()))
+            hours.pack_start(entry, False, False, 0)
+            if key == "water_start":
+                hours.pack_start(label("bis", ("dim",), ellipsize=False), False, False, 0)
+        reminders = Gtk.Switch(active=cfg.get("water_reminders", True), halign=Gtk.Align.START)
+        reminders.connect("notify::active", lambda s, _p: self._set("water_reminders", s.get_active()))
+        settings.attach(label("Erinnerungen"), 0, 3, 1, 1)
+        settings.attach(reminders, 1, 3, 1, 1)
+        settings.attach(label("Aktive Zeit"), 0, 4, 1, 1)
+        settings.attach(hours, 1, 4, 2, 1)
+
+        self.right = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE, hexpand=True)
+        self.right.add_named(chart_box, "chart")
+        self.right.add_named(settings, "settings")
+        row.pack_start(self.right, True, True, 0)
+        self.update()
+
+    def _set(self, key, value):
+        self.island.config[key] = value
+        self.island.config.save()
+        self.water.schedule()
+        self.update()
+
+    def _set_time(self, key, text):
+        try:
+            datetime.strptime(text, "%H:%M")
+        except ValueError:
+            return
+        self._set(key, text)
+
+    def update(self):
+        w = self.water
+        drunk, goal = w.today_ml, w.goal
+        pct = min(100, round(100 * drunk / goal)) if goal else 0
+        self.amount.set_text(f"{drunk / 1000:.1f} / {goal / 1000:.1f} L".replace(".", ","))
+        self.status.set_text(f"Heute · {pct} %" + (" · Ziel erreicht 🎉" if drunk >= goal else ""))
+        self.bar.set_fraction(pct / 100)
+        self.drink_btn.get_child().get_children()[-1].set_text(f"+{w.portion} ml")
+        hours = w.per_hour()
+        first, last = 6, 23
+        self.chart.set_data(hours[first:last + 1],
+                            [f"{h:02d}" if h % 3 == 0 else "" for h in range(first, last + 1)])
 
 
 # =============================================================================

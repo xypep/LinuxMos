@@ -23,6 +23,17 @@ DEFAULT_CONFIG = {
     # Shrink the idle island to a thin line (keeps browser tabs free)
     "compact_when_idle": False,
     "clipboard_limit": 50,
+    # Tray switches
+    "mascot": True,
+    "osd": True,
+    "lyrics_in_pill": False,
+    # Water reminder
+    "water_goal_ml": 2000,
+    "water_portion_ml": 250,
+    "water_reminders": True,
+    "water_start": "09:00",
+    "water_end": "21:00",
+    "water_interval_min": 60,
 }
 
 

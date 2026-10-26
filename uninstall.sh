@@ -41,6 +41,7 @@ rm -f "${CONFIG_DIR}/autostart/linuxmos-plank.desktop" \
       "${BIN_DIR}/linuxmos-widgets" "${BIN_DIR}/linuxmos-spotlight" "${BIN_DIR}/linuxmos-perf" \
       "${BIN_DIR}/linuxmos-island"
 rm -rf "${STATE_DIR}/island-app"
+rm -f "${STATE_DIR}/install.conf"
 # Die Island-Einstellungen (Wetter-Ort) bleiben, nur Widget- und Spotlight-Configs gehen
 rm -rf "${CONFIG_DIR}/linuxmos/conky" "${CONFIG_DIR}/linuxmos/rofi"
 ok "Gestoppt und Autostart entfernt"

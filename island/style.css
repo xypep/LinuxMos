@@ -14,6 +14,11 @@
 #island .pill-text { font-weight: 600; font-size: 10.5pt; }
 #island .big-value { font-size: 13pt; font-weight: 600; }
 #island .huge { font-size: 32pt; font-weight: 300; }
+#island .huge-sm { font-size: 22pt; font-weight: 300; }
+#island .warning { color: #ff9f0a; }
+#island .done { color: rgba(245, 245, 247, 0.4); text-decoration-line: line-through; }
+#island .lyric { color: rgba(245, 245, 247, 0.4); font-size: 11pt; font-weight: 600; padding: 3px 0; }
+#island .lyric.current { color: #ffffff; font-size: 13pt; }
 #island .timer-display { font-size: 26pt; font-weight: 300; font-feature-settings: "tnum"; }
 
 /* ---- buttons ---------------------------------------------------------- */
@@ -72,6 +77,25 @@
 #island .shelf-tile { padding: 8px 4px; border-radius: 10px; }
 #island .shelf-tile:hover { background: rgba(255, 255, 255, 0.08); }
 #island .drag-all { padding: 4px 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.08); }
+
+/* ---- checks & switches ------------------------------------------------- */
+#island check {
+    background: rgba(255, 255, 255, 0.10);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 999px;
+    min-width: 16px;
+    min-height: 16px;
+    -gtk-icon-source: none;
+}
+#island check:checked {
+    background: #0a84ff;
+    border-color: #0a84ff;
+    -gtk-icon-source: -gtk-icontheme("object-select-symbolic");
+    color: #ffffff;
+}
+#island switch { background: rgba(255, 255, 255, 0.16); border: none; border-radius: 999px; }
+#island switch:checked { background: #30d158; }
+#island switch slider { background: #ffffff; border: none; border-radius: 999px; min-width: 20px; min-height: 20px; }
 
 /* ---- inputs ----------------------------------------------------------- */
 #island entry,

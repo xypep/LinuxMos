@@ -10,6 +10,7 @@ class Timer:
         self._end_us = None
         self._source = 0
         self.total = 0
+        self.label = "Timer"  # "Timer", "Fokus" or "Pause" (Pomodoro)
 
     @property
     def running(self):
@@ -21,7 +22,8 @@ class Timer:
             return 0
         return max(0, int((self._end_us - GLib.get_monotonic_time()) / 1_000_000 + 0.999))
 
-    def start(self, seconds):
+    def start(self, seconds, label="Timer"):
+        self.label = label
         self.total = int(seconds)
         self._end_us = GLib.get_monotonic_time() + self.total * 1_000_000
         if not self._source:

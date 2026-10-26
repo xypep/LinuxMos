@@ -1,10 +1,14 @@
 """The island window and application.
 
 States of the pill (in priority order while folded):
-  activity  short live event (volume, charging, timer done, rain, ...)
-  timer     a running countdown
+  activity  short live event (volume, brightness, Caps Lock, layout, charging,
+            network, headphones, timer/Pomodoro, to-do due, water, rain, ...)
+  timer     a running countdown (timer or Pomodoro)
+  lyrics    the line being sung (if "lyrics in the pill" is on)
   media     music is playing
-  idle      clock, temperature, battery (or a thin line with compact_when_idle)
+  compact   a thin line (minimal notch)
+  mascot    the user is away: the clock rests and a pair of eyes comes out
+  idle      clock, temperature, battery
 Hovering, clicking or a hotkey opens it into the tab view.
 
 Idle cost: no polling. The clock ticks once a minute; everything else is
@@ -35,20 +39,26 @@ except (ValueError, ImportError):
 
 from island import APP_ID, __version__  # noqa: E402
 from island.pages import (ClipboardPage, ControlsPage, HomePage, NotePage, ShelfPage,  # noqa: E402
-                          URI_TARGETS, WeatherPage)
+                          TodoPage, URI_TARGETS, WaterPage, WeatherPage)
 from island.services import art, system  # noqa: E402
 from island.services.clipboard import ClipboardHistory  # noqa: E402
+from island.services.idle import IdleWatcher  # noqa: E402
+from island.services.indicators import Indicators, volume_icon  # noqa: E402
+from island.services.lyrics import LyricsFetcher, line_index  # noqa: E402
 from island.services.mpris import MprisWatcher  # noqa: E402
 from island.services.power import Battery  # noqa: E402
 from island.services.shelf import Shelf  # noqa: E402
 from island.services.timer import Timer, format_seconds  # noqa: E402
+from island.services.todo import TodoList  # noqa: E402
+from island.services.water import Water  # noqa: E402
 from island.services.weather import Weather  # noqa: E402
 from island.storage import Config  # noqa: E402
-from island.widgets import Animator, Pill, clear, css_class, icon, label, rounded_image  # noqa: E402
+from island.tray import Tray  # noqa: E402
+from island.widgets import Animator, Eyes, Pill, clear, css_class, icon, label, rounded_image  # noqa: E402
 
 EXPANDED_W, EXPANDED_H, EXPANDED_R = 660, 350, 30
 COLLAPSED_H = 34
-COLLAPSED_W = {"idle": 196, "media": 320, "timer": 210, "activity": 330}
+COLLAPSED_W = {"idle": 196, "mascot": 196, "media": 320, "lyrics": 440, "timer": 220, "activity": 340}
 COMPACT_W, COMPACT_H = 110, 8
 WIN_W, WIN_H = EXPANDED_W, EXPANDED_H
 
@@ -59,7 +69,9 @@ TABS = [
     ("home", "audio-x-generic-symbolic", "Jetzt"),
     ("clipboard", "edit-paste-symbolic", "Zwischenablage"),
     ("shelf", "folder-symbolic", "Ablage"),
-    ("note", "document-edit-symbolic", "Notiz & Timer"),
+    ("todo", "object-select-symbolic", "Aufgaben"),
+    ("note", "document-edit-symbolic", "Notiz & Fokus"),
+    ("water", "weather-showers-scattered-symbolic", "Wasser"),
     ("weather", "weather-few-clouds-symbolic", "Wetter"),
     ("controls", "emblem-system-symbolic", "Steuerung"),
 ]
@@ -83,16 +95,29 @@ class IslandWindow(Gtk.Window):
         self._shown_kind = None
         self._scroll_acc = 0.0
         self._current_tab = "home"
+        self._idle_state = "active"   # active | idle | sleep | hello
+        self._hello_id = 0
+        self._pomodoro_count = 0
+        # Lyrics: fetched lazily, advanced by one timeout per line (no polling)
+        self._lyrics_view = False
+        self._lyrics_key = None
+        self._lyrics_lines = []
+        self._lyric_idx = -1
+        self._lyric_timer = 0
+        self._lyrics_synced_at = 0
 
         self._setup_window()
         self._load_css()
 
         # Services first: the pages read from them while building
-        self.media = MprisWatcher(self._on_media)
+        self.media = MprisWatcher(self._on_media, self._on_media_position)
+        self.lyrics = LyricsFetcher()
         self.clipboard = ClipboardHistory(self.config["clipboard_limit"], self._on_clipboard)
         self.shelf = Shelf(self._on_shelf)
         self.timer = Timer(self._on_timer_tick, self._on_timer_done)
         self.weather = Weather(self.config, self._on_weather)
+        self.todo = TodoList(self._on_todo, self._on_todo_due)
+        self.water = Water(self.config, self._on_water, self._on_water_remind)
 
         self.pill = Pill()
         root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -108,6 +133,9 @@ class IslandWindow(Gtk.Window):
         self.pill.add(self.stack)
 
         self.battery = Battery(self._on_battery)
+        self.indicators = Indicators(self._on_indicator)
+        self.idle = IdleWatcher(self._on_idle)
+        self.tray = Tray(self)
         self.anim = Animator(self, self._apply_geometry)
 
         self._schedule_clock()
@@ -115,6 +143,13 @@ class IslandWindow(Gtk.Window):
         screen = self.get_screen()
         screen.connect("monitors-changed", lambda *_: self._place())
         screen.connect("size-changed", lambda *_: self._place())
+        # The panel can move or change height later (or load after us at login):
+        # follow it via its settings instead of polling the work area
+        self._panel_settings = system.settings("org.cinnamon")
+        if self._panel_settings:
+            for key in ("panels-enabled", "panels-height", "panels-autohide"):
+                self._panel_settings.connect(f"changed::{key}", lambda *_: self._place_soon())
+        self._place_soon(4000)
 
         if Wnck:
             Wnck.set_client_type(Wnck.ClientType.PAGER)
@@ -177,6 +212,13 @@ class IslandWindow(Gtk.Window):
         area = monitor.get_workarea()  # below the top bar
         self.move(area.x + (area.width - WIN_W) // 2, area.y + int(self.config.get("offset_y", 6)))
 
+    def _place_soon(self, delay_ms=600):
+        def place():
+            self._place()
+            return GLib.SOURCE_REMOVE
+
+        GLib.timeout_add(delay_ms, place)
+
     @staticmethod
     def _on_draw(_widget, cr):
         # Fully transparent window; only the pill paints
@@ -206,8 +248,14 @@ class IslandWindow(Gtk.Window):
         if self.timer.running:
             return "timer"
         if self.track and self.track.playing:
+            if self.config.get("lyrics_in_pill") and self._lyrics_lines and self._lyric_idx >= 0:
+                return "lyrics"
             return "media"
-        return "compact" if self.config.get("compact_when_idle") else "idle"
+        if self.config.get("compact_when_idle"):
+            return "compact"
+        if self.config.get("mascot", True) and self._idle_state != "active":
+            return "mascot"
+        return "idle"
 
     def _collapsed_geometry(self):
         kind = self._collapsed_kind()
@@ -253,6 +301,7 @@ class IslandWindow(Gtk.Window):
         self.stack.set_visible_child_full("expanded", Gtk.StackTransitionType.CROSSFADE)
         self.pages[self._current_tab].on_show()
         self._update_header_time()
+        self.media.sync()
         if not self._position_id:
             self._position_id = GLib.timeout_add_seconds(1, self._update_position)
             self._update_position()
@@ -289,11 +338,16 @@ class IslandWindow(Gtk.Window):
     def _build_collapsed(self):
         self.c_left = Gtk.Box(spacing=6)
         self.c_center = label("", ("pill-text",), xalign=0.5)
+        self.eyes = Eyes()
+        self.c_center_stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE,
+                                        transition_duration=400, hhomogeneous=False)
+        self.c_center_stack.add_named(self.c_center, "text")
+        self.c_center_stack.add_named(self.eyes, "eyes")
         self.c_right = Gtk.Box(spacing=6)
         box = Gtk.Box(spacing=8, margin_start=14, margin_end=14)
         box.set_size_request(-1, COLLAPSED_H)
         box.pack_start(self.c_left, False, False, 0)
-        box.pack_start(self.c_center, True, True, 0)
+        box.pack_start(self.c_center_stack, True, True, 0)
         box.pack_end(self.c_right, False, False, 0)
         return box
 
@@ -301,6 +355,7 @@ class IslandWindow(Gtk.Window):
         self._shown_kind = kind
         clear(self.c_left)
         clear(self.c_right)
+        self.c_center_stack.set_visible_child_name("eyes" if kind == "mascot" else "text")
         text = ""
         if kind == "activity":
             a = self._activity
@@ -313,16 +368,23 @@ class IslandWindow(Gtk.Window):
         elif kind == "timer":
             self.c_left.add(icon("alarm-symbolic", 16))
             text = format_seconds(self.timer.remaining)
-            self.c_right.add(label("Timer", ("dim", "small"), ellipsize=False))
-        elif kind == "media":
+            self.c_right.add(label(self.timer.label, ("dim", "small"), ellipsize=False))
+        elif kind in ("media", "lyrics"):
             slot = Gtk.Box()
             slot.add(icon("audio-x-generic-symbolic", 16))
             self.c_left.add(slot)
             art.load(self.track.art_url, 44, lambda pix: self._set_pill_cover(slot, pix))
-            text = self.track.title or "Wiedergabe"
-            self.c_right.add(icon("audio-volume-high-symbolic", 14))
-        elif kind == "idle":
-            text = GLib.DateTime.new_now_local().format("%H:%M")
+            if kind == "lyrics":
+                text = self._lyrics_lines[self._lyric_idx][1] or "♪"
+                self.c_right.add(icon("media-view-subtitles-symbolic", 14))
+            else:
+                text = self.track.title or "Wiedergabe"
+                self.c_right.add(icon("audio-volume-high-symbolic", 14))
+        elif kind == "mascot":
+            self.eyes.set_mode({"sleep": "sleep", "hello": "hello"}.get(self._idle_state, "awake"))
+        if kind in ("idle", "mascot"):
+            if kind == "idle":
+                text = GLib.DateTime.new_now_local().format("%H:%M")
             if self.weather.current:
                 self.c_left.add(icon(self.weather.current["icon"], 14))
                 self.c_left.add(label(f"{self.weather.current['temp']}°", ("small",), ellipsize=False))
@@ -334,15 +396,19 @@ class IslandWindow(Gtk.Window):
         self.c_right.show_all()
 
     def _set_pill_cover(self, slot, pixbuf):
-        if pixbuf is None or self._shown_kind != "media":
+        if pixbuf is None or self._shown_kind not in ("media", "lyrics"):
             return
         clear(slot)
         slot.add(rounded_image(pixbuf, 22, 6, self.get_scale_factor()))
         slot.show_all()
 
-    def show_activity(self, icon_name, text, level=None, sticky=False, seconds=2.5):
-        """A short live event in the folded island (like iOS Live Activities)."""
-        self._activity = {"icon": icon_name, "text": text, "level": level, "sticky": sticky}
+    def show_activity(self, icon_name, text, level=None, sticky=False, seconds=2.5, on_click=None):
+        """A short live event in the folded island (like iOS Live Activities).
+
+        on_click: what a click on the folded pill does while the event shows.
+        """
+        self._activity = {"icon": icon_name, "text": text, "level": level, "sticky": sticky,
+                          "on_click": on_click}
         if self._activity_id:
             GLib.source_remove(self._activity_id)
             self._activity_id = 0
@@ -367,12 +433,14 @@ class IslandWindow(Gtk.Window):
             "home": HomePage(self),
             "clipboard": ClipboardPage(self),
             "shelf": ShelfPage(self),
+            "todo": TodoPage(self),
             "note": NotePage(self),
+            "water": WaterPage(self),
             "weather": WeatherPage(self),
             "controls": ControlsPage(self),
         }
         self.tab_buttons = {}
-        tabs = Gtk.Box(spacing=4)
+        tabs = Gtk.Box(spacing=2)
         for name, icon_name, tooltip in TABS:
             btn = Gtk.Button()
             btn.set_relief(Gtk.ReliefStyle.NONE)
@@ -422,7 +490,8 @@ class IslandWindow(Gtk.Window):
             self._position_id = 0
             return GLib.SOURCE_REMOVE
         if self._current_tab == "home" and self.track and self.track.playing:
-            self.media.query_position(self.pages["home"].set_position)
+            # Extrapolated locally – no D-Bus traffic per second
+            self.pages["home"].set_position(self.media.position())
         return GLib.SOURCE_CONTINUE
 
     # =========================================================================
@@ -555,8 +624,11 @@ class IslandWindow(Gtk.Window):
     def _on_button_press(self, _w, event):
         if self.expanded:
             return False
-        if self._activity and self._activity.get("sticky"):
+        if self._activity and (self._activity.get("sticky") or self._activity.get("on_click")):
+            callback = self._activity.get("on_click")
             self._end_activity()  # e.g. dismiss "Timer abgelaufen"
+            if callback:
+                callback()
             return True
         self.expand()
         return True
@@ -575,11 +647,11 @@ class IslandWindow(Gtk.Window):
             system.volume_step(step, self._on_volume)
         return True
 
-    def _on_volume(self, value):
+    def _on_volume(self, value, muted=False):
         if value is None:
             return
-        name = "muted" if value == 0 else "low" if value < 34 else "medium" if value < 67 else "high"
-        self.show_activity(f"audio-volume-{name}-symbolic", f"Lautstärke {value} %", level=value / 100)
+        text = "Stumm" if muted else f"Lautstärke {value} %"
+        self.show_activity(volume_icon(value, muted), text, level=0 if muted else value / 100)
 
     def _on_key(self, _w, event):
         if event.keyval == Gdk.KEY_Escape and self.expanded:
@@ -624,6 +696,7 @@ class IslandWindow(Gtk.Window):
     def _on_media(self, track):
         self.track = track
         self.pages["home"].update_media(track)
+        self._update_lyrics_track()
         if not self.expanded:
             if self._shown_kind == "media" and track and track.playing:
                 self._fill_collapsed("media")  # new song: update in place
@@ -663,8 +736,185 @@ class IslandWindow(Gtk.Window):
 
     def _on_timer_done(self):
         system.play_sound()
-        system.notify("Timer abgelaufen", f"{format_seconds(self.timer.total)} sind um.")
-        self.show_activity("alarm-symbolic", "Timer abgelaufen", sticky=True)
+        if self.timer.label == "Fokus":
+            # Pomodoro: focus done -> break starts by itself (every 4th one is long)
+            self._pomodoro_count += 1
+            long_break = self._pomodoro_count % 4 == 0
+            minutes = 15 if long_break else 5
+            system.notify("Fokus geschafft", f"Zeit für {minutes} Minuten Pause.")
+            self.timer.start(minutes * 60, "Pause")
+            self.show_activity("alarm-symbolic", f"Fokus geschafft · {minutes} min Pause", seconds=5)
+        elif self.timer.label == "Pause":
+            system.notify("Pause vorbei", "Klick auf die Insel startet die nächste Fokus-Runde.")
+            self.show_activity("alarm-symbolic", "Pause vorbei · Klick = weiter", sticky=True,
+                               on_click=lambda: self.start_pomodoro("focus"))
+        else:
+            system.notify("Timer abgelaufen", f"{format_seconds(self.timer.total)} sind um.")
+            self.show_activity("alarm-symbolic", "Timer abgelaufen", sticky=True)
+
+    def start_pomodoro(self, phase):
+        if phase == "focus":
+            self.timer.start(25 * 60, "Fokus")
+        else:
+            self.timer.start(5 * 60, "Pause")
+
+    # ---- to-do, water --------------------------------------------------------
+    def _on_todo(self):
+        self.pages["todo"].rebuild()
+
+    def _on_todo_due(self, task):
+        system.play_sound()
+        system.notify("Erinnerung", task["text"])
+        self.show_activity("alarm-symbolic", task["text"], sticky=True,
+                           on_click=lambda: self.expand(tab="todo"))
+
+    def _on_water(self):
+        self.pages["water"].update()
+
+    def _on_water_remind(self):
+        portion = self.water.portion
+        self.show_activity("weather-showers-scattered-symbolic", f"Zeit für Wasser · Klick = +{portion} ml",
+                           seconds=12, on_click=self.water.drink)
+
+    # ---- system events (overlays) -----------------------------------------------
+    def _on_indicator(self, kind, **data):
+        if kind in ("volume", "brightness") and not self.config.get("osd", True):
+            return
+        if kind == "volume":
+            self._on_volume(data["percent"], data["muted"])
+        elif kind == "brightness":
+            self.show_activity("display-brightness-symbolic", f"Helligkeit {data['percent']} %",
+                               level=data["percent"] / 100)
+        elif kind == "capslock":
+            self.show_activity("input-keyboard-symbolic", "Feststelltaste an" if data["on"] else "Feststelltaste aus",
+                               seconds=1.6)
+        elif kind == "layout":
+            self.show_activity("input-keyboard-symbolic", f"Tastatur: {data['name']}", seconds=1.8)
+        elif kind == "network":
+            if data["connected"]:
+                icon_name = "network-wireless-symbolic" if data["wireless"] else "network-wired-symbolic"
+                self.show_activity(icon_name, f"Verbunden · {data['name']}" if data["name"] else "Wieder online")
+            else:
+                self.show_activity("network-offline-symbolic", "Keine Verbindung", seconds=4)
+        elif kind == "bluetooth":
+            if data["connected"]:
+                battery = data["battery"]
+                text = f"{data['name']} · verbunden" + (f" · {battery} %" if battery is not None else "")
+                self.show_activity(data["icon"], text, level=battery / 100 if battery is not None else None,
+                                   seconds=3.5)
+            else:
+                self.show_activity(data["icon"], f"{data['name']} getrennt")
+
+    # ---- mascot ------------------------------------------------------------------
+    def _on_idle(self, state):
+        if self._hello_id:
+            GLib.source_remove(self._hello_id)
+            self._hello_id = 0
+        if state == "back":
+            # Wave hello for a moment, then the clock returns
+            self._idle_state = "hello"
+            self._hello_id = GLib.timeout_add(2500, self._end_hello)
+        else:
+            self._idle_state = state
+        if self._shown_kind == "mascot" and self._collapsed_kind() == "mascot":
+            self.eyes.set_mode({"sleep": "sleep", "hello": "hello"}.get(self._idle_state, "awake"))
+        else:
+            self.refresh_collapsed()
+
+    def _end_hello(self):
+        self._hello_id = 0
+        self._idle_state = "active"
+        self.refresh_collapsed()
+        return GLib.SOURCE_REMOVE
+
+    # ---- options (tray, checkboxes) ----------------------------------------------
+    def set_option(self, key, value):
+        self.config[key] = value
+        self.config.save()
+        if key == "lyrics_in_pill":
+            self._update_lyrics_track()
+        self.refresh_collapsed()
+
+    # ---- lyrics ------------------------------------------------------------------
+    def set_lyrics_view(self, active):
+        self._lyrics_view = active
+        self.pages["home"].show_lyrics_view(active)
+        self._update_lyrics_track()
+
+    def _lyrics_wanted(self):
+        return bool(self.track and self.track.title and (self._lyrics_view or self.config.get("lyrics_in_pill")))
+
+    def _update_lyrics_track(self):
+        """Fetch lyrics for a new song (only if they are shown somewhere)."""
+        if not self._lyrics_wanted():
+            self._stop_lyric_timer()
+            return
+        key = self.lyrics.key(self.track)
+        if key != self._lyrics_key:
+            self._lyrics_key = key
+            self._lyrics_lines, self._lyric_idx = [], -1
+            self.pages["home"].set_lyrics([], "Lade Lyrics …")
+            track = self.track
+            self.lyrics.get(track, lambda lines, plain: self._on_lyrics(key, lines, plain))
+        else:
+            self._advance_lyrics()
+
+    def _on_lyrics(self, key, lines, plain):
+        if key != self._lyrics_key:
+            return  # song changed meanwhile
+        self._lyrics_lines = lines
+        if lines:
+            self.pages["home"].set_lyrics(lines, None)
+        elif plain:
+            self.pages["home"].set_lyrics([(None, line) for line in plain.splitlines() if line.strip()],
+                                          "Nur unsynchronisierte Lyrics verfügbar")
+            self._lyrics_lines = []
+        else:
+            self.pages["home"].set_lyrics([], "Keine Lyrics gefunden" if plain is not None
+                                          else "Lyrics gerade nicht erreichbar (offline?)")
+        self._advance_lyrics()
+
+    def _on_media_position(self):
+        """The position clock was re-anchored (seek, play/pause, new song)."""
+        self._lyrics_synced_at = GLib.get_monotonic_time()
+        self._advance_lyrics()
+
+    def _stop_lyric_timer(self):
+        if self._lyric_timer:
+            GLib.source_remove(self._lyric_timer)
+            self._lyric_timer = 0
+
+    def _advance_lyrics(self):
+        """Show the current line and sleep until the next one starts."""
+        self._stop_lyric_timer()
+        if not self._lyrics_lines or not self._lyrics_wanted():
+            return
+        position = self.media.position()
+        if position is None:
+            return
+        idx = line_index(self._lyrics_lines, position)
+        if idx != self._lyric_idx:
+            self._lyric_idx = idx
+            self.pages["home"].highlight_lyric(idx)
+            if not self.expanded:
+                if self._collapsed_kind() == "lyrics" and self._shown_kind == "lyrics":
+                    self.c_center.set_text(self._lyrics_lines[idx][1] or "♪")
+                elif self._collapsed_kind() != self._shown_kind:
+                    self.refresh_collapsed()
+        if not (self.track and self.track.playing):
+            return
+        if GLib.get_monotonic_time() - self._lyrics_synced_at > 20_000_000:
+            # Re-anchor every ~20 s against drift (calls _on_media_position back)
+            self._lyrics_synced_at = GLib.get_monotonic_time()
+            self.media.sync()
+        if idx + 1 < len(self._lyrics_lines):
+            delay_ms = (self._lyrics_lines[idx + 1][0] - position) / 1000
+            self._lyric_timer = GLib.timeout_add(int(max(30, delay_ms)), self._on_lyric_timer)
+
+    def _on_lyric_timer(self):
+        self._lyric_timer = 0
+        self._advance_lyrics()
+        return GLib.SOURCE_REMOVE
 
     # =========================================================================
     # Clock: one wake-up per minute

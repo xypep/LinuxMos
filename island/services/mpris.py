@@ -1,8 +1,9 @@
 """Now-playing state from MPRIS media players (Spotify, Firefox, VLC, Rhythmbox, ...).
 
 Purely signal driven: players are discovered via NameOwnerChanged and their
-state arrives through PropertiesChanged. Only the playback position has to be
-queried, and the UI does that solely while the island is open.
+state arrives through PropertiesChanged. The playback position is not
+signalled by MPRIS, so a small clock extrapolates it from one query
+(re-anchored on play/pause, track change and the Seeked signal).
 """
 
 from dataclasses import dataclass
@@ -17,6 +18,7 @@ PLAYER_IFACE = "org.mpris.MediaPlayer2.Player"
 @dataclass
 class Track:
     bus_name: str
+    track_id: str
     title: str
     artist: str
     art_url: str
@@ -32,8 +34,12 @@ def _cached(proxy, name):
 
 
 class MprisWatcher:
-    def __init__(self, on_change):
+    def __init__(self, on_change, on_position=None):
         self._on_change = on_change
+        self._on_position = on_position
+        # Position clock: (bus name, position µs, monotonic µs, playing)
+        self._anchor = None
+        self._last_key = None
         self._players = {}  # bus name -> Gio.DBusProxy
         self._recent = []   # bus names, most recently active last
         self._bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
@@ -83,6 +89,7 @@ class MprisWatcher:
         self._players[name] = proxy
         self._recent.append(name)
         proxy.connect("g-properties-changed", self._on_properties_changed, name)
+        proxy.connect("g-signal", self._on_player_signal, name)
         self._emit()
 
     def _remove_player(self, name):
@@ -99,8 +106,20 @@ class MprisWatcher:
             self._recent.append(name)
         self._emit()
 
+    def _on_player_signal(self, _proxy, _sender, signal, params, name):
+        if signal == "Seeked":
+            track = self.current()
+            if track and track.bus_name == name:
+                self._set_anchor(track, params.unpack()[0])
+
     def _emit(self):
-        self._on_change(self.current())
+        track = self.current()
+        key = (track.bus_name, track.track_id, track.title, track.playing) if track else None
+        if key != self._last_key:
+            # New song, other player, play or pause: re-anchor the position clock
+            self._last_key = key
+            self.sync()
+        self._on_change(track)
 
     # ---- state -------------------------------------------------------------
     def current(self):
@@ -117,8 +136,10 @@ class MprisWatcher:
         artist = meta.get("xesam:artist") or []
         if isinstance(artist, str):
             artist = [artist]
+        track_id = meta.get("mpris:trackid") or ""
         return Track(
             bus_name=name,
+            track_id=str(track_id),
             title=title,
             artist=", ".join(artist),
             art_url=meta.get("mpris:artUrl") or "",
@@ -142,6 +163,47 @@ class MprisWatcher:
 
     def previous(self):
         self._call("Previous")
+
+    # ---- position clock -----------------------------------------------------
+    def _set_anchor(self, track, position_us):
+        self._anchor = (track.bus_name, int(position_us), GLib.get_monotonic_time(), track.playing)
+        if self._on_position:
+            self._on_position()
+
+    def sync(self):
+        """Re-read the real position once (after which the clock runs on its own)."""
+        track = self.current()
+        if not track:
+            self._anchor = None
+            return
+        self.query_position(lambda pos: self._set_anchor(track, pos) if pos is not None else None)
+
+    def position(self):
+        """Current position in µs, extrapolated without any D-Bus traffic."""
+        track = self.current()
+        if not track or not self._anchor or self._anchor[0] != track.bus_name:
+            return None
+        _name, pos, mono, playing = self._anchor
+        if playing and track.playing:
+            pos += GLib.get_monotonic_time() - mono
+        return min(pos, track.length_us) if track.length_us else pos
+
+    def set_position(self, position_us):
+        """Seek to an absolute position (progress bar, lyrics line)."""
+        track = self.current()
+        if not track:
+            return
+        proxy = self._players[track.bus_name]
+        position_us = max(0, int(position_us))
+        if track.track_id.startswith("/") and "NoTrack" not in track.track_id:
+            proxy.call("SetPosition", GLib.Variant("(ox)", (track.track_id, position_us)),
+                       Gio.DBusCallFlags.NONE, -1, None, None)
+        else:
+            # Players without a track id only support relative seeking
+            current = self.position() or 0
+            proxy.call("Seek", GLib.Variant("(x)", (position_us - current,)), Gio.DBusCallFlags.NONE, -1, None, None)
+        # Optimistic update; the player's Seeked signal corrects it if needed
+        self._set_anchor(track, position_us)
 
     def query_position(self, callback):
         """Ask the active player for its position (µs); callback(position or None)."""

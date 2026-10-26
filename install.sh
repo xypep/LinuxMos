@@ -12,6 +12,9 @@
 #   Island (Dynamic Island)       -> LinuxMos Island (--island, Python/GTK)
 #
 # Usage: ./install.sh [OPTIONS]   (./install.sh --help)
+#
+# Kann auch per `source` geladen werden (update.sh nutzt die Funktionen),
+# dann läuft nichts automatisch.
 # =============================================================================
 set -Eeuo pipefail
 
@@ -45,7 +48,8 @@ APT_PACKAGES=(
 # Nur mit --island (das meiste davon ist auf Mint schon installiert)
 ISLAND_PACKAGES=(
   python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-wnck-3.0
-  xdotool pulseaudio-utils libnotify-bin
+  gir1.2-xapp-1.0 gir1.2-cinnamondesktop-3.0
+  xdotool pulseaudio-utils libnotify-bin sound-theme-freedesktop
 )
 
 # ---- Defaults ---------------------------------------------------------------
@@ -114,6 +118,7 @@ EOF
 }
 
 # ---- Argumente --------------------------------------------------------------
+parse_args() {
 while (( $# )); do
   case "$1" in
     --light)        VARIANT="light" ;;
@@ -133,8 +138,10 @@ while (( $# )); do
   esac
   shift
 done
+}
 
 # Abgeleitete Namen je nach Variante
+derive_names() {
 if [[ "${VARIANT}" == "dark" ]]; then
   GTK_THEME="WhiteSur-Dark";  ICON_THEME="WhiteSur-dark";  PLANK_THEME="LinuxMos-Dark"
   WALLPAPER="WhiteSur-dark.jpg"; COLOR_SCHEME="prefer-dark"
@@ -147,6 +154,7 @@ else
   R_BG="#f5f5f7e6"; R_FG="#1c1c1e"; R_FG2="#6e6e73"; R_BORDER="#00000022"
 fi
 CURSOR_THEME="WhiteSur-cursors"
+}
 
 # =============================================================================
 # 0. Vorabprüfungen
@@ -227,6 +235,19 @@ install_packages() {
   sudo apt-get update -qq
   sudo apt-get install -y --no-install-recommends "${APT_PACKAGES[@]}"
   ok "Pakete installiert"
+}
+
+# Installiert nur Pakete, die noch fehlen (für update.sh: kein apt-Lauf, wenn nichts fehlt)
+install_missing_packages() {
+  local missing=() pkg
+  for pkg in "$@"; do
+    dpkg-query -W -f='${Status}' "${pkg}" 2>/dev/null | grep -q "install ok installed" || missing+=("${pkg}")
+  done
+  if (( ${#missing[@]} )); then
+    info "Neue Abhängigkeiten: ${missing[*]}"
+    sudo apt-get update -qq
+    sudo apt-get install -y --no-install-recommends "${missing[@]}"
+  fi
 }
 
 # Klont ein Repo flach in den Cache bzw. aktualisiert es.
@@ -521,17 +542,39 @@ Icon=view-app-grid-symbolic
 Categories=Utility;
 EOF
 
+  # Island zeigt Lautstärke & Helligkeit selbst an -> Cinnamons eigenes OSD aus
+  # (im Tray-Menü umschaltbar; uninstall.sh stellt den Originalwert wieder her).
+  # Hat der Nutzer die Island-Anzeige im Tray abgeschaltet, bleibt das so.
+  if ! grep -qs '"osd": false' "${CONFIG_DIR}/linuxmos/island/config.json"; then
+    # Je nach Cinnamon-Version Boolean oder Text ("small|medium|large|disabled")
+    case "$(gsettings range org.cinnamon show-media-keys-osd 2>/dev/null | head -1)" in
+      "type b") gset org.cinnamon show-media-keys-osd false ;;
+      "type s"|enum*) gset org.cinnamon show-media-keys-osd disabled ;;
+    esac
+  fi
+
   python3 "${TWEAKS}" add-keybinding "Island (LinuxMos)" "${BIN_DIR}/linuxmos-island --toggle" "<Primary><Alt>i"
   python3 "${TWEAKS}" add-keybinding "Island Zwischenablage (LinuxMos)" \
     "${BIN_DIR}/linuxmos-island --tab clipboard" "<Primary><Alt>v"
 
   setsid "${BIN_DIR}/linuxmos-island" >/dev/null 2>&1 < /dev/null &
-  ok "Island läuft (Ctrl+Alt+I öffnen, Ctrl+Alt+V Zwischenablage)"
+  ok "Island läuft (Ctrl+Alt+I öffnen, Ctrl+Alt+V Zwischenablage, Tray-Icon für Einstellungen)"
 }
 
 install_tools() {
   mkdir -p "${BIN_DIR}"
   install -m 755 "${REPO_DIR}/bin/linuxmos-perf" "${BIN_DIR}/linuxmos-perf"
+}
+
+# Merkt sich die gewählten Optionen, damit update.sh sie wiederverwenden kann
+save_install_config() {
+  mkdir -p "${STATE_DIR}"
+  {
+    echo "# LinuxMos – Optionen der letzten Installation (von install.sh geschrieben)"
+    printf 'VARIANT=%q\nEFFECTS=%q\nWEATHER_CITY=%q\n' "${VARIANT}" "${EFFECTS}" "${WEATHER_CITY}"
+    printf 'DO_WIDGETS=%q\nDO_SPOTLIGHT=%q\nDO_FIREFOX=%q\nDO_ISLAND=%q\n' \
+      "${DO_WIDGETS}" "${DO_SPOTLIGHT}" "${DO_FIREFOX}" "${DO_ISLAND}"
+  } >"${STATE_DIR}/install.conf"
 }
 
 summary() {
@@ -548,6 +591,7 @@ summary() {
       • Einmal ab- und wieder anmelden, damit wirklich alle Apps das Theme nutzen.
       • CPU-Last prüfen:     linuxmos-perf
       • Widgets neu starten: linuxmos-widgets restart
+      • Aktualisieren:       ./update.sh
       • Alles zurück:        ./uninstall.sh
 EOF
 }
@@ -566,7 +610,13 @@ main() {
   setup_spotlight
   setup_island
   install_tools
+  save_install_config
   summary
 }
 
-main
+# Nur ausführen, wenn direkt gestartet (nicht per `source` aus update.sh)
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  parse_args "$@"
+  derive_names
+  main
+fi
