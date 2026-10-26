@@ -126,7 +126,14 @@ def add_keybinding(name, command, binding):
         gset(CUSTOM_KB_SCHEMA, "custom-list", entries + [target])
 
 
+def has_key(schema, key):
+    return subprocess.run(["gsettings", "writable", schema, key], capture_output=True).returncode == 0
+
+
 def strip_binding(schema, key, binding):
+    # e.g. switch-input-source only exists since Cinnamon 6.2
+    if not has_key(schema, key):
+        return
     current = gget(schema, key)
     kept = [b for b in current if b.lower() != binding.lower()]
     if kept != current:

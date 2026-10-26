@@ -9,6 +9,7 @@
 #   Start/Notification Styler     -> WhiteSur Cinnamon-Theme
 #   Rainmeter Top Bar / Widgets   -> Cinnamon Panel oben + Conky
 #   Raycast                       -> rofi (Spotlight, Super+Space)
+#   Island (Dynamic Island)       -> LinuxMos Island (--island, Python/GTK)
 #
 # Usage: ./install.sh [OPTIONS]   (./install.sh --help)
 # =============================================================================
@@ -41,6 +42,11 @@ APT_PACKAGES=(
   # Build-Dependencies für das WhiteSur GTK-Theme
   sassc libglib2.0-dev-bin libxml2-utils
 )
+# Nur mit --island (das meiste davon ist auf Mint schon installiert)
+ISLAND_PACKAGES=(
+  python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-wnck-3.0
+  xdotool pulseaudio-utils libnotify-bin
+)
 
 # ---- Defaults ---------------------------------------------------------------
 VARIANT="dark"        # dark | light
@@ -49,6 +55,7 @@ WEATHER_CITY=""
 DO_WIDGETS=1
 DO_SPOTLIGHT=1
 DO_FIREFOX=0
+DO_ISLAND=0
 SNAPSHOT="ask"        # ask | yes | no
 ASSUME_YES=0
 PANEL_HEIGHT=28
@@ -95,6 +102,8 @@ Usage: ./install.sh [OPTIONS]
   --no-widgets       Keine Conky-Widgets (Uhr, System)
   --no-spotlight     Keine Spotlight-Suche (rofi)
   --firefox          Zusätzlich WhiteSur-Theme für Firefox installieren
+  --island           Island (Dynamic Island) installieren: Musik, Clipboard,
+                     Ablage, Notiz/Timer, Wetter, Controls oben in der Mitte
   --snapshot         Vorher Timeshift-Snapshot erstellen (ohne Nachfrage)
   --no-snapshot      Keinen Timeshift-Snapshot erstellen
   -y, --yes          Alle Rückfragen mit "ja" beantworten
@@ -115,6 +124,7 @@ while (( $# )); do
     --no-widgets)   DO_WIDGETS=0 ;;
     --no-spotlight) DO_SPOTLIGHT=0 ;;
     --firefox)      DO_FIREFOX=1 ;;
+    --island)       DO_ISLAND=1 ;;
     --snapshot)     SNAPSHOT="yes" ;;
     --no-snapshot)  SNAPSHOT="no" ;;
     -y|--yes)       ASSUME_YES=1 ;;
@@ -210,6 +220,9 @@ backup_settings() {
 # =============================================================================
 install_packages() {
   step "Pakete installieren (apt)"
+  if (( DO_ISLAND )); then
+    APT_PACKAGES+=("${ISLAND_PACKAGES[@]}")
+  fi
   info "${APT_PACKAGES[*]}"
   sudo apt-get update -qq
   sudo apt-get install -y --no-install-recommends "${APT_PACKAGES[@]}"
@@ -465,6 +478,57 @@ setup_spotlight() {
   ok "Super+Space öffnet die Suche (Layout-Wechsel weiter über Shift+Super+Space)"
 }
 
+# =============================================================================
+# 9. Island (= Dynamic Island, inspiriert von exuupery/island)
+# =============================================================================
+setup_island() {
+  (( DO_ISLAND )) || return 0
+  step "Island (Dynamic Island)"
+  local app_dir="${STATE_DIR}/island-app"
+
+  # Laufende Insel beenden, damit die neue Version startet
+  if [[ -x "${BIN_DIR}/linuxmos-island" ]]; then
+    "${BIN_DIR}/linuxmos-island" --quit
+    sleep 1
+  fi
+
+  rm -rf "${app_dir}"
+  mkdir -p "${app_dir}" "${BIN_DIR}" "${AUTOSTART_DIR}" "${DATA_DIR}/applications"
+  cp -r "${REPO_DIR}/island" "${app_dir}/"
+  find "${app_dir}" -name __pycache__ -prune -exec rm -rf {} +
+  install -m 755 "${REPO_DIR}/bin/linuxmos-island" "${BIN_DIR}/linuxmos-island"
+
+  if [[ -n "${WEATHER_CITY}" ]]; then
+    "${BIN_DIR}/linuxmos-island" --set-city "${WEATHER_CITY}" >/dev/null
+  fi
+
+  cat >"${AUTOSTART_DIR}/linuxmos-island.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Island (LinuxMos)
+Comment=Dynamic Island for Cinnamon
+Exec=${BIN_DIR}/linuxmos-island
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=3
+EOF
+  cat >"${DATA_DIR}/applications/linuxmos-island.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Island
+Comment=Dynamic Island: Musik, Zwischenablage, Ablage, Notiz, Wetter
+Exec=${BIN_DIR}/linuxmos-island --toggle
+Icon=view-app-grid-symbolic
+Categories=Utility;
+EOF
+
+  python3 "${TWEAKS}" add-keybinding "Island (LinuxMos)" "${BIN_DIR}/linuxmos-island --toggle" "<Primary><Alt>i"
+  python3 "${TWEAKS}" add-keybinding "Island Zwischenablage (LinuxMos)" \
+    "${BIN_DIR}/linuxmos-island --tab clipboard" "<Primary><Alt>v"
+
+  setsid "${BIN_DIR}/linuxmos-island" >/dev/null 2>&1 < /dev/null &
+  ok "Island läuft (Ctrl+Alt+I öffnen, Ctrl+Alt+V Zwischenablage)"
+}
+
 install_tools() {
   mkdir -p "${BIN_DIR}"
   install -m 755 "${REPO_DIR}/bin/linuxmos-perf" "${BIN_DIR}/linuxmos-perf"
@@ -478,6 +542,7 @@ summary() {
     Dock:        Plank (${PLANK_THEME}), Zoom $( [[ "${EFFECTS}" == minimal ]] && echo aus || echo an )
     Widgets:     $( (( DO_WIDGETS )) && echo "Conky (Uhr + System${WEATHER_CITY:+ + Wetter})" || echo "–" )
     Spotlight:   $( (( DO_SPOTLIGHT )) && echo "Super+Space" || echo "–" )
+    Island:      $( (( DO_ISLAND )) && echo "oben mittig · Ctrl+Alt+I · Ctrl+Alt+V" || echo "– (mit --island)" )
 
     Tipps:
       • Einmal ab- und wieder anmelden, damit wirklich alle Apps das Theme nutzen.
@@ -499,6 +564,7 @@ main() {
   setup_effects
   setup_widgets
   setup_spotlight
+  setup_island
   install_tools
   summary
 }

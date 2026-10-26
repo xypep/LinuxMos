@@ -4,7 +4,7 @@
 set -euo pipefail
 
 SECONDS_TO_SAMPLE="${1:-5}"
-PROCS='^(cinnamon|Xorg|plank|conky|rofi|nemo-desktop|csd-.*|muffin)$'
+PROCS='^(cinnamon|Xorg|plank|conky|rofi|linuxmos-island|nemo-desktop|csd-.*|muffin)$'
 
 echo "Messe ${SECONDS_TO_SAMPLE} s lang ... (Desktop dabei nicht benutzen)"
 

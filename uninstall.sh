@@ -31,11 +31,18 @@ warn() { printf '    \e[33m!\e[0m %s\n' "$*" >&2; }
 # ---- Laufende Komponenten stoppen ------------------------------------------
 step "Dock, Widgets und Spotlight stoppen"
 [[ -x "${BIN_DIR}/linuxmos-widgets" ]] && "${BIN_DIR}/linuxmos-widgets" stop
+[[ -x "${BIN_DIR}/linuxmos-island" ]] && "${BIN_DIR}/linuxmos-island" --quit
 pkill -u "$(id -u)" -x plank 2>/dev/null || true
+pkill -u "$(id -u)" -x linuxmos-island 2>/dev/null || true
 rm -f "${CONFIG_DIR}/autostart/linuxmos-plank.desktop" \
       "${CONFIG_DIR}/autostart/linuxmos-widgets.desktop" \
-      "${BIN_DIR}/linuxmos-widgets" "${BIN_DIR}/linuxmos-spotlight" "${BIN_DIR}/linuxmos-perf"
-rm -rf "${CONFIG_DIR}/linuxmos"
+      "${CONFIG_DIR}/autostart/linuxmos-island.desktop" \
+      "${DATA_DIR}/applications/linuxmos-island.desktop" \
+      "${BIN_DIR}/linuxmos-widgets" "${BIN_DIR}/linuxmos-spotlight" "${BIN_DIR}/linuxmos-perf" \
+      "${BIN_DIR}/linuxmos-island"
+rm -rf "${STATE_DIR}/island-app"
+# Die Island-Einstellungen (Wetter-Ort) bleiben, nur Widget- und Spotlight-Configs gehen
+rm -rf "${CONFIG_DIR}/linuxmos/conky" "${CONFIG_DIR}/linuxmos/rofi"
 ok "Gestoppt und Autostart entfernt"
 
 # ---- Einstellungen wiederherstellen ----------------------------------------
@@ -60,7 +67,7 @@ if [[ -d "${BACKUP_DIR}" ]]; then
   mv "${BACKUP_DIR}" "${STATE_DIR}/backup.restored-$(date +%Y%m%d-%H%M%S)"
 else
   warn "Kein Backup gefunden (${BACKUP_DIR}) – setze nur die LinuxMos-Teile zurück."
-  gsettings reset org.cinnamon.desktop.keybindings.wm switch-input-source || true
+  gsettings reset org.cinnamon.desktop.keybindings.wm switch-input-source 2>/dev/null || true
 fi
 
 # ---- Optional: Themes löschen ----------------------------------------------
@@ -77,11 +84,18 @@ if (( PURGE )); then
          "$HOME/.icons/WhiteSur-cursors" \
          "${DATA_DIR}"/plank/themes/LinuxMos-* \
          "${DATA_DIR}/backgrounds/linuxmos" \
-         "${CACHE_DIR}"
-  ok "Gelöscht"
+         "${CACHE_DIR}" \
+         "${STATE_DIR}/island" "${CONFIG_DIR}/linuxmos"
+  ok "Gelöscht (inkl. Island-Daten: Notiz, Clipboard-Verlauf, Ablage)"
   echo
   echo "    Pakete bei Bedarf manuell entfernen:"
   echo "      sudo apt remove plank conky-std rofi fonts-inter"
+fi
+
+if (( ! PURGE )) && [[ -d "${STATE_DIR}/island" ]]; then
+  echo
+  echo "    Island-Daten (Notiz, Clipboard-Verlauf, Ablage) bleiben in ${STATE_DIR}/island"
+  echo "    – löschen mit: ./uninstall.sh --purge"
 fi
 
 step "Fertig – einmal ab- und wieder anmelden."
