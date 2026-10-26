@@ -2,9 +2,9 @@
 # =============================================================================
 # LinuxMos – aktualisieren.
 #
-#   ./update.sh               LinuxMos (git pull), Themes, Island & Tools updaten.
+#   ./update.sh               LinuxMos (git pull), Themes, MosIsland & Tools updaten.
 #                             Deine Einstellungen (Panel, Dock, Widget-Positionen,
-#                             Island-Daten) bleiben unangetastet.
+#                             MosIsland-Daten) bleiben unangetastet.
 #   ./update.sh --check       Nur prüfen, ob es eine neue Version gibt
 #   ./update.sh --no-themes   WhiteSur-Themes nicht neu laden (schneller)
 #   ./update.sh --full        Zusätzlich alle Design-Einstellungen neu anwenden
@@ -83,7 +83,7 @@ main() {
   # shellcheck disable=SC1091
   source "${STATE_DIR}/install.conf"
   derive_names
-  # Den Wetter-Ort hat der Nutzer evtl. seitdem in der Island geändert -> nicht überschreiben
+  # Den Wetter-Ort hat der Nutzer evtl. seitdem in der MosIsland geändert -> nicht überschreiben
   WEATHER_CITY=""
 
   # ---- 3. Neue Abhängigkeiten ---------------------------------------------------------

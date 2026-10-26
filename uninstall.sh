@@ -42,7 +42,7 @@ rm -f "${CONFIG_DIR}/autostart/linuxmos-plank.desktop" \
       "${BIN_DIR}/linuxmos-island"
 rm -rf "${STATE_DIR}/island-app"
 rm -f "${STATE_DIR}/install.conf"
-# Die Island-Einstellungen (Wetter-Ort) bleiben, nur Widget- und Spotlight-Configs gehen
+# Die MosIsland-Einstellungen (Wetter-Ort) bleiben, nur Widget- und Spotlight-Configs gehen
 rm -rf "${CONFIG_DIR}/linuxmos/conky" "${CONFIG_DIR}/linuxmos/rofi"
 ok "Gestoppt und Autostart entfernt"
 
@@ -87,7 +87,7 @@ if (( PURGE )); then
          "${DATA_DIR}/backgrounds/linuxmos" \
          "${CACHE_DIR}" \
          "${STATE_DIR}/island" "${CONFIG_DIR}/linuxmos"
-  ok "Gelöscht (inkl. Island-Daten: Notiz, Clipboard-Verlauf, Ablage)"
+  ok "Gelöscht (inkl. MosIsland-Daten: Notiz, Clipboard-Verlauf, Ablage)"
   echo
   echo "    Pakete bei Bedarf manuell entfernen:"
   echo "      sudo apt remove plank conky-std rofi fonts-inter"
@@ -95,7 +95,7 @@ fi
 
 if (( ! PURGE )) && [[ -d "${STATE_DIR}/island" ]]; then
   echo
-  echo "    Island-Daten (Notiz, Clipboard-Verlauf, Ablage) bleiben in ${STATE_DIR}/island"
+  echo "    MosIsland-Daten (Notiz, Clipboard-Verlauf, Ablage) bleiben in ${STATE_DIR}/island"
   echo "    – löschen mit: ./uninstall.sh --purge"
 fi
 

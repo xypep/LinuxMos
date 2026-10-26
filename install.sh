@@ -9,7 +9,7 @@
 #   Start/Notification Styler     -> WhiteSur Cinnamon-Theme
 #   Rainmeter Top Bar / Widgets   -> Cinnamon Panel oben + Conky
 #   Raycast                       -> rofi (Spotlight, Super+Space)
-#   Island (Dynamic Island)       -> LinuxMos Island (--island, Python/GTK)
+#   Island (Dynamic Island)       -> MosIsland (--island, Python/GTK)
 #
 # Usage: ./install.sh [OPTIONS]   (./install.sh --help)
 #
@@ -106,7 +106,7 @@ Usage: ./install.sh [OPTIONS]
   --no-widgets       Keine Conky-Widgets (Uhr, System)
   --no-spotlight     Keine Spotlight-Suche (rofi)
   --firefox          Zusätzlich WhiteSur-Theme für Firefox installieren
-  --island           Island (Dynamic Island) installieren: Musik, Clipboard,
+  --island           MosIsland (Dynamic Island) installieren: Musik, Clipboard,
                      Ablage, Notiz/Timer, Wetter, Controls oben in der Mitte
   --snapshot         Vorher Timeshift-Snapshot erstellen (ohne Nachfrage)
   --no-snapshot      Keinen Timeshift-Snapshot erstellen
@@ -500,11 +500,11 @@ setup_spotlight() {
 }
 
 # =============================================================================
-# 9. Island (= Dynamic Island, inspiriert von exuupery/island)
+# 9. MosIsland (= Dynamic Island, inspiriert von exuupery/island)
 # =============================================================================
 setup_island() {
   (( DO_ISLAND )) || return 0
-  step "Island (Dynamic Island)"
+  step "MosIsland (Dynamic Island)"
   local app_dir="${STATE_DIR}/island-app"
 
   # Laufende Insel beenden, damit die neue Version startet
@@ -526,7 +526,7 @@ setup_island() {
   cat >"${AUTOSTART_DIR}/linuxmos-island.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Island (LinuxMos)
+Name=MosIsland (LinuxMos)
 Comment=Dynamic Island for Cinnamon
 Exec=${BIN_DIR}/linuxmos-island
 X-GNOME-Autostart-enabled=true
@@ -535,16 +535,16 @@ EOF
   cat >"${DATA_DIR}/applications/linuxmos-island.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Island
+Name=MosIsland
 Comment=Dynamic Island: Musik, Zwischenablage, Ablage, Notiz, Wetter
 Exec=${BIN_DIR}/linuxmos-island --toggle
 Icon=view-app-grid-symbolic
 Categories=Utility;
 EOF
 
-  # Island zeigt Lautstärke & Helligkeit selbst an -> Cinnamons eigenes OSD aus
+  # MosIsland zeigt Lautstärke & Helligkeit selbst an -> Cinnamons eigenes OSD aus
   # (im Tray-Menü umschaltbar; uninstall.sh stellt den Originalwert wieder her).
-  # Hat der Nutzer die Island-Anzeige im Tray abgeschaltet, bleibt das so.
+  # Hat der Nutzer die MosIsland-Anzeige im Tray abgeschaltet, bleibt das so.
   if ! grep -qs '"osd": false' "${CONFIG_DIR}/linuxmos/island/config.json"; then
     # Je nach Cinnamon-Version Boolean oder Text ("small|medium|large|disabled")
     case "$(gsettings range org.cinnamon show-media-keys-osd 2>/dev/null | head -1)" in
@@ -553,12 +553,12 @@ EOF
     esac
   fi
 
-  python3 "${TWEAKS}" add-keybinding "Island (LinuxMos)" "${BIN_DIR}/linuxmos-island --toggle" "<Primary><Alt>i"
-  python3 "${TWEAKS}" add-keybinding "Island Zwischenablage (LinuxMos)" \
+  python3 "${TWEAKS}" add-keybinding "MosIsland (LinuxMos)" "${BIN_DIR}/linuxmos-island --toggle" "<Primary><Alt>i"
+  python3 "${TWEAKS}" add-keybinding "MosIsland Zwischenablage (LinuxMos)" \
     "${BIN_DIR}/linuxmos-island --tab clipboard" "<Primary><Alt>v"
 
   setsid "${BIN_DIR}/linuxmos-island" >/dev/null 2>&1 < /dev/null &
-  ok "Island läuft (Ctrl+Alt+I öffnen, Ctrl+Alt+V Zwischenablage, Tray-Icon für Einstellungen)"
+  ok "MosIsland läuft (Ctrl+Alt+I öffnen, Ctrl+Alt+V Zwischenablage, Tray-Icon für Einstellungen)"
 }
 
 install_tools() {
@@ -585,7 +585,7 @@ summary() {
     Dock:        Plank (${PLANK_THEME}), Zoom $( [[ "${EFFECTS}" == minimal ]] && echo aus || echo an )
     Widgets:     $( (( DO_WIDGETS )) && echo "Conky (Uhr + System${WEATHER_CITY:+ + Wetter})" || echo "–" )
     Spotlight:   $( (( DO_SPOTLIGHT )) && echo "Super+Space" || echo "–" )
-    Island:      $( (( DO_ISLAND )) && echo "oben mittig · Ctrl+Alt+I · Ctrl+Alt+V" || echo "– (mit --island)" )
+    MosIsland:   $( (( DO_ISLAND )) && echo "oben mittig · Ctrl+Alt+I · Ctrl+Alt+V" || echo "– (mit --island)" )
 
     Tipps:
       • Einmal ab- und wieder anmelden, damit wirklich alle Apps das Theme nutzen.

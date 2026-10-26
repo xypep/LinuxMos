@@ -218,4 +218,4 @@ def play_sound():
 
 def notify(title, body=""):
     if has("notify-send"):
-        run(["notify-send", "-a", "Island", "-i", "alarm-symbolic", title, body])
+        run(["notify-send", "-a", "MosIsland", "-i", "alarm-symbolic", title, body])

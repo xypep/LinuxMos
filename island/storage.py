@@ -23,6 +23,8 @@ DEFAULT_CONFIG = {
     # Shrink the idle island to a thin line (keeps browser tabs free)
     "compact_when_idle": False,
     "clipboard_limit": 50,
+    # Drop unpinned clipboard entries after N minutes (0 = keep)
+    "clipboard_autodelete_min": 0,
     # Tray switches
     "mascot": True,
     "osd": True,

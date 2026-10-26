@@ -100,14 +100,18 @@ def _kb_path(entry):
 def add_keybinding(name, command, binding):
     entries = gget(CUSTOM_KB_SCHEMA, "custom-list")
 
-    # Reuse an existing entry with the same name (idempotent re-runs).
-    target = None
+    # Reuse an existing entry with the same name (idempotent re-runs), or with the
+    # same command, so renaming a shortcut does not leave a duplicate behind.
+    target = same_command = None
     for entry in entries:
         if entry == "__dummy__":
             continue
         if gget(_kb_path(entry), "name") == name:
             target = entry
             break
+        if same_command is None and gget(_kb_path(entry), "command") == command:
+            same_command = entry
+    target = target or same_command
 
     if target is None:
         # Cinnamon only picks up entries whose id contains "custom".

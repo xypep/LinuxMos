@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# LinuxMos Island – starten und steuern.
+# MosIsland (LinuxMos) – starten und steuern.
 #
 #   linuxmos-island                 starten (läuft sie schon: auf-/zuklappen)
 #   linuxmos-island --toggle        auf-/zuklappen

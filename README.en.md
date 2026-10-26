@@ -8,7 +8,7 @@
 
 Turns Linux Mint Cinnamon into a lightweight macOS look-alike – dock, top bar, widgets, Spotlight and an optional Dynamic Island – without the desktop eating CPU while idle.
 
-![Island](https://img.shields.io/badge/Island-1.1.0-blue)
+![MosIsland](https://img.shields.io/badge/MosIsland-1.2.0-blue)
 ![Platform](https://img.shields.io/badge/platform-Linux%20Mint%2022%20Cinnamon-87CF3E)
 ![Display server](https://img.shields.io/badge/display-X11-lightgrey)
 
@@ -17,9 +17,9 @@ Turns Linux Mint Cinnamon into a lightweight macOS look-alike – dock, top bar,
 ## Preview
 
 <p align="center">
-  <img src="docs/img/island-home.png" alt="Island expanded: music with cover art, weather, Pomodoro timer" width="45%">
+  <img src="docs/img/island-home.png" alt="MosIsland expanded: music with cover art, weather, Pomodoro timer" width="45%">
   &nbsp;
-  <img src="docs/img/island-pills-nusa.png" alt="Island collapsed: lyrics, Pomodoro, water reminder, headphones, brightness, Caps Lock" width="45%">
+  <img src="docs/img/island-pills-nusa.png" alt="MosIsland collapsed: lyrics, Pomodoro, water reminder, headphones, brightness, Caps Lock" width="45%">
 </p>
 
 ---
@@ -55,19 +55,19 @@ Turns Linux Mint Cinnamon into a lightweight macOS look-alike – dock, top bar,
 
 <img src="docs/img/widgets.png" alt="Conky clock and system widget" width="70%">
 
-**Island** (optional, `--island`) – a Dynamic Island at the top centre, inspired by [Island](https://github.com/exuupery/island) and [Nusa](https://rama2555.github.io/nusa/)
+**MosIsland** (optional, `--island`) – a Dynamic Island at the top centre, inspired by [Island](https://github.com/exuupery/island) and [Nusa](https://rama2555.github.io/nusa/). It has its own name so it is not mistaken for exuupery's Island; the command stays `linuxmos-island`.
 - **Music** from any MPRIS player (Spotify, Firefox/YouTube, VLC …) with cover art, play/pause/skip and seeking
 - **Synced lyrics** (LRCLIB) – the current line lights up, click a line to jump there, optionally shown in the pill
-- **Clipboard** – history with search and pins; one click pastes straight into the active window
+- **Clipboard** – history with search and pins; one click pastes straight into the active window; optionally cleared after X minutes (pins stay)
 - **Shelf** – drop files on the island and drag them out again later
 - **To-dos** with reminders, a **note**, **Pomodoro** and timers, a **water reminder** with daily goal and chart
 - **Weather** (MET Norway, no API key) with rain warning
 - **Controls** – Wi-Fi, Bluetooth, Do Not Disturb, dark mode, mic, volume, brightness, screenshot, lock, suspend, restart, power off
 - **Live activities** – volume, brightness, Caps Lock, keyboard layout, charging, Wi-Fi lost, headphones connected
 - **Mascot** – a pair of eyes while you are away; they doze off and wave when you come back
-- **Tray menu** – autostart, mascot, minimal notch, OSD, quit
+- **Tray menu** – autostart, mascot, minimal notch, OSD, clipboard auto-clear, quit
 
-**Lightweight** – measured: Conky widgets ~0.03 % CPU, Island ~0.1 % CPU (Cinnamon 6, music playing). No blur compositor, no polling loops.
+**Lightweight** – measured: Conky widgets ~0.03 % CPU, MosIsland ~0.1 % CPU (Cinnamon 6, music playing). No blur compositor, no polling loops.
 
 ---
 
@@ -90,7 +90,7 @@ Turns Linux Mint Cinnamon into a lightweight macOS look-alike – dock, top bar,
 git clone https://github.com/xypep/LinuxMos.git
 cd LinuxMos
 ./install.sh                 # macOS look only
-./install.sh --island        # including the Island
+./install.sh --island        # including MosIsland
 ```
 
 ### Option B – as a ZIP
@@ -107,7 +107,7 @@ Then **log out and back in once**.
 
 1. Install (see above), e.g. `./install.sh --island --weather Berlin`
 2. Log out and back in
-3. Move the mouse over the Island at the top centre – it expands
+3. Move the mouse over MosIsland at the top centre – it expands
 4. Updates: `./update.sh` · Undo: `./uninstall.sh`
 
 ### `install.sh` options
@@ -120,8 +120,8 @@ Then **log out and back in once**.
 |---------------------|----------------------------------------------------------|
 | `--light`           | Light theme instead of dark mode                         |
 | `--minimal`         | All animations off                                       |
-| `--weather CITY`    | Weather location for the widget and the Island           |
-| `--island`          | Install the Island                                       |
+| `--weather CITY`    | Weather location for the widget and MosIsland            |
+| `--island`          | Install MosIsland                                        |
 | `--no-widgets`      | No Conky widgets                                         |
 | `--no-spotlight`    | No Spotlight search                                      |
 | `--firefox`         | WhiteSur theme for Firefox as well                       |
@@ -135,10 +135,10 @@ Then **log out and back in once**.
 ./update.sh                  # update (keeps your settings)
 ./update.sh --full           # also re-apply the design
 ./uninstall.sh               # restore everything
-./uninstall.sh --purge       # also delete themes and Island data
+./uninstall.sh --purge       # also delete themes and MosIsland data
 linuxmos-perf                # measure the desktop's CPU load
 linuxmos-widgets restart     # restart the Conky widgets
-linuxmos-island --tab todo   # open the Island on a tab
+linuxmos-island --tab todo   # open MosIsland on a tab
 linuxmos-island --set-city "Munich"
 ```
 
@@ -148,9 +148,9 @@ linuxmos-island --set-city "Munich"
 |------------------|-------------------------------------------------------------|
 | `Super+Space`    | Open/close the Spotlight search                             |
 | `Shift+→`        | In the search: switch mode (apps, run, windows, files)      |
-| `Ctrl+Alt+I`     | Open/close the Island                                       |
+| `Ctrl+Alt+I`     | Open/close MosIsland                                        |
 | `Ctrl+Alt+V`     | Clipboard history (type to search, `Enter` pastes)          |
-| `Esc`            | Collapse the Island                                         |
+| `Esc`            | Collapse MosIsland                                          |
 | Mouse wheel on the pill | Volume ±5 %                                          |
 
 ---
@@ -164,7 +164,7 @@ linuxmos-island --set-city "Munich"
 > `install.sh` downloads the WhiteSur themes straight from GitHub (vinceliuice) and runs their installers; it also installs packages via `sudo apt`. Do not run it with `sudo` – it asks for the password itself.
 
 > [!IMPORTANT]
-> Network access: weather via api.met.no and nominatim.openstreetmap.org (Island) or wttr.in (Conky), lyrics via lrclib.net – only when you use the feature. The clipboard history is stored unencrypted in `~/.local/share/linuxmos/island/clipboard.json`; copies from password managers are only skipped if they mark them as secret (KeePassXC and similar).
+> Network access: weather via api.met.no and nominatim.openstreetmap.org (MosIsland) or wttr.in (Conky), lyrics via lrclib.net – only when you use the feature. The clipboard history is stored unencrypted in `~/.local/share/linuxmos/island/clipboard.json`; copies from password managers are only skipped if they mark them as secret (KeePassXC and similar).
 
 > [!IMPORTANT]
 > Clicking a clipboard entry sends `Ctrl+V` (`Ctrl+Shift+V` in terminals) to the previously active window via `xdotool`.
@@ -173,7 +173,7 @@ linuxmos-island --set-city "Munich"
 
 ## Configuration
 
-Island: `~/.config/linuxmos/island/config.json` – most switches are also in the tray menu and the water tab.
+MosIsland: `~/.config/linuxmos/island/config.json` – most switches are also in the tray menu and the water tab.
 
 ```json
 {
@@ -184,6 +184,7 @@ Island: `~/.config/linuxmos/island/config.json` – most switches are also in th
   "osd": true,
   "lyrics_in_pill": false,
   "clipboard_limit": 50,
+  "clipboard_autodelete_min": 0,
   "water_goal_ml": 2000,
   "water_portion_ml": 250,
   "water_reminders": true,
@@ -200,18 +201,18 @@ Other files:
 | `~/.config/linuxmos/conky/*.conf`             | Widget position and look (`gap_x`, `gap_y`, `alignment`) |
 | `~/.config/linuxmos/rofi/spotlight.rasi`      | Look of the Spotlight search                   |
 | `~/.local/share/linuxmos/install.conf`        | Chosen install options (used by `update.sh`)   |
-| `~/.local/share/linuxmos/island/`             | Island data: note, to-dos, water log, clipboard history, shelf |
+| `~/.local/share/linuxmos/island/`             | MosIsland data: note, to-dos, water log, clipboard history, shelf |
 
 ---
 
 ## Known issues
 
-- **A complete `install.sh` run on real Mint 22 has not been tested yet** – the Island, panel changes, update and uninstall were tested under Cinnamon 6, the WhiteSur install step was not. Please report problems.
-- **The Island needs ~115 MB RAM** – almost entirely Python + GTK3 itself.
+- **A complete `install.sh` run on real Mint 22 has not been tested yet** – MosIsland, panel changes, update and uninstall were tested under Cinnamon 6, the WhiteSur install step was not. Please report problems.
+- **MosIsland needs ~115 MB RAM** – almost entirely Python + GTK3 itself.
 - **No real "genie" effect and no blur** – on purpose, both cost performance all the time.
-- **Island is X11 only** (the default on Mint Cinnamon); its UI is German only.
+- **MosIsland is X11 only** (the default on Mint Cinnamon); its UI is German only.
 - **Lyrics/weather** depend on LRCLIB and MET Norway – not every song has synced lyrics.
-- **While the Island is not running** there is no volume OSD (Cinnamon's own is turned off) – switching off "Lautstärke & Helligkeit anzeigen" in the tray menu brings Cinnamon's OSD back.
+- **While MosIsland is not running** there is no volume OSD (Cinnamon's own is turned off) – switching off "Lautstärke & Helligkeit anzeigen" in the tray menu brings Cinnamon's OSD back.
 - **Click-to-paste** does not work in windows running as root – the entry is still on the clipboard.
 
 More solutions (German): [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.md#troubleshooting)
@@ -222,16 +223,17 @@ More solutions (German): [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.
 
 - [x] macOS look with theme, top bar, dock, widgets, Spotlight
 - [x] Backup, uninstall and update (`update.sh`)
-- [x] Island with music, lyrics, clipboard, shelf, to-dos, Pomodoro, water, weather, controls
+- [x] MosIsland with music, lyrics, clipboard, shelf, to-dos, Pomodoro, water, weather, controls
 - [x] Live activities, mascot, tray menu
+- [x] Clipboard auto-clear (`clipboard_autodelete_min`)
 - [ ] Complete test run on Linux Mint 22.x
-- [ ] English UI for the Island
+- [ ] English UI for MosIsland
 
 ---
 
 ## License
 
-This project is licensed under the [LICENSE] license – see [LICENSE](LICENSE).
+This project is licensed under the MIT License – see [LICENSE](LICENSE).
 
 The WhiteSur themes (GPL-3.0) are not part of this repository; they are downloaded from the original during installation.
 
@@ -244,7 +246,7 @@ The WhiteSur themes (GPL-3.0) are not part of this repository; they are download
 - [Conky](https://github.com/brndnmtthws/conky) – desktop widgets
 - [rofi](https://github.com/davatorium/rofi) – Spotlight search
 - [Inter](https://rsms.me/inter/) – font
-- [PyGObject / GTK 3](https://pygobject.gnome.org/) – Island UI
+- [PyGObject / GTK 3](https://pygobject.gnome.org/) – MosIsland UI
 - [MET Norway](https://www.met.no/en) (CC BY 4.0), [OpenStreetMap](https://www.openstreetmap.org/copyright) (ODbL), [LRCLIB](https://lrclib.net) – weather, geocoding, lyrics
 - Ideas: [Island](https://github.com/exuupery/island) by exuupery and [Nusa](https://rama2555.github.io/nusa/) by Rama (both Windows, closed source) – no code or artwork reused
 - Built with the help of Claude (Anthropic)

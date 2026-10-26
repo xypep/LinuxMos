@@ -13,7 +13,7 @@ Die Linux-Mint-Version des Videos „Windows 27 Golden Gate“: Linux Mint sieht
 3. [Schnellinstallation](#schnellinstallation)
 4. [Optionen](#optionen)
 5. [Schritt für Schritt (manuell, wie im Video)](#schritt-für-schritt-manuell-wie-im-video)
-6. [Island (Dynamic Island)](#island-dynamic-island)
+6. [MosIsland (Dynamic Island)](#mosisland-dynamic-island)
 7. [Aktualisieren](#aktualisieren)
 8. [Performance – warum das hier nicht 80 % CPU frisst](#performance--warum-das-hier-nicht-80--cpu-frisst)
 9. [Anpassen](#anpassen)
@@ -33,7 +33,7 @@ Die Linux-Mint-Version des Videos „Windows 27 Golden Gate“: Linux Mint sieht
 - **Animationen** – schnelle Minimize-Animation Richtung Dock
 - **Widgets** – große Desktop-Uhr und ein System-Widget (CPU/RAM/Disk/Akku, optional Wetter)
 - **Spotlight** – `Super+Space` öffnet die rofi-Suche (Apps, Befehle, Fenster, Dateien)
-- **Island** *(optional, `--island`)* – Dynamic Island oben in der Mitte: Musik mit Synced Lyrics, Clipboard-Verlauf, Datei-Ablage, Aufgaben, Pomodoro, Wasser-Erinnerung, Wetter, Controls, Overlays und ein Maskottchen → [Details](#island-dynamic-island)
+- **MosIsland** *(optional, `--island`)* – Dynamic Island oben in der Mitte: Musik mit Synced Lyrics, Clipboard-Verlauf, Datei-Ablage, Aufgaben, Pomodoro, Wasser-Erinnerung, Wetter, Controls, Overlays und ein Maskottchen → [Details](#mosisland-dynamic-island)
 - **Update** – `./update.sh` holt die neue Version und aktualisiert alles, ohne deine Einstellungen anzufassen
 - **Backup & Undo** – Timeshift-Snapshot (optional) und Sicherung aller geänderten Einstellungen
 
@@ -53,7 +53,7 @@ Die Linux-Mint-Version des Videos „Windows 27 Golden Gate“: Linux Mint sieht
 | Rainmeter Top Bar + Control Center         | Cinnamon-Panel oben (Sound, Netzwerk, Helligkeit)     | 0                |
 | Rainmeter Clock / Big Sur Widgets          | **Conky** (Uhr + System-Widget)                       | ~0,03 %          |
 | Raycast                                    | **rofi** (Spotlight-Theme)                            | 0 (nur wenn offen) |
-| [Island](https://github.com/exuupery/island) / [Nusa](https://rama2555.github.io/nusa/) (Dynamic Island, Windows) | **LinuxMos Island** (eigene Umsetzung, `--island`) | 0,1 % (gemessen) |
+| [Island](https://github.com/exuupery/island) / [Nusa](https://rama2555.github.io/nusa/) (Dynamic Island, Windows) | **MosIsland** (eigene Umsetzung, `--island`) | 0,1 % (gemessen) |
 
 ## Schnellinstallation
 
@@ -81,7 +81,7 @@ cd LinuxMos
 | `--no-widgets`      | Keine Conky-Widgets                                      |
 | `--no-spotlight`    | Keine Spotlight-Suche                                    |
 | `--firefox`         | Zusätzlich WhiteSur-Theme für Firefox                    |
-| `--island`          | [Island](#island-dynamic-island) installieren (Opt-in)   |
+| `--island`          | [MosIsland](#mosisland-dynamic-island) installieren (Opt-in) |
 | `--snapshot`        | Timeshift-Snapshot ohne Nachfrage                        |
 | `--no-snapshot`     | Keinen Timeshift-Snapshot                                |
 | `-y`, `--yes`       | Alle Rückfragen automatisch mit „ja“ beantworten         |
@@ -92,7 +92,7 @@ Beispiel:
 ./install.sh --weather "Hamburg" --snapshot --island
 ```
 
-`--weather` setzt den Ort für das Conky-Widget und für die Island gleichzeitig.
+`--weather` setzt den Ort für das Conky-Widget und für die MosIsland gleichzeitig.
 
 Das Script ist **idempotent**: Du kannst es mehrfach ausführen, zum Beispiel um von Dark auf `--light` zu wechseln. Das Original-Backup wird dabei nicht überschrieben.
 
@@ -226,11 +226,11 @@ Bedienung in der Suche:
 
 ---
 
-## Island (Dynamic Island)
+## MosIsland (Dynamic Island)
 
 Eine schwarze Pille oben in der Mitte, direkt unter der Top Bar. Sie zeigt, was gerade passiert, und klappt zu einer Toolbox auf, wenn du mit der Maus drüberfährst. Inspiriert von [Island](https://github.com/exuupery/island), [Nusa](https://rama2555.github.io/nusa/) (beide Windows) und Apples Dynamic Island.
 
-> **Kein Port, sondern eine eigene Umsetzung.** Island und Nusa sind Closed-Source-Apps für Windows: In ihren Repos liegen nur README, Screenshots bzw. die Website, eine Lizenz gibt es nicht. LinuxMos Island ist von Grund auf für Linux Mint Cinnamon geschrieben (Python + GTK3) und nutzt weder Code noch Grafiken der Originale.
+> **Kein Port, sondern eine eigene Umsetzung.** Island und Nusa sind Closed-Source-Apps für Windows: In ihren Repos liegen nur README, Screenshots bzw. die Website, eine Lizenz gibt es nicht. MosIsland ist von Grund auf für Linux Mint Cinnamon geschrieben (Python + GTK3) und nutzt weder Code noch Grafiken der Originale.
 
 ```bash
 ./install.sh --island            # zusammen mit allem anderen
@@ -263,7 +263,7 @@ Manche Hinweise sind klickbar: Ein Klick auf die Wasser-Erinnerung trägt eine P
 |---|---|
 | ![Jetzt](img/island-home.png) | **Jetzt** – Cover, Titel, ⏮ ⏯ ⏭, **auf den Fortschrittsbalken klicken zum Spulen**; darunter Wetter, Timer, Akku |
 | ![Lyrics](img/island-lyrics.png) | **Synced Lyrics** – Lyrics-Knopf im Player: Jede Zeile leuchtet auf, während sie gesungen wird. **Klick auf eine Zeile springt dorthin.** Optional zeigt die eingeklappte Pille die aktuelle Zeile. Quelle: [LRCLIB](https://lrclib.net) (kostenlos, ohne Konto). |
-| ![Zwischenablage](img/island-clipboard.png) | **Zwischenablage** – Verlauf (Text + Bilder) mit Suche und Pins. **Ein Klick fügt den Eintrag direkt ins Fenster ein, in dem du gerade tippst.** Terminals bekommen automatisch `Ctrl+Shift+V`. Passwörter aus KeePassXC & Co. werden nie gespeichert. |
+| ![Zwischenablage](img/island-clipboard.png) | **Zwischenablage** – Verlauf (Text + Bilder) mit Suche und Pins. **Ein Klick fügt den Eintrag direkt ins Fenster ein, in dem du gerade tippst.** Terminals bekommen automatisch `Ctrl+Shift+V`. Passwörter aus KeePassXC & Co. werden nie gespeichert. Optional werden nicht angepinnte Einträge nach X Minuten automatisch gelöscht (Tray-Menü). |
 | ![Ablage](img/island-shelf.png) | **Ablage** – Dateien auf die Insel ziehen, sie warten dort, bis du sie in ein anderes Fenster ziehst (einzeln oder „Alle ziehen“). Doppelklick öffnet. Die Dateien bleiben, wo sie sind, gespeichert wird nur der Pfad. |
 | ![Aufgaben](img/island-todo.png) | **Aufgaben** – To-do-Liste mit Erinnerung: Aufgabe eintippen, Zeit dazu (`14:30`, `9`, `in 20 min`, `in 2 h`), und die Insel tippt dir zur Zeit auf die Schulter. Erledigtes von gestern räumt sich selbst auf. |
 | ![Notiz & Fokus](img/island-note.png) | **Notiz & Fokus** – Notiz, die sich selbst speichert. **Pomodoro**: 25 min Fokus, dann startet die Pause automatisch (jede 4. ist 15 min lang), dazu ein leiser Gong. Dazu normale Timer. |
@@ -273,15 +273,16 @@ Manche Hinweise sind klickbar: Ein Klick auf die Wasser-Erinnerung trägt eine P
 
 ### Tray-Menü
 
-Das Island-Icon liegt in der Top Bar neben der Uhr (Rechtsklick):
+Das MosIsland-Icon liegt in der Top Bar neben der Uhr (Rechtsklick):
 
 | Schalter                          | Wirkung                                                         |
 |-----------------------------------|-----------------------------------------------------------------|
 | Mit Cinnamon starten              | Autostart an/aus                                                |
 | Maskottchen                       | Augen im Leerlauf an/aus                                        |
 | Minimal-Notch                     | Eingeklappt nur ein dünner Strich, z. B. für Laptops mit dickem Rand oben oder damit Browser-Tabs frei bleiben |
-| Lautstärke & Helligkeit anzeigen  | Island-Overlays statt Cinnamons eigenem OSD (aus = Cinnamon-OSD zurück) |
-| Über Island · Beenden             |                                                                 |
+| Lautstärke & Helligkeit anzeigen  | MosIsland-Overlays statt Cinnamons eigenem OSD (aus = Cinnamon-OSD zurück) |
+| Zwischenablage automatisch leeren | Nicht angepinnte Einträge nach 15 min, 1 h oder 24 h löschen (Standard: aus) |
+| Über MosIsland · Beenden          |                                                                 |
 
 Ein Linksklick aufs Icon klappt die Insel auf.
 
@@ -291,7 +292,7 @@ Ein Linksklick aufs Icon klappt die Insel auf.
 |-------------------------------|---------------------------------------------------------|
 | Aufklappen                    | Maus auf die Pille (oder klicken)                       |
 | Zuklappen                     | Maus weg, `Esc`                                         |
-| Island öffnen/schließen       | `Ctrl+Alt+I`                                            |
+| MosIsland öffnen/schließen    | `Ctrl+Alt+I`                                            |
 | Zwischenablage                | `Ctrl+Alt+V` → tippen zum Suchen → `Enter` fügt ein     |
 | Lautstärke                    | Mausrad auf der eingeklappten Pille                     |
 | Dateien ablegen               | Datei aus Nemo/Desktop auf die Pille ziehen             |
@@ -321,6 +322,7 @@ Die meisten Schalter liegen im Tray-Menü bzw. im Wasser-Tab (⚙). Alles steht 
 | `osd`                | `true`    | Lautstärke-/Helligkeits-Overlays                             |
 | `lyrics_in_pill`     | `false`   | Aktuelle Lyrics-Zeile in der eingeklappten Pille             |
 | `clipboard_limit`    | `50`      | Einträge im Verlauf (angepinnte zählen nicht)                 |
+| `clipboard_autodelete_min` | `0` | Nicht angepinnte Einträge nach so vielen Minuten löschen (`0` = nie) |
 | `water_portion_ml` / `water_goal_ml` | `250` / `2000` | Portion und Tagesziel                     |
 | `water_start` / `water_end` | `09:00` / `21:00` | Aktive Stunden für Erinnerungen                     |
 | `water_interval_min` | `60`      | Erinnerung frühestens so lange nach dem letzten Schluck       |
@@ -352,7 +354,7 @@ Möglich wird das, weil es keinen Polling-Loop gibt. Jede Quelle meldet sich von
 
 Gezeichnet wird nur, während sich etwas bewegt: beim Auf- und Zuklappen (~240 ms) oder beim Blinzeln des Maskottchens (~180 ms alle paar Sekunden).
 
-**RAM: ~115 MB.** Ehrlich gesagt ist das der größte Posten. Er kommt fast komplett von Python + GTK3 selbst: Ein leeres GTK-Fenster in Python braucht schon ~93 MB. Nusa schafft ~30 MB, weil es in Rust geschrieben ist. Dafür braucht LinuxMos Island keinen Compiler und lässt sich direkt anpassen.
+**RAM: ~115 MB.** Ehrlich gesagt ist das der größte Posten. Er kommt fast komplett von Python + GTK3 selbst: Ein leeres GTK-Fenster in Python braucht schon ~93 MB. Nusa schafft ~30 MB, weil es in Rust geschrieben ist. Dafür braucht MosIsland keinen Compiler und lässt sich direkt anpassen.
 
 ### Was nicht dabei ist
 
@@ -373,9 +375,9 @@ cd LinuxMos
 1. Es holt die neue LinuxMos-Version (`git pull`) und startet sich danach mit der neuen Fassung selbst neu.
 2. Es installiert nur neue Abhängigkeiten nach (kein apt-Lauf, wenn nichts fehlt).
 3. Es lädt die WhiteSur-Themes neu (`--no-themes` überspringt das).
-4. Es aktualisiert Island, Tools und Skripte und startet die Island neu.
+4. Es aktualisiert MosIsland, Tools und Skripte und startet die MosIsland neu.
 
-**Deine Einstellungen bleiben**: Panel, Dock, Widget-Positionen, Island-Daten, Wetter-Ort und Tray-Schalter fasst es nicht an. Die Optionen von damals (`--light`, `--island`, …) merkt sich `install.sh` in `~/.local/share/linuxmos/install.conf`.
+**Deine Einstellungen bleiben**: Panel, Dock, Widget-Positionen, MosIsland-Daten, Wetter-Ort und Tray-Schalter fasst es nicht an. Die Optionen von damals (`--light`, `--island`, …) merkt sich `install.sh` in `~/.local/share/linuxmos/install.conf`.
 
 | Option          | Wirkung                                                          |
 |-----------------|------------------------------------------------------------------|
@@ -408,9 +410,9 @@ Hast du im Repo selbst Dateien geändert, überspringt `update.sh` den `git pull
 | Conky System (`stats.conf`) | ~0,03 % | ~15 MB   |
 | Plank (ohne Hover)      | ~0 %     | ~30 MB   |
 | rofi                    | 0 % (nicht aktiv) | 0 MB |
-| Island (optional)       | ~0,1 %   | ~115 MB  |
+| MosIsland (optional)    | ~0,1 %   | ~115 MB  |
 
-Die Conky-Werte wurden 30 s lang unter Xorg gemessen, die Island-Werte 20 s lang unter Cinnamon 6. Für Plank und rofi sind es typische Erfahrungswerte.
+Die Conky-Werte wurden 30 s lang unter Xorg gemessen, die MosIsland-Werte 20 s lang unter Cinnamon 6. Für Plank und rofi sind es typische Erfahrungswerte.
 
 ### Selbst messen
 
@@ -490,7 +492,7 @@ wttr.in ist manchmal überlastet. Das Widget versucht es alle 30 min automatisch
 </details>
 
 <details>
-<summary><b>Island startet nicht</b></summary>
+<summary><b>MosIsland startet nicht</b></summary>
 
 Im Terminal starten, um die Fehlermeldung zu sehen:
 
@@ -507,7 +509,7 @@ sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-wnck-3.0 xdot
 </details>
 
 <details>
-<summary><b>Island: Klick auf einen Clipboard-Eintrag fügt nichts ein</b></summary>
+<summary><b>MosIsland: Klick auf einen Clipboard-Eintrag fügt nichts ein</b></summary>
 
 Einfügen braucht `xdotool` (installiert `--island` mit). In Fenstern, die als root laufen, blockiert X11 das. Der Eintrag liegt dann trotzdem in der Zwischenablage, also einfach `Ctrl+V` drücken.
 
@@ -517,10 +519,10 @@ Einfügen braucht `xdotool` (installiert `--island` mit). In Fenstern, die als r
 
 ```bash
 ./uninstall.sh           # Einstellungen, Panel, Shortcuts wiederherstellen; Dock und Widgets entfernen
-./uninstall.sh --purge   # zusätzlich Themes, Icons, Cursor, Wallpaper und Island-Daten löschen (inkl. Aufgaben, Wasser-Log)
+./uninstall.sh --purge   # zusätzlich Themes, Icons, Cursor, Wallpaper und MosIsland-Daten löschen (inkl. Aufgaben, Wasser-Log)
 ```
 
-Ohne `--purge` bleiben deine Island-Daten (Notiz, Clipboard-Verlauf, Ablage) erhalten.
+Ohne `--purge` bleiben deine MosIsland-Daten (Notiz, Clipboard-Verlauf, Ablage) erhalten.
 
 Pakete entfernst du bei Bedarf manuell:
 
@@ -533,8 +535,8 @@ Wenn alles schiefgeht: **Timeshift → Restore** auf den Snapshot „Before Linu
 ## Projektstruktur
 
 ```text
-install.sh                 Installation (Themes, Panel, Dock, Effekte, Widgets, Spotlight, Island)
-update.sh                  Update (git pull, Abhängigkeiten, Themes, Island) ohne Einstellungen zu ändern
+install.sh                 Installation (Themes, Panel, Dock, Effekte, Widgets, Spotlight, MosIsland)
+update.sh                  Update (git pull, Abhängigkeiten, Themes, MosIsland) ohne Einstellungen zu ändern
 uninstall.sh               Wiederherstellung aus dem Backup
 lib/cinnamon_tweaks.py     Helfer für Panel, Applets, Shortcuts, Templates
 config/conky/              Uhr- und System-Widget
@@ -542,8 +544,8 @@ config/rofi/               Spotlight-Theme (Template)
 bin/linuxmos-widgets       Widgets starten/stoppen
 bin/linuxmos-spotlight     Spotlight öffnen/schließen
 bin/linuxmos-perf          CPU-Last messen
-bin/linuxmos-island        Island starten/steuern (Hotkeys gehen per D-Bus direkt an die laufende Insel)
-island/                    Island (Python + GTK3)
+bin/linuxmos-island        MosIsland starten/steuern (Hotkeys gehen per D-Bus direkt an die laufende Insel)
+island/                    MosIsland (Python + GTK3)
   app.py                   Fenster, Zustände, Hover/Fokus/Einfügen, Drag & Drop, Lyrics-Takt, Pomodoro
   pages.py                 Die acht Tabs
   tray.py                  Tray-Icon mit den Schaltern
@@ -559,8 +561,10 @@ Gesichert wird nach `~/.local/share/linuxmos/backup/`, der Download-Cache liegt 
 
 - [WhiteSur GTK Theme, Icons, Cursors, Wallpapers](https://github.com/vinceliuice) von vinceliuice (GPL-3.0). Die Themes werden beim Installieren direkt vom Original-Repo geladen und sind nicht in diesem Repo enthalten.
 - [Plank](https://launchpad.net/plank), [Conky](https://github.com/brndnmtthws/conky), [rofi](https://github.com/davatorium/rofi), [Inter](https://rsms.me/inter/)
-- LinuxMos Island ist inspiriert von [Island](https://github.com/exuupery/island) von exuupery und [Nusa](https://rama2555.github.io/nusa/) von Rama (beide Windows, Closed Source). Code und Grafiken sind eigenständig, es besteht keine Verbindung zu den Originalen.
+- MosIsland ist inspiriert von [Island](https://github.com/exuupery/island) von exuupery und [Nusa](https://rama2555.github.io/nusa/) von Rama (beide Windows, Closed Source). Code und Grafiken sind eigenständig, es besteht keine Verbindung zu den Originalen.
 - Lyrics: [LRCLIB](https://lrclib.net)
 - Wetterdaten: [MET Norway](https://www.met.no/en) (CC BY 4.0), Ortssuche: [OpenStreetMap](https://www.openstreetmap.org/copyright)-Mitwirkende (ODbL)
+
+LinuxMos selbst steht unter der [MIT-Lizenz](../LICENSE).
 
 Dieses Projekt steht in keiner Verbindung zu Apple Inc. „macOS“ ist eine Marke von Apple Inc.

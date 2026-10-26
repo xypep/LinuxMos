@@ -8,7 +8,7 @@
 
 Macht Linux Mint Cinnamon zum leichtgewichtigen macOS-Look-alike – mit Dock, Top Bar, Widgets, Spotlight und optional einer Dynamic Island – ohne dass der Desktop im Leerlauf CPU frisst.
 
-![Island](https://img.shields.io/badge/Island-1.1.0-blue)
+![MosIsland](https://img.shields.io/badge/MosIsland-1.2.0-blue)
 ![Platform](https://img.shields.io/badge/platform-Linux%20Mint%2022%20Cinnamon-87CF3E)
 ![Display server](https://img.shields.io/badge/display-X11-lightgrey)
 
@@ -17,9 +17,9 @@ Macht Linux Mint Cinnamon zum leichtgewichtigen macOS-Look-alike – mit Dock, T
 ## Preview
 
 <p align="center">
-  <img src="docs/img/island-home.png" alt="Island aufgeklappt: Musik mit Cover, Wetter, Pomodoro-Timer" width="45%">
+  <img src="docs/img/island-home.png" alt="MosIsland aufgeklappt: Musik mit Cover, Wetter, Pomodoro-Timer" width="45%">
   &nbsp;
-  <img src="docs/img/island-pills-nusa.png" alt="Island eingeklappt: Lyrics, Pomodoro, Wasser-Erinnerung, Kopfhörer, Helligkeit, Feststelltaste" width="45%">
+  <img src="docs/img/island-pills-nusa.png" alt="MosIsland eingeklappt: Lyrics, Pomodoro, Wasser-Erinnerung, Kopfhörer, Helligkeit, Feststelltaste" width="45%">
 </p>
 
 ---
@@ -55,19 +55,19 @@ Macht Linux Mint Cinnamon zum leichtgewichtigen macOS-Look-alike – mit Dock, T
 
 <img src="docs/img/widgets.png" alt="Conky-Uhr und System-Widget" width="70%">
 
-**Island** (optional, `--island`) – eine Dynamic Island oben in der Mitte, inspiriert von [Island](https://github.com/exuupery/island) und [Nusa](https://rama2555.github.io/nusa/)
+**MosIsland** (optional, `--island`) – eine Dynamic Island oben in der Mitte, inspiriert von [Island](https://github.com/exuupery/island) und [Nusa](https://rama2555.github.io/nusa/). Eigener Name, damit sie nicht mit exuuperys Island verwechselt wird; der Befehl bleibt `linuxmos-island`.
 - **Musik** von jedem MPRIS-Player (Spotify, Firefox/YouTube, VLC …) mit Cover, Play/Pause/Skip und Spulen
 - **Synced Lyrics** (LRCLIB) – Zeile leuchtet mit, Klick springt hin, optional in der Pille
-- **Zwischenablage** – Verlauf mit Suche und Pins, ein Klick fügt direkt ins aktive Fenster ein
+- **Zwischenablage** – Verlauf mit Suche und Pins, ein Klick fügt direkt ins aktive Fenster ein, optional automatisch leeren nach X Minuten (Pins bleiben)
 - **Ablage** – Dateien auf die Insel ziehen und später wieder herausziehen
 - **Aufgaben** mit Erinnerung, **Notiz**, **Pomodoro** und Timer, **Wasser-Erinnerung** mit Tagesziel und Diagramm
 - **Wetter** (MET Norway, ohne API-Key) mit Regenwarnung
 - **Steuerung** – WLAN, Bluetooth, Nicht stören, Dark Mode, Mikro, Lautstärke, Helligkeit, Screenshot, Sperren, Ruhezustand, Neustart, Aus
 - **Live-Hinweise** – Lautstärke, Helligkeit, Feststelltaste, Tastatur-Sprache, Laden, WLAN weg, Kopfhörer verbunden
 - **Maskottchen** – Augen im Leerlauf, die eindösen und winken, wenn du zurückkommst
-- **Tray-Menü** – Autostart, Maskottchen, Minimal-Notch, OSD, Beenden
+- **Tray-Menü** – Autostart, Maskottchen, Minimal-Notch, OSD, Zwischenablage automatisch leeren, Beenden
 
-**Leichtgewichtig** – gemessen: Conky-Widgets ~0,03 % CPU, Island ~0,1 % CPU (unter Cinnamon 6, Musik läuft). Kein Blur-Compositor, keine Polling-Schleifen.
+**Leichtgewichtig** – gemessen: Conky-Widgets ~0,03 % CPU, MosIsland ~0,1 % CPU (unter Cinnamon 6, Musik läuft). Kein Blur-Compositor, keine Polling-Schleifen.
 
 ---
 
@@ -90,7 +90,7 @@ Alle Pakete installiert `install.sh` selbst, u. a. `plank`, `conky-std`, `rofi`,
 git clone https://github.com/xypep/LinuxMos.git
 cd LinuxMos
 ./install.sh                 # nur der macOS-Look
-./install.sh --island        # inklusive Island
+./install.sh --island        # inklusive MosIsland
 ```
 
 ### Option B – als ZIP
@@ -107,7 +107,7 @@ Danach **einmal ab- und wieder anmelden**.
 
 1. Installieren (siehe oben), z. B. `./install.sh --island --weather Berlin`
 2. Ab- und wieder anmelden
-3. Maus auf die Island oben in der Mitte fahren – sie klappt auf
+3. Maus auf die MosIsland oben in der Mitte fahren – sie klappt auf
 4. Updates: `./update.sh` · Rückgängig: `./uninstall.sh`
 
 ### Optionen von `install.sh`
@@ -120,8 +120,8 @@ Danach **einmal ab- und wieder anmelden**.
 |---------------------|----------------------------------------------------------|
 | `--light`           | Helles Design statt Dark Mode                            |
 | `--minimal`         | Alle Animationen aus                                     |
-| `--weather CITY`    | Wetter-Ort für Widget und Island                         |
-| `--island`          | Island installieren                                      |
+| `--weather CITY`    | Wetter-Ort für Widget und MosIsland                      |
+| `--island`          | MosIsland installieren                                   |
 | `--no-widgets`      | Keine Conky-Widgets                                      |
 | `--no-spotlight`    | Keine Spotlight-Suche                                    |
 | `--firefox`         | WhiteSur-Theme auch für Firefox                          |
@@ -135,10 +135,10 @@ Danach **einmal ab- und wieder anmelden**.
 ./update.sh                  # aktualisieren (Einstellungen bleiben)
 ./update.sh --full           # zusätzlich das Design neu anwenden
 ./uninstall.sh               # alles zurücksetzen
-./uninstall.sh --purge       # zusätzlich Themes und Island-Daten löschen
+./uninstall.sh --purge       # zusätzlich Themes und MosIsland-Daten löschen
 linuxmos-perf                # CPU-Last des Desktops messen
 linuxmos-widgets restart     # Conky-Widgets neu starten
-linuxmos-island --tab todo   # Island auf einem Tab öffnen
+linuxmos-island --tab todo   # MosIsland auf einem Tab öffnen
 linuxmos-island --set-city "München"
 ```
 
@@ -148,9 +148,9 @@ linuxmos-island --set-city "München"
 |------------------|-------------------------------------------------------------|
 | `Super+Space`    | Spotlight-Suche öffnen/schließen                            |
 | `Shift+→`        | In der Suche: Modus wechseln (Apps, Run, Fenster, Dateien)  |
-| `Ctrl+Alt+I`     | Island öffnen/schließen                                     |
+| `Ctrl+Alt+I`     | MosIsland öffnen/schließen                                  |
 | `Ctrl+Alt+V`     | Zwischenablage-Verlauf (tippen = suchen, `Enter` = einfügen)|
-| `Esc`            | Island zuklappen                                            |
+| `Esc`            | MosIsland zuklappen                                         |
 | Mausrad auf der Pille | Lautstärke ±5 %                                        |
 
 ---
@@ -164,7 +164,7 @@ linuxmos-island --set-city "München"
 > `install.sh` lädt die WhiteSur-Themes direkt von GitHub (vinceliuice) und führt deren Installer aus, außerdem installiert es Pakete per `sudo apt`. Nicht mit `sudo` starten – das Script fragt selbst nach dem Passwort.
 
 > [!IMPORTANT]
-> Netzwerkzugriffe: Wetter über api.met.no und nominatim.openstreetmap.org (Island) bzw. wttr.in (Conky), Lyrics über lrclib.net – jeweils nur, wenn du die Funktion nutzt. Der Clipboard-Verlauf liegt unverschlüsselt in `~/.local/share/linuxmos/island/clipboard.json`; Kopien aus Passwort-Managern werden nur übersprungen, wenn diese sie als geheim markieren (KeePassXC & Co.).
+> Netzwerkzugriffe: Wetter über api.met.no und nominatim.openstreetmap.org (MosIsland) bzw. wttr.in (Conky), Lyrics über lrclib.net – jeweils nur, wenn du die Funktion nutzt. Der Clipboard-Verlauf liegt unverschlüsselt in `~/.local/share/linuxmos/island/clipboard.json`; Kopien aus Passwort-Managern werden nur übersprungen, wenn diese sie als geheim markieren (KeePassXC & Co.).
 
 > [!IMPORTANT]
 > Ein Klick auf einen Clipboard-Eintrag sendet per `xdotool` `Ctrl+V` (in Terminals `Ctrl+Shift+V`) an das zuletzt aktive Fenster.
@@ -173,7 +173,7 @@ linuxmos-island --set-city "München"
 
 ## Konfiguration
 
-Island: `~/.config/linuxmos/island/config.json` – die meisten Schalter gibt es auch im Tray-Menü und im Wasser-Tab.
+MosIsland: `~/.config/linuxmos/island/config.json` – die meisten Schalter gibt es auch im Tray-Menü und im Wasser-Tab.
 
 ```json
 {
@@ -184,6 +184,7 @@ Island: `~/.config/linuxmos/island/config.json` – die meisten Schalter gibt es
   "osd": true,
   "lyrics_in_pill": false,
   "clipboard_limit": 50,
+  "clipboard_autodelete_min": 0,
   "water_goal_ml": 2000,
   "water_portion_ml": 250,
   "water_reminders": true,
@@ -200,18 +201,18 @@ Weitere Dateien:
 | `~/.config/linuxmos/conky/*.conf`             | Position und Aussehen der Widgets (`gap_x`, `gap_y`, `alignment`) |
 | `~/.config/linuxmos/rofi/spotlight.rasi`      | Aussehen der Spotlight-Suche                   |
 | `~/.local/share/linuxmos/install.conf`        | Gewählte Install-Optionen (nutzt `update.sh`)  |
-| `~/.local/share/linuxmos/island/`             | Island-Daten: Notiz, Aufgaben, Wasser-Log, Verlauf, Ablage |
+| `~/.local/share/linuxmos/island/`             | MosIsland-Daten: Notiz, Aufgaben, Wasser-Log, Verlauf, Ablage |
 
 ---
 
 ## Bekannte Probleme
 
-- **Kompletter `install.sh`-Lauf auf echtem Mint 22 noch nicht getestet** – Island, Panel-Umbau, Update und Uninstall sind unter Cinnamon 6 getestet, der WhiteSur-Installationsschritt nicht. Bitte Fehler melden.
-- **Island braucht ~115 MB RAM** – fast komplett Python + GTK3 selbst.
+- **Kompletter `install.sh`-Lauf auf echtem Mint 22 noch nicht getestet** – MosIsland, Panel-Umbau, Update und Uninstall sind unter Cinnamon 6 getestet, der WhiteSur-Installationsschritt nicht. Bitte Fehler melden.
+- **MosIsland braucht ~115 MB RAM** – fast komplett Python + GTK3 selbst.
 - **Kein echtes „Genie“ und kein Blur** – bewusst, weil beides dauerhaft Leistung kostet.
-- **Island nur unter X11** (Standard bei Mint Cinnamon); Oberfläche nur auf Deutsch.
+- **MosIsland nur unter X11** (Standard bei Mint Cinnamon); Oberfläche nur auf Deutsch.
 - **Lyrics/Wetter** hängen von LRCLIB bzw. MET Norway ab – nicht jeder Song hat synchronisierte Lyrics.
-- **Ist die Island beendet**, fehlt das Lautstärke-OSD (weil Cinnamons eigenes abgeschaltet ist) – im Tray-Menü „Lautstärke & Helligkeit anzeigen“ ausschalten bringt Cinnamons OSD zurück.
+- **Ist die MosIsland beendet**, fehlt das Lautstärke-OSD (weil Cinnamons eigenes abgeschaltet ist) – im Tray-Menü „Lautstärke & Helligkeit anzeigen“ ausschalten bringt Cinnamons OSD zurück.
 - **Einfügen per Klick** funktioniert nicht in Fenstern, die als root laufen – der Eintrag liegt dann trotzdem in der Zwischenablage.
 
 Weitere Lösungen: [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.md#troubleshooting)
@@ -222,16 +223,17 @@ Weitere Lösungen: [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.md#tro
 
 - [x] macOS-Look mit Theme, Top Bar, Dock, Widgets, Spotlight
 - [x] Backup, Uninstall und Update (`update.sh`)
-- [x] Island mit Musik, Lyrics, Zwischenablage, Ablage, Aufgaben, Pomodoro, Wasser, Wetter, Steuerung
+- [x] MosIsland mit Musik, Lyrics, Zwischenablage, Ablage, Aufgaben, Pomodoro, Wasser, Wetter, Steuerung
 - [x] Live-Hinweise, Maskottchen, Tray-Menü
+- [x] Zwischenablage automatisch leeren (`clipboard_autodelete_min`)
 - [ ] Kompletter Testlauf auf Linux Mint 22.x
-- [ ] Englische Oberfläche für die Island
+- [ ] Englische Oberfläche für die MosIsland
 
 ---
 
 ## Lizenz
 
-Dieses Projekt steht unter der [LIZENZ]-Lizenz – siehe [LICENSE](LICENSE).
+Dieses Projekt steht unter der MIT-Lizenz – siehe [LICENSE](LICENSE).
 
 Die WhiteSur-Themes (GPL-3.0) sind nicht Teil dieses Repos, sie werden bei der Installation vom Original geladen.
 
@@ -244,7 +246,7 @@ Die WhiteSur-Themes (GPL-3.0) sind nicht Teil dieses Repos, sie werden bei der I
 - [Conky](https://github.com/brndnmtthws/conky) – Desktop-Widgets
 - [rofi](https://github.com/davatorium/rofi) – Spotlight-Suche
 - [Inter](https://rsms.me/inter/) – Schrift
-- [PyGObject / GTK 3](https://pygobject.gnome.org/) – Island-Oberfläche
+- [PyGObject / GTK 3](https://pygobject.gnome.org/) – MosIsland-Oberfläche
 - [MET Norway](https://www.met.no/en) (CC BY 4.0), [OpenStreetMap](https://www.openstreetmap.org/copyright) (ODbL), [LRCLIB](https://lrclib.net) – Wetter, Ortssuche, Lyrics
 - Ideen: [Island](https://github.com/exuupery/island) von exuupery und [Nusa](https://rama2555.github.io/nusa/) von Rama (beide Windows, Closed Source) – kein Code und keine Grafiken übernommen
 - Entwickelt mit Unterstützung von Claude (Anthropic)

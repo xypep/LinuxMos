@@ -112,7 +112,8 @@ class IslandWindow(Gtk.Window):
         # Services first: the pages read from them while building
         self.media = MprisWatcher(self._on_media, self._on_media_position)
         self.lyrics = LyricsFetcher()
-        self.clipboard = ClipboardHistory(self.config["clipboard_limit"], self._on_clipboard)
+        self.clipboard = ClipboardHistory(self.config["clipboard_limit"], self.config["clipboard_autodelete_min"],
+                                          self._on_clipboard)
         self.shelf = Shelf(self._on_shelf)
         self.timer = Timer(self._on_timer_tick, self._on_timer_done)
         self.weather = Weather(self.config, self._on_weather)
@@ -162,7 +163,7 @@ class IslandWindow(Gtk.Window):
     # =========================================================================
     def _setup_window(self):
         self.set_name("island")
-        self.set_title("Island")
+        self.set_title("MosIsland")
         visual = self.get_screen().get_rgba_visual()
         if visual:
             self.set_visual(visual)
@@ -833,6 +834,8 @@ class IslandWindow(Gtk.Window):
         self.config.save()
         if key == "lyrics_in_pill":
             self._update_lyrics_track()
+        elif key == "clipboard_autodelete_min":
+            self.clipboard.set_autodelete(value)
         self.refresh_collapsed()
 
     # ---- lyrics ------------------------------------------------------------------
@@ -975,7 +978,7 @@ def _set_process_name(name=b"linuxmos-island"):
 def main(argv=None):
     argv = list(sys.argv if argv is None else argv)
     if "--version" in argv:
-        print(f"LinuxMos Island {__version__}")
+        print(f"MosIsland {__version__}")
         return 0
     if "--set-city" in argv:
         i = argv.index("--set-city")

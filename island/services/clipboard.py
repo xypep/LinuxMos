@@ -17,12 +17,18 @@ TEXT_TARGETS = {"UTF8_STRING", "STRING", "TEXT", "text/plain", "text/plain;chars
 
 
 class ClipboardHistory:
-    def __init__(self, limit, on_change):
+    def __init__(self, limit, autodelete_min, on_change):
         self.limit = limit
+        self.autodelete_min = max(0, int(autodelete_min or 0))
         self._on_change = on_change
         stored = load_json(HISTORY_FILE, [])
         self.items = [i for i in stored if isinstance(i, dict) and self._valid(i)]
         self._save_id = 0
+        self._expire_id = 0
+        # Entries that ran out while the island was off go right away
+        if self._drop_expired():
+            self._queue_save()
+        self._schedule_expiry()
         self._clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
         self._clipboard.connect("owner-change", self._on_owner_change)
 
@@ -102,6 +108,9 @@ class ClipboardHistory:
 
     def toggle_pin(self, item):
         item["pinned"] = not item.get("pinned")
+        if not item["pinned"]:
+            # Unpinned entries get a fresh auto-delete period instead of vanishing at once
+            item["unpinned"] = time.time()
         self._changed()
 
     def remove(self, item):
@@ -117,9 +126,53 @@ class ClipboardHistory:
     def image_path(self, item):
         return IMAGE_DIR / item["image"]
 
+    # ---- auto-delete -------------------------------------------------------
+    def set_autodelete(self, minutes):
+        self.autodelete_min = max(0, int(minutes or 0))
+        self._changed()
+
+    def prune(self):
+        """Re-check on demand: the timer is monotonic and pauses during suspend."""
+        if self._drop_expired():
+            self._changed()
+
+    def _expires_at(self, item):
+        return max(item.get("time", 0), item.get("unpinned", 0)) + self.autodelete_min * 60
+
+    def _drop_expired(self):
+        if not self.autodelete_min:
+            return False
+        now = time.time()
+        expired = [i for i in self.items if not i.get("pinned") and self._expires_at(i) <= now]
+        for item in expired:
+            self._forget(item)
+        return bool(expired)
+
+    def _schedule_expiry(self):
+        """One-shot timer for the next entry that runs out (no polling)."""
+        if self._expire_id:
+            GLib.source_remove(self._expire_id)
+            self._expire_id = 0
+        if not self.autodelete_min:
+            return
+        due = [self._expires_at(i) for i in self.items if not i.get("pinned")]
+        if due:
+            delay = max(1, int(min(due) - time.time()) + 1)
+            self._expire_id = GLib.timeout_add_seconds(delay, self._on_expire)
+
+    def _on_expire(self):
+        self._expire_id = 0
+        self._changed()
+        return GLib.SOURCE_REMOVE
+
     # ---- persistence -------------------------------------------------------
     def _changed(self):
+        self._drop_expired()
+        self._schedule_expiry()
         self._on_change()
+        self._queue_save()
+
+    def _queue_save(self):
         if self._save_id:
             GLib.source_remove(self._save_id)
         self._save_id = GLib.timeout_add(800, self._save)

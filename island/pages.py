@@ -296,6 +296,7 @@ class ClipboardPage(Page):
             self.rebuild()
 
     def on_show(self):
+        self.island.clipboard.prune()
         if self._dirty:
             self.rebuild()
 
