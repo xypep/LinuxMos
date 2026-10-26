@@ -44,6 +44,14 @@ DEFAULT_CONFIG = {
     "notifications_on_island": True,
     "notifications_dnd": False,
     "notifications_exclude": [],
+    # Live marks: microphone/camera in use (dots + mute button), VPN on/off, downloads in progress.
+    # vpn_lookup asks ipinfo.io for the VPN's country and IP (a request to an outside service: off by
+    # default); downloads_dir "" = the XDG download folder
+    "privacy_indicator": True,
+    "vpn_status": True,
+    "vpn_lookup": False,
+    "downloads_progress": True,
+    "downloads_dir": "",
     # Water reminder
     "water_goal_ml": 2000,
     "water_portion_ml": 250,

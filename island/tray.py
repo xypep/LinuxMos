@@ -68,6 +68,7 @@ class Tray:
         menu.append(self._screenshot_menu(cfg))
         menu.append(self._read_menu(cfg))
         menu.append(self._notifications_menu())
+        menu.append(self._live_menu(cfg))
         menu.append(self._language_menu(cfg.get("language", "auto")))
         menu.append(Gtk.SeparatorMenuItem())
         item(_("Über MosIsland"), self._about)
@@ -135,6 +136,20 @@ class Tray:
             mi.connect("toggled", lambda w, k=key: self.island.set_option(k, w.get_active()))
             sub.append(mi)
         parent = Gtk.MenuItem(label=_("Text & QR"))
+        parent.set_submenu(sub)
+        return parent
+
+    def _live_menu(self, cfg):
+        sub = Gtk.Menu()
+        for text, key, default in ((_("Mikrofon & Kamera"), "privacy_indicator", True),
+                                   (_("VPN-Status"), "vpn_status", True),
+                                   (_("VPN: Land & IP (fragt ipinfo.io)"), "vpn_lookup", False),
+                                   (_("Download-Fortschritt"), "downloads_progress", True)):
+            mi = Gtk.CheckMenuItem(label=text)
+            mi.set_active(cfg.get(key, default))
+            mi.connect("toggled", lambda w, k=key: self.island.set_option(k, w.get_active()))
+            sub.append(mi)
+        parent = Gtk.MenuItem(label=_("Live-Hinweise"))
         parent.set_submenu(sub)
         return parent
 

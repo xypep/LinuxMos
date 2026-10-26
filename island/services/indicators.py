@@ -2,7 +2,8 @@
 layout, network and Bluetooth audio devices.
 
 Every source is push based, nothing is polled:
-  volume      `pactl subscribe` (a blocked process, 0 % CPU while nothing happens)
+  volume      `pactl subscribe` (a blocked process, 0 % CPU while nothing happens;
+              the microphone indicator reads the same stream)
   brightness  Cinnamon settings daemon: Power.Screen "Changed" signal
   Caps Lock   GDK keymap "state-changed" (XKB events)
   layout      gsettings org.cinnamon.desktop.input-sources "current"
@@ -38,6 +39,7 @@ class Indicators:
         self._net_connected = None
         self._volume_debounce = 0
         self._proxies = []        # keep D-Bus proxies alive
+        self.pactl_listeners = []  # fn(line) for every `pactl subscribe` line (None: sound server gone)
 
         self._watch_volume()
         self._watch_brightness()
@@ -65,6 +67,8 @@ class Indicators:
             line, _length = stream.read_line_finish_utf8(result)
         except GLib.Error:
             line = None
+        for listener in self.pactl_listeners:
+            listener(line)
         if line is None:
             # Sound server restarted: subscribe again in a moment
             GLib.timeout_add_seconds(5, self._watch_volume)

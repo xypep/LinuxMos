@@ -54,6 +54,8 @@ ISLAND_PACKAGES=(
   maim slop xclip
   # Text (Ctrl+Alt+O) und QR-Codes (Ctrl+Alt+Q) vom Bildschirm
   tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng zbar-tools
+  # Ländernamen für den VPN-Hinweis (auf Mint meist schon da)
+  iso-codes
 )
 
 # ---- Defaults ---------------------------------------------------------------

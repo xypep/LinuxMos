@@ -193,6 +193,71 @@ class Eyes(Gtk.DrawingArea):
         return False
 
 
+class LiveDots(Gtk.DrawingArea):
+    """Status marks at the folded island's right end: microphone (orange), camera (green), download ring.
+
+    Static drawings: they only redraw when their state changes.
+    """
+
+    DOT, RING, GAP = 7, 14, 5
+    MIC, MUTED, CAM, RING_FG = (1.0, 0.62, 0.04), (0.6, 0.6, 0.62), (0.19, 0.82, 0.35), (0.04, 0.52, 1.0)
+
+    def __init__(self):
+        super().__init__()
+        self.mic = None          # None | "on" | "muted"
+        self.cam = False
+        self.download = None     # None | -1 (no percentage) | 0..100
+        self.set_valign(Gtk.Align.CENTER)
+        self.set_no_show_all(True)
+
+    def set_state(self, mic, cam, download):
+        """True if the width changed (the pill has to resize)."""
+        if (mic, cam, download) == (self.mic, self.cam, self.download):
+            return False
+        before = self.width
+        self.mic, self.cam, self.download = mic, cam, download
+        self.set_size_request(self.width, self.RING)
+        self.set_visible(self.width > 0)
+        self.queue_draw()
+        return self.width != before
+
+    @property
+    def width(self):
+        parts = [self.DOT] * ((self.mic is not None) + self.cam) + ([self.RING] if self.download is not None else [])
+        return sum(parts) + self.GAP * max(0, len(parts) - 1)
+
+    def do_draw(self, cr):
+        h = self.get_allocated_height()
+        x, cy = 0.0, h / 2
+        for color in ([self.MIC if self.mic == "on" else self.MUTED] if self.mic else []) + \
+                     ([self.CAM] if self.cam else []):
+            cr.set_source_rgb(*color)
+            cr.arc(x + self.DOT / 2, cy, self.DOT / 2, 0, 2 * math.pi)
+            cr.fill()
+            x += self.DOT + self.GAP
+        if self.download is not None:
+            r = self.RING / 2 - 1.2
+            cx = x + self.RING / 2
+            cr.set_line_width(2)
+            cr.set_source_rgba(1, 1, 1, 0.22)
+            cr.arc(cx, cy, r, 0, 2 * math.pi)
+            cr.stroke()
+            if self.download >= 0:
+                cr.set_source_rgb(*self.RING_FG)
+                cr.arc(cx, cy, r, -math.pi / 2, -math.pi / 2 + 2 * math.pi * self.download / 100)
+                cr.stroke()
+            # Arrow down in the middle
+            cr.set_source_rgba(0.96, 0.96, 0.97, 1)
+            cr.set_line_width(1.4)
+            cr.move_to(cx, cy - 3)
+            cr.line_to(cx, cy + 2.5)
+            cr.move_to(cx - 2.5, cy)
+            cr.line_to(cx, cy + 2.5)
+            cr.line_to(cx + 2.5, cy)
+            cr.stroke()
+        return False
+
+
 class BarChart(Gtk.DrawingArea):
     """Tiny bar chart (water per hour). Draws only when its data changes."""
 

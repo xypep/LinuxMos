@@ -53,6 +53,10 @@
 #island button.mini { background: transparent; padding: 3px; border-radius: 6px; }
 #island button.mini:hover { background: rgba(255, 255, 255, 0.14); }
 #island button.mini.pinned image { color: #ffd60a; }
+#island button.live-mic image { color: #ff9f0a; }
+#island button.live-mic.muted image { color: rgba(245, 245, 247, 0.55); }
+#island .live-cam { color: #30d158; }
+#island button.live-download label { font-size: 9pt; font-feature-settings: "tnum"; }
 #island button.tile-close { opacity: 0; }
 #island overlay:hover button.tile-close { opacity: 1; }
 

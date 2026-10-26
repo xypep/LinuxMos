@@ -339,6 +339,26 @@ EN = {
     "Benachrichtigungen von {app} ausblenden": "Hide notifications from {app}",
     "{app} ausgeblendet · Tray → Benachrichtigungen": "{app} hidden · tray → Notifications",
 
+    # Live marks: microphone, camera, VPN, downloads
+    "Live-Hinweise": "Live hints",
+    "Mikrofon & Kamera": "Microphone & camera",
+    "VPN-Status": "VPN status",
+    "VPN: Land & IP (fragt ipinfo.io)": "VPN: country & IP (asks ipinfo.io)",
+    "Download-Fortschritt": "Download progress",
+    "Mikrofon aktiv · {apps}": "Microphone on · {apps}",
+    "Kamera aktiv · {apps}": "Camera on · {apps}",
+    "Kamera & Mikrofon aktiv · {apps}": "Camera & microphone on · {apps}",
+    "Mikrofon stumm": "Microphone muted",
+    "Mikrofon an": "Microphone on",
+    "Mikrofon: {apps} · Klick = stumm": "Microphone: {apps} · click = mute",
+    "Mikrofon stumm: {apps} · Klick = an": "Microphone muted: {apps} · click = unmute",
+    "Kamera: {apps}": "Camera: {apps}",
+    "VPN verbunden · {name}": "VPN connected · {name}",
+    "VPN getrennt": "VPN disconnected",
+    "Download": "Download",
+    "Download · {name}": "Download · {name}",
+    "Download fertig · {name}": "Download finished · {name}",
+
     # Command line
     "Wetter-Ort gesetzt: {city}": "Weather location set: {city}",
 }

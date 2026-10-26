@@ -99,6 +99,8 @@ if (( PURGE )); then
   echo "      sudo apt remove plank conky-std rofi fonts-inter"
   echo "      sudo apt remove maim slop xclip          # MosIsland-Screenshots"
   echo "      sudo apt remove tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng zbar-tools   # Text & QR"
+  # iso-codes (Ländernamen im VPN-Hinweis) bewusst nicht: viele Systempakete hängen davon ab.
+  # Die Live-Hinweise (Mikro/Kamera, VPN, Downloads) hinterlassen keine eigenen Dateien.
 fi
 
 # Screenshots gehören dem Nutzer: nie löschen, nur sagen, wo sie liegen

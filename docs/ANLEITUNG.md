@@ -33,7 +33,7 @@ Die Linux-Mint-Version des Videos „Windows 27 Golden Gate“: Linux Mint sieht
 - **Animationen** – schnelle Minimize-Animation Richtung Dock
 - **Widgets** – große Desktop-Uhr und ein System-Widget (CPU/RAM/Disk/Akku, optional Wetter)
 - **Spotlight** – `Super+Space` öffnet die rofi-Suche (Apps, Befehle, Fenster, Dateien)
-- **MosIsland** *(optional, `--island`)* – Dynamic Island oben in der Mitte: Musik mit Synced Lyrics, Clipboard-Verlauf, Datei-Ablage, Aufgaben, Pomodoro, Wasser-Erinnerung, Wetter, Controls, Overlays, Screenshots mit Editor, Text & QR vom Bildschirm, Benachrichtigungen als Karte und ein Maskottchen → [Details](#mosisland-dynamic-island)
+- **MosIsland** *(optional, `--island`)* – Dynamic Island oben in der Mitte: Musik mit Synced Lyrics, Clipboard-Verlauf, Datei-Ablage, Aufgaben, Pomodoro, Wasser-Erinnerung, Wetter, Controls, Overlays, Screenshots mit Editor, Text & QR vom Bildschirm, Benachrichtigungen als Karte, Mikrofon-/Kamera-Punkt, VPN- und Download-Hinweise und ein Maskottchen → [Details](#mosisland-dynamic-island)
 - **Update** – `./update.sh` holt die neue Version und aktualisiert alles, ohne deine Einstellungen anzufassen
 - **Backup & Undo** – Timeshift-Snapshot (optional) und Sicherung aller geänderten Einstellungen
 
@@ -246,7 +246,7 @@ Eingeklappt zeigt sie immer das Wichtigste (Priorität von oben nach unten):
 | Zustand          | Inhalt                                                        |
 |------------------|---------------------------------------------------------------|
 | Karte            | Größer als die Pille, mit Text und Buttons: **Benachrichtigungen**, **erkannter Text** (`Ctrl+Alt+O`), **QR-Code** (`Ctrl+Alt+Q`) |
-| Live-Aktivität   | **Lautstärke** & **Helligkeit** (ersetzt Cinnamons OSD), **Feststelltaste**, **Tastatur-Sprache**, **Ladegerät eingesteckt**, **WLAN weg / wieder da**, **Kopfhörer verbunden (mit Akku)**, Datei abgelegt, Regen in etwa 1 Std., Aufgabe fällig, Wasser-Erinnerung, Timer/Pomodoro |
+| Live-Aktivität   | **Lautstärke** & **Helligkeit** (ersetzt Cinnamons OSD), **Feststelltaste**, **Tastatur-Sprache**, **Ladegerät eingesteckt**, **WLAN weg / wieder da**, **Kopfhörer verbunden (mit Akku)**, Datei abgelegt, Regen in etwa 1 Std., Aufgabe fällig, Wasser-Erinnerung, Timer/Pomodoro, **Mikrofon/Kamera an**, **VPN an/aus**, **Download gestartet/fertig** |
 | Timer            | Countdown live in der Pille (Timer, Fokus oder Pause)          |
 | Lyrics           | Die Zeile, die gerade gesungen wird (optional)                 |
 | Musik            | Cover + Titel (Spotify, Firefox/YouTube, VLC, Rhythmbox, … über MPRIS) |
@@ -325,6 +325,24 @@ Jede Benachrichtigung (Chat, Mail, Browser, Kalender, `notify-send` …) erschei
 
 Ausblenden lassen sich Apps per 🔕 auf der Karte, im Tray-Menü unter „Benachrichtigungen“ (dort stehen die zuletzt gesehenen Apps zum Abhaken) oder in `config.json` (`notifications_exclude`). Eigene Meldungen der Insel (Timer, Erinnerungen) zeigt sie weiter als Live-Aktivität, nicht als Karte.
 
+#### Mikrofon, Kamera, VPN, Downloads
+
+<img src="img/island-live.png" alt="Kamera und Mikrofon aktiv, Pille mit orangem und grünem Punkt und Download-Ring, VPN mit Land und IP, Download fertig, Kopfzeile mit Mikro-Button" width="50%">
+
+Rechts in der eingeklappten Pille sitzen kleine Live-Punkte – in jedem Zustand außer bei einer Karte, die Pille wird dafür etwas breiter:
+
+| Punkt           | Bedeutung                                                     |
+|-----------------|---------------------------------------------------------------|
+| 🟠 orange        | Eine App nimmt mit dem Mikrofon auf (grau = stummgeschaltet)  |
+| 🟢 grün          | Eine App nutzt die Kamera                                     |
+| Ring mit Pfeil  | Ein Download läuft; mit Prozent, wenn der Browser ihn meldet (Chromium/Chrome) |
+
+Wenn es losgeht, sagt die Insel kurz, wer: „Mikrofon aktiv · Firefox“, „Kamera aktiv · Zoom“. Aufgeklappt stehen in der Kopfzeile neben der Uhr die Details (Maus drauf zeigt die Apps): ein **Mikro-Button**, der alle gerade aufnehmenden Mikrofone stumm- bzw. wieder lautschaltet, die Kamera, ein VPN-Symbol und der Download mit Prozent oder Größe – Klick öffnet den Download-Ordner. Ist ein Download fertig, öffnet ein Klick auf „Download fertig“ den Dateimanager mit der Datei markiert.
+
+**VPN:** Beim Verbinden und Trennen erscheint ein kurzer Hinweis mit dem Namen der Verbindung. Erkannt werden VPNs aus dem NetworkManager (OpenVPN, WireGuard, …) und die tun-/WireGuard-Schnittstellen anderer VPN-Apps (Mullvad, `wg-quick`, `openvpn` auf der Konsole). Mit Tray → „Live-Hinweise“ → „VPN: Land & IP“ fragt die Insel nach dem Verbinden einmal ipinfo.io und zeigt Land und Ausgangs-IP, z. B. „VPN · 🇨🇭 Schweiz · 185.213.154.70“. Das ist eine Anfrage an einen fremden Dienst und deshalb standardmäßig aus.
+
+**Wie das ohne Dauerlast geht:** Das Mikrofon kommt aus demselben `pactl subscribe`, das schon die Lautstärke liefert; nur bei einem Ereignis werden die Aufnahme-Streams einmal abgefragt. Pegelanzeigen (pavucontrol) und Aufnahmen vom Lautsprecher-Monitor zählen nicht. Die Kamera meldet der Kernel per inotify, sobald jemand `/dev/video*` öffnet oder schließt; erst dann sucht die Insel in `/proc` nach der App – und auch erst nach einer Sekunde, damit kurzes Antasten (PipeWire, Browser beim Auflisten der Kameras) keinen Punkt auslöst. Downloads beobachtet inotify im Download-Ordner, höchstens einmal pro Sekunde.
+
 ### Tray-Menü
 
 Das MosIsland-Icon liegt in der Top Bar neben der Uhr (Rechtsklick):
@@ -339,6 +357,7 @@ Das MosIsland-Icon liegt in der Top Bar neben der Uhr (Rechtsklick):
 | Screenshot                        | Bereich/Bildschirm aufnehmen, „Im Ordner speichern“, „Editor sofort öffnen“, Ordner öffnen |
 | Text & QR                         | Text erkennen, QR-Code lesen, „Zeilenumbrüche behalten“, „Links aus QR-Codes sofort öffnen“ |
 | Benachrichtigungen                | „Auf der Insel anzeigen“ (aus = Cinnamons Banner zurück), „Nicht stören“, zuletzt gesehene Apps zum Ausblenden |
+| Live-Hinweise                     | „Mikrofon & Kamera“, „VPN-Status“, „VPN: Land & IP (fragt ipinfo.io)“, „Download-Fortschritt“ |
 | Sprache / Language                | Automatisch (Systemsprache), Deutsch oder English – die Insel startet dabei kurz neu |
 | Über MosIsland · Beenden          |                                                                 |
 
@@ -393,12 +412,17 @@ Die meisten Schalter liegen im Tray-Menü bzw. im Wasser-Tab (⚙). Alles steht 
 | `notifications_on_island` | `true` | Benachrichtigungen als Karte auf der Insel (Cinnamons Banner sind solange aus) |
 | `notifications_dnd`  | `false`   | „Nicht stören“ der Insel (nur kritische Meldungen als Karte)  |
 | `notifications_exclude` | `[]`   | Apps, die nie als Karte erscheinen: Namen wie auf der Karte oder Desktop-IDs, z. B. `["Spotify", "org.telegram.desktop"]` |
+| `privacy_indicator`  | `true`    | Orangen (Mikrofon) und grünen (Kamera) Punkt zeigen           |
+| `vpn_status`         | `true`    | Hinweis beim Verbinden/Trennen eines VPN                      |
+| `vpn_lookup`         | `false`   | Land und IP des VPN bei ipinfo.io abfragen (externe Anfrage)   |
+| `downloads_progress` | `true`    | Download-Ring und „Download fertig“                           |
+| `downloads_dir`      | `""`      | Beobachteter Download-Ordner (leer = `~/Downloads` bzw. der XDG-Download-Ordner) |
 | `water_portion_ml` / `water_goal_ml` | `250` / `2000` | Portion und Tagesziel                     |
 | `water_start` / `water_end` | `09:00` / `21:00` | Aktive Stunden für Erinnerungen                     |
 | `water_interval_min` | `60`      | Erinnerung frühestens so lange nach dem letzten Schluck       |
 | `water_reminders`    | `true`    | Wasser-Erinnerungen an/aus                                   |
 
-Alle Daten (Notiz, Aufgaben, Wasser-Log, Verlauf, Ablage) liegen nur lokal in `~/.local/share/linuxmos/island/`. Es gibt kein Konto und kein Tracking. Ins Netz gehen nur der Wetter-Abruf (MET Norway, nur die Koordinaten) und die Lyrics-Suche (LRCLIB: Titel, Künstler, Länge), und die nur, wenn du die Lyrics nutzt.
+Alle Daten (Notiz, Aufgaben, Wasser-Log, Verlauf, Ablage) liegen nur lokal in `~/.local/share/linuxmos/island/`. Es gibt kein Konto und kein Tracking. Ins Netz gehen nur der Wetter-Abruf (MET Norway, nur die Koordinaten) und die Lyrics-Suche (LRCLIB: Titel, Künstler, Länge), und die nur, wenn du die Lyrics nutzt. Mit `vpn_lookup` kommt nach jedem VPN-Verbinden eine Anfrage an ipinfo.io dazu (sieht die Ausgangs-IP des VPN).
 
 ### Performance
 
@@ -423,6 +447,10 @@ Möglich wird das, weil es keinen Polling-Loop gibt. Jede Quelle meldet sich von
 | Screenshots            | Nur auf Hotkey; der Editor wird erst beim ersten Öffnen geladen |
 | Text & QR              | Nur auf Hotkey; tesseract/zbarimg laufen als eigener Prozess und beenden sich danach |
 | Benachrichtigungen     | D-Bus-Monitor (`BecomeMonitor`) auf genau drei Nachrichtentypen – meldet sich nur, wenn eine Benachrichtigung kommt |
+| Mikrofon               | Dasselbe `pactl subscribe` wie die Lautstärke; Abfrage der Streams nur bei einem Ereignis |
+| Kamera                 | inotify auf `/dev/video*` (öffnen/schließen) und `/dev` (Kamera eingesteckt); `/proc`-Suche nur danach |
+| VPN                    | NetworkManager-Signale (aktive Verbindungen, Geräte)            |
+| Downloads              | inotify auf den Download-Ordner, max. 1 Update/s; nur während eines Downloads alle 15 s ein Blick auf hängende |
 | Uhr                    | Einmal pro Minute                                              |
 
 Gezeichnet wird nur, während sich etwas bewegt: beim Auf- und Zuklappen (~240 ms) oder beim Blinzeln des Maskottchens (~180 ms alle paar Sekunden).
@@ -569,6 +597,16 @@ gsettings set org.cinnamon.desktop.notifications display-notifications true
 ```
 
 Ganz ohne Karten: Tray → „Benachrichtigungen“ → „Auf der Insel anzeigen“ aus.
+
+</details>
+
+<details>
+<summary><b>Mikrofon-/Kamera-Punkt fehlt oder bleibt stehen</b></summary>
+
+- **Kein Punkt beim Mikrofon:** `pactl -f json list source-outputs` zeigt, was gerade aufnimmt. Ist der Stream pausiert (`"corked": true`), zeigt die Insel nichts – die App nimmt dann wirklich nicht auf.
+- **Kein Punkt bei der Kamera:** `ls -l /dev/video*` – fehlen die Leserechte für deinen Benutzer (normalerweise vergibt sie udev an den angemeldeten Benutzer), kann die Insel die Kamera nicht beobachten.
+- **Punkt bleibt:** `fuser -v /dev/video*` zeigt, wer die Kamera noch offen hält – manche Apps geben sie erst beim Beenden frei.
+- **„PipeWire“ statt App-Name:** Die App nutzt die Kamera über PipeWire (z. B. Flatpak über das Portal); welche App dahintersteckt, sieht die Insel dann nicht.
 
 </details>
 

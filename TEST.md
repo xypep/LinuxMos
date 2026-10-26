@@ -13,7 +13,7 @@ Abhaken, was klappt. Was nicht klappt: Nummer + was passiert ist notieren (unten
 cd ~/LinuxMos
 git fetch && git checkout claude/affectionate-feynman-573ubj && git pull
 ./update.sh
-linuxmos-island --version          # erwartet: MosIsland 1.6.0
+linuxmos-island --version          # erwartet: MosIsland 1.7.0
 ```
 
 - [ ] **V1** `update.sh` läuft ohne Fehler durch, die Insel startet neu
@@ -171,6 +171,83 @@ grep VmRSS /proc/$(pgrep -x linuxmos-island)/status
 
 - [ ] **M1** `./uninstall.sh` → danach erscheinen Cinnamon-Banner wieder normal
 - [ ] **M2** `./install.sh --island` → Karten funktionieren wieder
+
+## Paket 6 – Mikrofon/Kamera, VPN, Downloads
+
+### N. Mikrofon
+
+```bash
+parecord /tmp/mic-test.wav     # nimmt auf, bis Ctrl+C
+```
+
+- [ ] **N1** Kurz „Mikrofon aktiv · parecord“ (o. ä.), danach ein **oranger Punkt** rechts in der Pille; die Pille ist etwas breiter
+- [ ] **N2** Insel aufklappen: Kopfzeile neben der Uhr zeigt ein orangefarbenes Mikro; Maus drauf → „Mikrofon: … · Klick = stumm“
+- [ ] **N3** Klick auf das Mikro → Symbol durchgestrichen, Punkt grau, Hinweis „Mikrofon stumm“; `pactl get-source-mute @DEFAULT_SOURCE@` → `yes`
+- [ ] **N4** Nochmal klicken → „Mikrofon an“, Punkt wieder orange
+- [ ] **N5** Stummschalten über Cinnamons Sound-Applet → Punkt wird ebenfalls grau
+- [ ] **N6** `Ctrl+C` bei parecord → Punkt verschwindet, Pille wieder normal breit
+- [ ] **N7** pavucontrol öffnen, Tab „Eingabegeräte“ (Pegel läuft) → **kein** Punkt
+- [ ] **N8** Echte App: Mikrofontest im Browser (z. B. Firefox, https://webcammictest.com) → „Mikrofon aktiv · Firefox“; Tab schließen → Punkt weg
+- [ ] **N9** Minimal-Notch im Tray an, dann N1 wiederholen → statt des Strichs erscheint die normale Pille mit Punkt; nach N6 wieder der Strich
+
+### O. Kamera (falls eine Webcam da ist)
+
+```bash
+ls -l /dev/video*                  # crw-rw----+ … video …  (das + = Rechte für dich)
+cheese                             # oder: ffplay /dev/video0
+```
+
+- [ ] **O1** Nach ~1 s „Kamera aktiv · Cheese“ und ein **grüner Punkt**; mit Mikrofon zusammen beide Punkte
+- [ ] **O2** Aufgeklappt: grünes Kamera-Symbol, Maus drauf → „Kamera: Cheese“
+- [ ] **O3** Cheese schließen → Punkt nach ~1 s weg
+- [ ] **O4** Browser-Einstellungen → Kamera-Auswahl öffnen (listet nur auf) → **kein** Punkt
+- [ ] **O5** USB-Webcam erst bei laufender Insel einstecken, dann O1 → klappt auch
+- [ ] **O6** Videocall (Meet/Zoom/Teams im Browser oder als App) → Punkt mit App-Namen (oder „PipeWire“)
+
+### P. VPN
+
+Ohne echtes VPN (legt kurz eine tun-Schnittstelle an):
+
+```bash
+sudo ip tuntap add dev tun9 mode tun && sudo ip link set tun9 up
+sleep 3
+sudo ip tuntap del dev tun9 mode tun
+```
+
+- [ ] **P1** „VPN verbunden · tun9“, nach dem Löschen „VPN getrennt“
+- [ ] **P2** Aufgeklappt, während tun9 da ist: VPN-Symbol in der Kopfzeile, Maus drauf → „VPN · tun9“
+- [ ] **P3** Mit echtem VPN im NetworkManager (Netzwerk-Applet → VPN): Hinweis mit dem Namen der Verbindung, erst wenn sie **verbunden** ist (nicht schon beim Verbinden)
+- [ ] **P4** Tray → „Live-Hinweise“ → „VPN: Land & IP (fragt ipinfo.io)“ an, VPN neu verbinden → nach ~2 s „VPN · 🇨🇭 Schweiz · 1.2.3.4“ (Land und IP des VPN-Servers, Ländername auf Deutsch)
+- [ ] **P5** Ohne den Schalter aus P4 geht **keine** Anfrage raus: `sudo tcpdump -i any host ipinfo.io` bleibt beim Verbinden leer (optional)
+- [ ] **P6** Virtuelle Maschine (virt-manager/VirtualBox) starten → **kein** VPN-Hinweis (vnet/virbr/vboxnet)
+
+### Q. Downloads
+
+```bash
+# Simuliert einen Firefox-Download
+D="$(xdg-user-dir DOWNLOAD)"
+for i in $(seq 1 8); do head -c 5000000 /dev/zero >> "$D/test.bin.part"; sleep 1; done
+mv "$D/test.bin.part" "$D/test.bin"
+```
+
+- [ ] **Q1** Nach ~1 s „Download · test.bin“, danach ein **Ring mit Pfeil** rechts in der Pille
+- [ ] **Q2** Aufgeklappt: Download-Symbol mit Größe (z. B. „35 MB“), Maus drauf → „test.bin · 35 MB · 5 MB/s“; Klick öffnet den Download-Ordner
+- [ ] **Q3** Nach dem `mv`: „Download fertig · test.bin“, Ring weg; Klick auf den Hinweis → Nemo öffnet sich mit **test.bin markiert**
+- [ ] **Q4** Echter Firefox-Download (z. B. https://ash-speed.hetzner.com/100MB.bin) → wie Q1–Q3, am Ende der richtige Dateiname
+- [ ] **Q5** Download in Firefox abbrechen → Ring verschwindet, **kein** „fertig“-Hinweis
+- [ ] **Q6** Chromium/Chrome-Download → Ring füllt sich blau, Kopfzeile zeigt **Prozent** statt Größe (wenn nicht: notieren, Browser + Version)
+- [ ] **Q7** Download pausieren → nach ~1 Minute verschwindet der Ring; Fortsetzen → kommt wieder
+- [ ] **Q8** `rm "$(xdg-user-dir DOWNLOAD)/test.bin"`
+
+### R. Schalter, Sprache, Leistung
+
+- [ ] **R1** Tray → „Live-Hinweise“: „Mikrofon & Kamera“ aus → Punkte weg, N1 zeigt nichts mehr; wieder an → Punkt kommt (auch für eine schon laufende Aufnahme)
+- [ ] **R2** „VPN-Status“ aus → P1 zeigt nichts; „Download-Fortschritt“ aus → Q1 zeigt nichts
+- [ ] **R3** Schalter stehen danach in `~/.config/linuxmos/island/config.json` (`privacy_indicator`, `vpn_status`, `vpn_lookup`, `downloads_progress`); `./update.sh` lässt sie so
+- [ ] **R4** English: Untermenü „Live hints“, Hinweise „Microphone on · …“, „VPN connected · …“, „Download finished · …“
+- [ ] **R5** Leerlauf (kein Download, kein Mikro): `linuxmos-perf 20` → `linuxmos-island` ≤ 0,2 % CPU wie vorher
+- [ ] **R6** Während Q4 läuft: `linuxmos-perf 10` → `linuxmos-island` bleibt unter ~1 % CPU
+- [ ] **R7** Mit laufender Aufnahme (N1) eine Minute warten: `linuxmos-perf 20` → ebenfalls ≤ 0,2 %
 
 ---
 

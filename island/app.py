@@ -11,11 +11,15 @@ States of the pill (in priority order while folded):
   compact   a thin line (minimal notch)
   mascot    the user is away: the clock rests and a pair of eyes comes out
   idle      clock, temperature, battery
+Live marks sit at the folded island's right end in every state but a card:
+an orange dot while a microphone records, a green one while a camera is on,
+a ring while a download runs (details and the mute button in the opened
+island's header). "compact" gives way to "idle" while one shows.
 Hovering, clicking or a hotkey opens it into the tab view.
 
 Idle cost: no polling. The clock ticks once a minute; everything else is
 D-Bus signals or X11 events (notifications: a D-Bus monitor that only wakes
-up when one is sent). Animations run on the frame clock only while
+up when one is sent; camera and downloads: inotify). Animations run on the frame clock only while
 the island changes size.
 """
 
@@ -48,20 +52,24 @@ from island.pages import (ClipboardPage, ControlsPage, HomePage, NotePage, Shelf
                           TodoPage, URI_TARGETS, WaterPage, WeatherPage)
 from island.services import art, ocr, screenshot, system  # noqa: E402
 from island.services.clipboard import ClipboardHistory  # noqa: E402
+from island.services.downloads import Downloads, download_dir, human_size  # noqa: E402
 from island.services.idle import IdleWatcher  # noqa: E402
 from island.services.indicators import Indicators, volume_icon  # noqa: E402
 from island.services.lyrics import LyricsFetcher, line_index  # noqa: E402
 from island.services.mpris import MprisWatcher  # noqa: E402
 from island.services.notifications import URGENCY_CRITICAL, Notifications, desktop_info  # noqa: E402
 from island.services.power import Battery  # noqa: E402
+from island.services.privacy import Privacy  # noqa: E402
 from island.services.shelf import Shelf  # noqa: E402
 from island.services.timer import Timer, format_seconds  # noqa: E402
 from island.services.todo import TodoList  # noqa: E402
+from island.services.vpn import Vpn  # noqa: E402
 from island.services.water import Water  # noqa: E402
 from island.services.weather import Weather  # noqa: E402
 from island.storage import Config  # noqa: E402
 from island.tray import Tray  # noqa: E402
-from island.widgets import Animator, Eyes, Pill, button, clear, css_class, icon, label, rounded_image  # noqa: E402
+from island.widgets import (Animator, Eyes, LiveDots, Pill, button, clear, css_class, icon, label,  # noqa: E402
+                            rounded_image)
 
 EXPANDED_W, EXPANDED_H, EXPANDED_R = 660, 350, 30
 COLLAPSED_H = 34
@@ -82,6 +90,10 @@ CARD_LEAVE_MS = 3000
 # Notification cards: this long unless the app asks for a time (clamped); critical ones stay
 NOTIFY_MS = 7000
 NOTIFY_MIN_MS, NOTIFY_MAX_MS = 4000, 15000
+# Live marks: config switch -> service attribute
+LIVE_SWITCHES = {"privacy_indicator": "privacy", "vpn_status": "vpn", "downloads_progress": "downloads"}
+# A new download is announced after this delay (Chrome names it "Unconfirmed 123" at first)
+DOWNLOAD_HINT_MS = 1200
 # Cinnamon's switch for its own banners; the island turns it off while it shows the cards
 BANNERS = ("org.cinnamon.desktop.notifications", "display-notifications")
 
@@ -125,6 +137,10 @@ class IslandWindow(Gtk.Window):
         self._card = None           # dict, see show_card()
         self._card_id = 0
         self._card_shown = None     # the card the widgets were built for
+        self._live_prev = (False, False, False)   # microphone, camera, muted: for the hints
+        self._downloads_seen = False
+        self._download_hint_id = 0
+        self._header_live_dirty = False
         # Lyrics: fetched lazily, advanced by one timeout per line (no polling)
         self._lyrics_view = False
         self._lyrics_key = None
@@ -165,6 +181,10 @@ class IslandWindow(Gtk.Window):
         self.indicators = Indicators(self._on_indicator)
         self.idle = IdleWatcher(self._on_idle)
         self.notifications = Notifications(self._on_notification, self._on_notification_closed)
+        self.privacy = Privacy(self._on_privacy)
+        self.indicators.pactl_listeners.append(self.privacy.on_pactl_line)
+        self.vpn = Vpn(self.config, self._on_vpn)
+        self.downloads = Downloads(self.config, self._on_downloads, self._on_download_done)
         self._banner_settings = system.settings(BANNERS[0])
         if self._banner_settings:
             self._banner_settings.connect(f"changed::{BANNERS[1]}", self._on_banners_changed)
@@ -172,6 +192,7 @@ class IslandWindow(Gtk.Window):
         self.anim = Animator(self, self._apply_geometry)
         if self.config.get("notifications_on_island", True):
             self._set_notification_cards(True)
+        self._apply_live_switches()
 
         self._schedule_clock()
         self.connect("realize", self._on_realize)
@@ -288,7 +309,7 @@ class IslandWindow(Gtk.Window):
             if self.config.get("lyrics_in_pill") and self._lyrics_lines and self._lyric_idx >= 0:
                 return "lyrics"
             return "media"
-        if self.config.get("compact_when_idle"):
+        if self.config.get("compact_when_idle") and not self.live_dots.width:
             return "compact"
         if self.config.get("mascot", True) and self._idle_state != "active":
             return "mascot"
@@ -300,7 +321,8 @@ class IslandWindow(Gtk.Window):
             return (COMPACT_W, COMPACT_H, COMPACT_H / 2)
         if kind == "card":
             return (CARD_W, self._card["height"], CARD_R)
-        return (COLLAPSED_W[kind], COLLAPSED_H, COLLAPSED_H / 2)
+        marks = self.live_dots.width
+        return (COLLAPSED_W[kind] + (marks + 8 if marks else 0), COLLAPSED_H, COLLAPSED_H / 2)
 
     def _show_collapsed(self):
         kind = self._collapsed_kind()
@@ -342,6 +364,8 @@ class IslandWindow(Gtk.Window):
         self.stack.set_visible_child_full("expanded", Gtk.StackTransitionType.CROSSFADE)
         self.pages[self._current_tab].on_show()
         self._update_header_time()
+        if self._header_live_dirty:
+            self._fill_header_live()
         self.media.sync()
         if not self._position_id:
             self._position_id = GLib.timeout_add_seconds(1, self._update_position)
@@ -385,10 +409,12 @@ class IslandWindow(Gtk.Window):
         self.c_center_stack.add_named(self.c_center, "text")
         self.c_center_stack.add_named(self.eyes, "eyes")
         self.c_right = Gtk.Box(spacing=6)
+        self.live_dots = LiveDots()   # kept across refills, unlike c_left/c_right
         box = Gtk.Box(spacing=8, margin_start=14, margin_end=14)
         box.set_size_request(-1, COLLAPSED_H)
         box.pack_start(self.c_left, False, False, 0)
         box.pack_start(self.c_center_stack, True, True, 0)
+        box.pack_end(self.live_dots, False, False, 0)
         box.pack_end(self.c_right, False, False, 0)
         return box
 
@@ -640,9 +666,11 @@ class IslandWindow(Gtk.Window):
             self.tab_buttons[name] = btn
 
         self.header_time = label("", ("title",), ellipsize=False)
+        self.header_live = Gtk.Box(spacing=2, valign=Gtk.Align.CENTER)   # microphone, camera, VPN, downloads
         header = Gtk.Box(spacing=8)
         header.pack_start(tabs, False, False, 0)
         header.pack_end(self.header_time, False, False, 0)
+        header.pack_end(self.header_live, False, False, 0)
 
         self.body = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE, transition_duration=120)
         for name, page in self.pages.items():
@@ -1004,6 +1032,138 @@ class IslandWindow(Gtk.Window):
                                    seconds=3.5)
             else:
                 self.show_activity(data["icon"], _("{name} getrennt").format(name=data["name"]))
+
+    # ---- live marks: microphone, camera, VPN, downloads -----------------------------
+    def _apply_live_switches(self):
+        for key, attr in LIVE_SWITCHES.items():
+            service = getattr(self, attr)
+            (service.start if self.config.get(key, True) else service.stop)()
+        self._update_live()
+
+    def _update_live(self):
+        p, d = self.privacy, self.downloads
+        mic = ("muted" if p.mic_muted else "on") if p.mic_apps else None
+        download = (-1 if d.percent is None else d.percent) if d.active else None
+        if self.live_dots.set_state(mic, bool(p.cam_apps), download):
+            self.refresh_collapsed()   # the pill grows or shrinks by the marks
+        self._fill_header_live()
+
+    def _fill_header_live(self):
+        if not self.expanded:
+            self._header_live_dirty = True   # built when the island opens
+            return
+        self._header_live_dirty = False
+        box = self.header_live
+        clear(box)
+        p, v, d = self.privacy, self.vpn, self.downloads
+        if p.mic_apps:
+            apps = ", ".join(p.mic_apps)
+            tip = (_("Mikrofon stumm: {apps} · Klick = an") if p.mic_muted
+                   else _("Mikrofon: {apps} · Klick = stumm")).format(apps=apps)
+            box.pack_start(button("microphone-sensitivity-muted-symbolic" if p.mic_muted
+                                  else "audio-input-microphone-symbolic", tooltip=tip, size=14,
+                                  css=("mini", "live-mic") + (("muted",) if p.mic_muted else ()),
+                                  on_click=self.toggle_mic), False, False, 0)
+        if p.cam_apps:
+            cam = css_class(icon("camera-web-symbolic", 14), "live-cam")
+            cam.set_tooltip_text(_("Kamera: {apps}").format(apps=", ".join(p.cam_apps)))
+            box.pack_start(cam, False, False, 3)
+        if v.names:
+            shield = css_class(icon("network-vpn-symbolic", 14), "dim")
+            shield.set_tooltip_text(self._vpn_text(with_name=True))
+            box.pack_start(shield, False, False, 3)
+        if d.active:
+            percent = d.percent
+            short = f"{percent} %" if percent is not None else human_size(d.total_size)
+            lines = [f"{item.name} · {human_size(item.size)} · {human_size(item.speed)}/s"
+                     for item in d.items.values()]
+            box.pack_start(button("folder-download-symbolic", text=short, tooltip="\n".join(lines), size=14,
+                                  css=("mini", "live-download"), on_click=self.open_downloads), False, False, 0)
+        box.show_all()
+
+    def toggle_mic(self):
+        self.privacy.set_mic_muted(not self.privacy.mic_muted)
+
+    def _on_privacy(self):
+        p = self.privacy
+        mic_was, cam_was, muted_was = self._live_prev
+        new_mic, new_cam = p.mic_apps and not mic_was, p.cam_apps and not cam_was
+        if new_cam:
+            apps = ", ".join(dict.fromkeys(p.cam_apps + (p.mic_apps if new_mic else [])))
+            text = _("Kamera & Mikrofon aktiv · {apps}") if new_mic else _("Kamera aktiv · {apps}")
+            self.show_activity("camera-web-symbolic", text.format(apps=apps), seconds=3)
+        elif new_mic:
+            self.show_activity("audio-input-microphone-symbolic",
+                               _("Mikrofon aktiv · {apps}").format(apps=", ".join(p.mic_apps)),
+                               seconds=3, on_click=self.toggle_mic)
+        elif p.mic_apps and p.mic_muted != muted_was:
+            if p.mic_muted:
+                self.show_activity("microphone-sensitivity-muted-symbolic", _("Mikrofon stumm"), seconds=1.8)
+            else:
+                self.show_activity("audio-input-microphone-symbolic", _("Mikrofon an"), seconds=1.8)
+        self._live_prev = (bool(p.mic_apps), bool(p.cam_apps), p.mic_muted)
+        self._update_live()
+
+    def _vpn_text(self, with_name=False):
+        v = self.vpn
+        parts = [", ".join(v.names)] if with_name or not v.info else []
+        if v.info:
+            parts += [f"{v.info['flag']} {v.info['country']}".strip(), v.info["ip"]]
+        return "VPN · " + " · ".join(p for p in parts if p)
+
+    def _on_vpn(self, event):
+        if event == "up":
+            self.show_activity("network-vpn-symbolic",
+                               _("VPN verbunden · {name}").format(name=", ".join(self.vpn.names)), seconds=3.5)
+        elif event == "info":
+            self.show_activity("network-vpn-symbolic", self._vpn_text(), seconds=5)
+        else:
+            self.show_activity("network-vpn-symbolic", _("VPN getrennt"), seconds=3)
+        self._fill_header_live()
+
+    def _on_downloads(self):
+        active = self.downloads.active
+        if active and not self._downloads_seen and not self._download_hint_id:
+            self._download_hint_id = GLib.timeout_add(DOWNLOAD_HINT_MS, self._download_hint)
+        self._downloads_seen = active
+        self._update_live()
+
+    def _download_hint(self):
+        self._download_hint_id = 0
+        items = list(self.downloads.items.values())
+        if items:
+            text = _("Download · {name}").format(name=items[0].name)
+            if len(items) > 1:
+                text += f" +{len(items) - 1}"
+            self.show_activity("folder-download-symbolic", text, seconds=2.5, on_click=self.open_downloads)
+        return GLib.SOURCE_REMOVE
+
+    def _on_download_done(self, path):
+        self.show_activity("folder-download-symbolic", _("Download fertig · {name}").format(name=path.name),
+                           seconds=5, on_click=lambda: self.reveal_file(path))
+
+    def open_downloads(self):
+        try:
+            Gio.AppInfo.launch_default_for_uri(download_dir(self.config).as_uri(), None)
+        except GLib.Error:
+            pass
+
+    def reveal_file(self, path):
+        """Show the file selected in the file manager (Nemo), else open its folder."""
+        def done(bus, result):
+            try:
+                bus.call_finish(result)
+            except GLib.Error:
+                self.open_downloads()
+
+        try:
+            bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+        except GLib.Error:
+            self.open_downloads()
+            return
+        bus.call("org.freedesktop.FileManager1", "/org/freedesktop/FileManager1", "org.freedesktop.FileManager1",
+                 "ShowItems", GLib.Variant("(ass)", ([path.as_uri()], "")), None, Gio.DBusCallFlags.NONE,
+                 3000, None, done)
 
     # ---- mascot ------------------------------------------------------------------
     def _on_idle(self, state):
@@ -1420,6 +1580,10 @@ class IslandWindow(Gtk.Window):
             self.clipboard.set_autodelete(value)
         elif key == "notifications_on_island":
             self._set_notification_cards(value)
+        elif key in LIVE_SWITCHES:
+            self._apply_live_switches()
+        elif key == "vpn_lookup" and value:
+            self.vpn.refresh_info()
         self.refresh_collapsed()
 
     def set_language(self, choice):
