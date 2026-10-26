@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk, Pango
 
+from island.i18n import _, day_month, decimal, n_
 from island.services import art, system
 from island.services.timer import format_seconds
 from island.services.todo import parse_due
@@ -78,8 +79,8 @@ class HomePage(Page):
         empty = css_class(Gtk.Box(spacing=14), "card")
         empty.pack_start(placeholder_cover(self.COVER), False, False, 0)
         empty_text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3, valign=Gtk.Align.CENTER)
-        empty_text.pack_start(label("Gerade läuft nichts", ("title",)), False, False, 0)
-        empty_text.pack_start(label("Spotify, Firefox, VLC & Co. erscheinen hier automatisch", ("dim",)),
+        empty_text.pack_start(label(_("Gerade läuft nichts"), ("title",)), False, False, 0)
+        empty_text.pack_start(label(_("Spotify, Firefox, VLC & Co. erscheinen hier automatisch"), ("dim",)),
                               False, False, 0)
         empty.pack_start(empty_text, True, True, 0)
 
@@ -91,10 +92,10 @@ class HomePage(Page):
 
         # ---- tiles ----------------------------------------------------------
         tiles = Gtk.Box(spacing=12, homogeneous=True)
-        self.weather_tile = self._tile("weather-few-clouds-symbolic", "–", "Wetter", "weather")
-        self.timer_tile = self._tile("alarm-symbolic", "Timer", "Kein Timer", "note")
+        self.weather_tile = self._tile("weather-few-clouds-symbolic", "–", _("Wetter"), "weather")
+        self.timer_tile = self._tile("alarm-symbolic", _("Timer"), _("Kein Timer"), "note")
         # Desktop PCs have no battery: the tile then leads to the controls
-        self.battery_tile = self._tile("emblem-system-symbolic", "Steuerung", "WLAN, Ton, Theme", "controls")
+        self.battery_tile = self._tile("emblem-system-symbolic", _("Steuerung"), _("WLAN, Ton, Theme"), "controls")
         for t in (self.weather_tile, self.timer_tile, self.battery_tile):
             tiles.pack_start(t["button"], True, True, 0)
 
@@ -106,7 +107,7 @@ class HomePage(Page):
         self.lyrics_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         self.lyrics_scroll.add(self.lyrics_list)
         self.lyrics_status = label("", ("dim",), xalign=0.5)
-        in_pill = Gtk.CheckButton(label="Aktuelle Zeile in der Pille zeigen")
+        in_pill = Gtk.CheckButton(label=_("Aktuelle Zeile in der Pille zeigen"))
         in_pill.set_can_focus(False)
         in_pill.set_active(bool(island.config.get("lyrics_in_pill")))
         in_pill.connect("toggled", lambda b: island.set_option("lyrics_in_pill", b.get_active()))
@@ -155,7 +156,7 @@ class HomePage(Page):
             self.media_stack.set_visible_child_name("empty")
             return
         self.media_stack.set_visible_child_name("media")
-        self.title.set_text(track.title or "Unbekannter Titel")
+        self.title.set_text(track.title or _("Unbekannter Titel"))
         self.artist.set_text(track.artist or track.bus_name.rsplit(".", 1)[-1].capitalize())
         self.play_btn.get_child().set_from_icon_name(
             "media-playback-pause-symbolic" if track.playing else "media-playback-start-symbolic",
@@ -241,21 +242,21 @@ class HomePage(Page):
             c = weather.current
             self._set_tile(self.weather_tile, c["icon"], f"{c['temp']}°", f"{c['text']} · {c['city']}")
         else:
-            caption = "Ort festlegen" if not weather.configured else "nicht verfügbar"
+            caption = _("Ort festlegen") if not weather.configured else _("nicht verfügbar")
             self._set_tile(self.weather_tile, "weather-few-clouds-symbolic", "–", caption)
 
     def update_timer(self, timer):
         if timer.running:
             self._set_tile(self.timer_tile, "alarm-symbolic", format_seconds(timer.remaining), timer.label)
         else:
-            self._set_tile(self.timer_tile, "alarm-symbolic", "Timer", "Kein Timer")
+            self._set_tile(self.timer_tile, "alarm-symbolic", _("Timer"), _("Kein Timer"))
 
     def update_battery(self, battery):
         if battery.present:
             self._set_tile(self.battery_tile, battery.icon_name, f"{battery.percentage} %",
-                           "Lädt" if battery.plugged else "Akku")
+                           _("Lädt") if battery.plugged else _("Akku"))
         else:
-            self._set_tile(self.battery_tile, "emblem-system-symbolic", "Steuerung", "WLAN, Ton, Theme")
+            self._set_tile(self.battery_tile, "emblem-system-symbolic", _("Steuerung"), _("WLAN, Ton, Theme"))
 
 
 # =============================================================================
@@ -264,7 +265,7 @@ class HomePage(Page):
 class ClipboardPage(Page):
     def __init__(self, island):
         super().__init__(island)
-        self.search = Gtk.SearchEntry(placeholder_text="Verlauf durchsuchen …", hexpand=True)
+        self.search = Gtk.SearchEntry(placeholder_text=_("Verlauf durchsuchen …"), hexpand=True)
         island.make_typeable(self.search)
         self.search.connect("search-changed", lambda *_: self.listbox.invalidate_filter())
         self.search.connect("activate", lambda *_: self._paste_first())
@@ -272,7 +273,7 @@ class ClipboardPage(Page):
 
         top = Gtk.Box(spacing=8)
         top.pack_start(self.search, True, True, 0)
-        top.pack_start(button("edit-clear-all-symbolic", tooltip="Verlauf leeren (Angepinntes bleibt)",
+        top.pack_start(button("edit-clear-all-symbolic", tooltip=_("Verlauf leeren (Angepinntes bleibt)"),
                               on_click=island.clipboard.clear), False, False, 0)
         self.pack_start(top, False, False, 0)
 
@@ -280,7 +281,7 @@ class ClipboardPage(Page):
         self.listbox.set_activate_on_single_click(True)
         self.listbox.set_filter_func(self._filter)
         self.listbox.connect("row-activated", lambda _lb, row: island.paste(row.item))
-        placeholder = label("Noch nichts kopiert – alles, was du kopierst, landet hier.", ("dim",), xalign=0.5)
+        placeholder = label(_("Noch nichts kopiert – alles, was du kopierst, landet hier."), ("dim",), xalign=0.5)
         placeholder.show()
         self.listbox.set_placeholder(placeholder)
 
@@ -320,18 +321,17 @@ class ClipboardPage(Page):
             except GLib.Error:
                 pass
             w, h = item.get("size", (0, 0))
-            box.pack_start(label(f"Bild · {w}×{h}", ("dim",)), True, True, 0)
+            box.pack_start(label(_("Bild · {w}×{h}").format(w=w, h=h), ("dim",)), True, True, 0)
         else:
             text = " ⏎ ".join(line.strip() for line in item["text"].strip().splitlines()[:3])
             box.pack_start(label(text[:300], max_chars=60), True, True, 0)
 
-        stamp = time.localtime(item.get("time", 0))
-        today = time.localtime()
-        when = time.strftime("%H:%M" if stamp[:3] == today[:3] else "%d.%m.", stamp)
+        stamp = datetime.fromtimestamp(item.get("time", 0))
+        when = f"{stamp:%H:%M}" if stamp.date() == datetime.now().date() else day_month(stamp)
         box.pack_start(label(when, ("dim", "small"), ellipsize=False), False, False, 0)
-        pin = button("view-pin-symbolic", tooltip="Anpinnen", css=("mini",) + (("pinned",) if item.get("pinned") else ()),
+        pin = button("view-pin-symbolic", tooltip=_("Anpinnen"), css=("mini",) + (("pinned",) if item.get("pinned") else ()),
                      size=14, on_click=lambda: self.island.clipboard.toggle_pin(item))
-        remove = button("window-close-symbolic", tooltip="Entfernen", css=("mini",), size=14,
+        remove = button("window-close-symbolic", tooltip=_("Entfernen"), css=("mini",), size=14,
                         on_click=lambda: self.island.clipboard.remove(item))
         box.pack_start(pin, False, False, 0)
         box.pack_start(remove, False, False, 0)
@@ -373,7 +373,7 @@ class ShelfPage(Page):
         super().__init__(island)
         self.count = label("", ("dim",))
         header = Gtk.Box(spacing=8)
-        header.pack_start(label("Ablage", ("title",), ellipsize=False), False, False, 0)
+        header.pack_start(label(_("Ablage"), ("title",), ellipsize=False), False, False, 0)
         header.pack_start(self.count, True, True, 0)
 
         # Drag source for all files at once
@@ -381,11 +381,11 @@ class ShelfPage(Page):
         self.drag_all.set_no_show_all(True)
         drag_box = Gtk.Box(spacing=6)
         drag_box.pack_start(icon("edit-select-all-symbolic", 14), False, False, 0)
-        drag_box.pack_start(label("Alle ziehen", ellipsize=False), False, False, 0)
+        drag_box.pack_start(label(_("Alle ziehen"), ellipsize=False), False, False, 0)
         self.drag_all.add(drag_box)
         drag_box.show_all()
         self._make_drag_source(self.drag_all, lambda: list(island.shelf.uris), "folder-documents")
-        header.pack_end(button("edit-clear-all-symbolic", tooltip="Ablage leeren", on_click=island.shelf.clear),
+        header.pack_end(button("edit-clear-all-symbolic", tooltip=_("Ablage leeren"), on_click=island.shelf.clear),
                         False, False, 0)
         header.pack_end(self.drag_all, False, False, 0)
         self.pack_start(header, False, False, 0)
@@ -400,8 +400,8 @@ class ShelfPage(Page):
         empty = css_class(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, valign=Gtk.Align.CENTER),
                           "dropzone")
         empty.pack_start(icon("document-send-symbolic", 36), False, False, 0)
-        empty.pack_start(label("Dateien auf die Insel ziehen", ("title",), xalign=0.5), False, False, 0)
-        empty.pack_start(label("Sie warten hier, bis du sie woanders hinziehst.", ("dim",), xalign=0.5),
+        empty.pack_start(label(_("Dateien auf die Insel ziehen"), ("title",), xalign=0.5), False, False, 0)
+        empty.pack_start(label(_("Sie warten hier, bis du sie woanders hinziehst."), ("dim",), xalign=0.5),
                          False, False, 0)
 
         self.stack = Gtk.Stack(vexpand=True, transition_type=Gtk.StackTransitionType.CROSSFADE)
@@ -422,7 +422,7 @@ class ShelfPage(Page):
         clear(self.flow)
         uris = self.island.shelf.uris
         n = len(uris)
-        self.count.set_text(f"{n} Datei{'en' if n != 1 else ''}" if n else "")
+        self.count.set_text(n_("{n} Datei", "{n} Dateien", n).format(n=n) if n else "")
         for uri in uris:
             self.flow.add(self._tile(uri))
         self.flow.show_all()
@@ -457,14 +457,14 @@ class ShelfPage(Page):
         box.pack_start(name_lbl, False, False, 0)
 
         event = css_class(Gtk.EventBox(), "shelf-tile")
-        event.set_tooltip_text(f"{name}\nZiehen zum Ablegen · Doppelklick öffnet")
+        event.set_tooltip_text(_("{name}\nZiehen zum Ablegen · Doppelklick öffnet").format(name=name))
         event.add(box)
         self._make_drag_source(event, lambda: [uri], "text-x-generic")
         if gicon:
             event.drag_source_set_icon_gicon(gicon)
         event.connect("button-press-event", self._on_tile_press, uri)
 
-        remove = button("window-close-symbolic", tooltip="Aus der Ablage entfernen", css=("mini", "tile-close"),
+        remove = button("window-close-symbolic", tooltip=_("Aus der Ablage entfernen"), css=("mini", "tile-close"),
                         size=12, on_click=lambda: self.island.shelf.remove(uri))
         remove.set_halign(Gtk.Align.END)
         remove.set_valign(Gtk.Align.START)
@@ -512,7 +512,7 @@ class NotePage(Page):
         note_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         note_scroll.add(self.text)
         note_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        note_box.pack_start(label("Notiz", ("title",)), False, False, 0)
+        note_box.pack_start(label(_("Notiz"), ("title",)), False, False, 0)
         note_box.set_margin_top(12)
         note_box.pack_start(note_scroll, True, True, 0)
         row.pack_start(note_box, True, True, 0)
@@ -522,7 +522,7 @@ class NotePage(Page):
         timer_box.set_size_request(220, -1)
         self.mode = label("", ("dim",), xalign=1.0, ellipsize=False)
         title = Gtk.Box()
-        title.pack_start(label("Timer", ("title",)), True, True, 0)
+        title.pack_start(label(_("Timer"), ("title",)), True, True, 0)
         title.pack_end(self.mode, False, False, 0)
         timer_box.pack_start(title, False, False, 0)
         self.remaining = label("00:00", ("timer-display", "dim"), xalign=0.5, ellipsize=False)
@@ -530,9 +530,9 @@ class NotePage(Page):
 
         # Pomodoro: 25 min focus, then a break (every 4th one is longer)
         pomodoro = Gtk.Box(spacing=6, homogeneous=True)
-        pomodoro.pack_start(button(text="Fokus 25", css=("accent",), tooltip="Pomodoro: 25 min Fokus, dann Pause",
+        pomodoro.pack_start(button(text=_("Fokus 25"), css=("accent",), tooltip=_("Pomodoro: 25 min Fokus, dann Pause"),
                                    on_click=lambda: island.start_pomodoro("focus")), True, True, 0)
-        pomodoro.pack_start(button(text="Pause 5", on_click=lambda: island.start_pomodoro("break")), True, True, 0)
+        pomodoro.pack_start(button(text=_("Pause 5"), on_click=lambda: island.start_pomodoro("break")), True, True, 0)
         timer_box.pack_start(pomodoro, False, False, 0)
 
         presets = Gtk.Box(spacing=6, homogeneous=True)
@@ -546,11 +546,11 @@ class NotePage(Page):
         island.make_typeable(self.spin)
         custom.pack_start(self.spin, True, True, 0)
         custom.pack_start(label("min", ("dim",), ellipsize=False), False, False, 0)
-        custom.pack_start(button(text="Start", css=("accent",),
+        custom.pack_start(button(text=_("Start"), css=("accent",),
                                  on_click=lambda: island.timer.start(int(self.spin.get_value()) * 60)),
                           False, False, 0)
         timer_box.pack_start(custom, False, False, 0)
-        self.stop_btn = button("media-playback-stop-symbolic", "Stoppen", on_click=island.timer.cancel)
+        self.stop_btn = button("media-playback-stop-symbolic", _("Stoppen"), on_click=island.timer.cancel)
         self.stop_btn.get_child().show_all()
         self.stop_btn.set_no_show_all(True)
         timer_box.pack_end(self.stop_btn, False, False, 0)
@@ -590,8 +590,8 @@ def _due_text(due):
     if when.date() == today:
         return when.strftime("%H:%M")
     if when.date() == today + timedelta(days=1):
-        return when.strftime("morgen %H:%M")
-    return when.strftime("%d.%m. %H:%M")
+        return _("morgen {time}").format(time=when.strftime("%H:%M"))
+    return f"{day_month(when)} {when:%H:%M}"
 
 
 class TodoPage(Page):
@@ -600,20 +600,20 @@ class TodoPage(Page):
         todo = island.todo
         self.count = label("", ("dim",), xalign=1.0, ellipsize=False)
         header = Gtk.Box()
-        header.pack_start(label("Aufgaben", ("title",)), True, True, 0)
+        header.pack_start(label(_("Aufgaben"), ("title",)), True, True, 0)
         header.pack_end(self.count, False, False, 0)
         self.pack_start(header, False, False, 0)
 
-        self.entry = Gtk.Entry(placeholder_text="Neue Aufgabe …", hexpand=True)
+        self.entry = Gtk.Entry(placeholder_text=_("Neue Aufgabe …"), hexpand=True)
         self.due = Gtk.Entry(placeholder_text="14:30", width_chars=9)
-        self.due.set_tooltip_text("Erinnerung: 14:30 · 9 · in 20 min · in 2 h (leer = keine)")
+        self.due.set_tooltip_text(_("Erinnerung: 14:30 · 9 · in 20 min · in 2 h (leer = keine)"))
         for widget in (self.entry, self.due):
             island.make_typeable(widget)
             widget.connect("activate", lambda *_: self._add())
         add_row = Gtk.Box(spacing=6)
         add_row.pack_start(self.entry, True, True, 0)
         add_row.pack_start(self.due, False, False, 0)
-        add_row.pack_start(button("list-add-symbolic", css=("accent",), tooltip="Hinzufügen", on_click=self._add),
+        add_row.pack_start(button("list-add-symbolic", css=("accent",), tooltip=_("Hinzufügen"), on_click=self._add),
                            False, False, 0)
         self.pack_start(add_row, False, False, 0)
         self.hint = label("", ("small", "warning"))
@@ -621,7 +621,7 @@ class TodoPage(Page):
         self.pack_start(self.hint, False, False, 0)
 
         self.listbox = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
-        placeholder = label("Nichts zu tun – genieß den Moment.", ("dim",), xalign=0.5)
+        placeholder = label(_("Nichts zu tun – genieß den Moment."), ("dim",), xalign=0.5)
         placeholder.show()
         self.listbox.set_placeholder(placeholder)
         scrolled = Gtk.ScrolledWindow(vexpand=True)
@@ -638,7 +638,7 @@ class TodoPage(Page):
         try:
             due = parse_due(self.due.get_text())
         except ValueError:
-            self.hint.set_text("Zeit nicht verstanden – z. B. 14:30, 9, in 20 min, in 2 h")
+            self.hint.set_text(_("Zeit nicht verstanden – z. B. 14:30, 9, in 20 min, in 2 h"))
             self.hint.show()
             return
         self.hint.hide()
@@ -650,7 +650,8 @@ class TodoPage(Page):
     def rebuild(self):
         clear(self.listbox)
         total = len(self.todo.items)
-        self.count.set_text(f"{self.todo.done_today}/{total} heute erledigt" if total else "")
+        self.count.set_text(_("{done}/{total} heute erledigt").format(done=self.todo.done_today, total=total)
+                            if total else "")
         now = time.time()
         for task in self.todo.sorted_items():
             box = Gtk.Box(spacing=10)
@@ -665,7 +666,7 @@ class TodoPage(Page):
                 overdue = not task.get("done") and task["due"] < now
                 box.pack_start(label(_due_text(task["due"]), ("small", "warning" if overdue else "dim"),
                                      ellipsize=False), False, False, 0)
-            box.pack_start(button("window-close-symbolic", tooltip="Löschen", css=("mini",), size=14,
+            box.pack_start(button("window-close-symbolic", tooltip=_("Löschen"), css=("mini",), size=14,
                                   on_click=lambda t=task: self.todo.remove(t)), False, False, 0)
             row = Gtk.ListBoxRow()
             row.add(box)
@@ -687,19 +688,19 @@ class WaterPage(Page):
         # ---- today ----------------------------------------------------------
         today = css_class(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8), "card")
         today.set_size_request(230, -1)
-        today.pack_start(label("Wasser", ("title",)), False, False, 0)
+        today.pack_start(label(_("Wasser"), ("title",)), False, False, 0)
         self.amount = label("", ("huge-sm",), ellipsize=False)
         self.status = label("", ("dim",))
         self.bar = Gtk.ProgressBar()
         today.pack_start(self.amount, False, False, 0)
         today.pack_start(self.status, False, False, 0)
         today.pack_start(self.bar, False, False, 0)
-        self.drink_btn = button("list-add-symbolic", "Trinken", css=("accent",), on_click=lambda: water.drink())
+        self.drink_btn = button("list-add-symbolic", _("Trinken"), css=("accent",), on_click=lambda: water.drink())
         actions = Gtk.Box(spacing=6)
         actions.pack_start(self.drink_btn, True, True, 0)
-        actions.pack_start(button("edit-undo-symbolic", tooltip="Letzten Eintrag zurücknehmen", on_click=water.undo),
+        actions.pack_start(button("edit-undo-symbolic", tooltip=_("Letzten Eintrag zurücknehmen"), on_click=water.undo),
                            False, False, 0)
-        actions.pack_start(button("emblem-system-symbolic", tooltip="Einstellungen",
+        actions.pack_start(button("emblem-system-symbolic", tooltip=_("Einstellungen"),
                                   on_click=lambda: self.right.set_visible_child_name(
                                       "settings" if self.right.get_visible_child_name() == "chart" else "chart")),
                            False, False, 0)
@@ -709,16 +710,16 @@ class WaterPage(Page):
         # ---- chart / settings -----------------------------------------------
         self.chart = BarChart(height=150)
         chart_box = css_class(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6), "card")
-        chart_box.pack_start(label("Heute pro Stunde (ml)", ("dim", "small")), False, False, 0)
+        chart_box.pack_start(label(_("Heute pro Stunde (ml)"), ("dim", "small")), False, False, 0)
         chart_box.pack_start(self.chart, True, True, 0)
 
         settings = css_class(Gtk.Grid(column_spacing=10, row_spacing=8), "card")
         cfg = island.config
         self._spins = {}
         rows = [
-            ("Portion (Flasche/Glas)", "water_portion_ml", 50, 2000, 50, "ml"),
-            ("Tagesziel", "water_goal_ml", 500, 6000, 250, "ml"),
-            ("Erinnern alle", "water_interval_min", 15, 240, 15, "min"),
+            (_("Portion (Flasche/Glas)"), "water_portion_ml", 50, 2000, 50, "ml"),
+            (_("Tagesziel"), "water_goal_ml", 500, 6000, 250, "ml"),
+            (_("Erinnern alle"), "water_interval_min", 15, 240, 15, "min"),
         ]
         for i, (text, key, lo, hi, step, unit) in enumerate(rows):
             spin = Gtk.SpinButton.new_with_range(lo, hi, step)
@@ -735,12 +736,12 @@ class WaterPage(Page):
             entry.connect("changed", lambda e, k=key: self._set_time(k, e.get_text()))
             hours.pack_start(entry, False, False, 0)
             if key == "water_start":
-                hours.pack_start(label("bis", ("dim",), ellipsize=False), False, False, 0)
+                hours.pack_start(label(_("bis"), ("dim",), ellipsize=False), False, False, 0)
         reminders = Gtk.Switch(active=cfg.get("water_reminders", True), halign=Gtk.Align.START)
         reminders.connect("notify::active", lambda s, _p: self._set("water_reminders", s.get_active()))
-        settings.attach(label("Erinnerungen"), 0, 3, 1, 1)
+        settings.attach(label(_("Erinnerungen")), 0, 3, 1, 1)
         settings.attach(reminders, 1, 3, 1, 1)
-        settings.attach(label("Aktive Zeit"), 0, 4, 1, 1)
+        settings.attach(label(_("Aktive Zeit")), 0, 4, 1, 1)
         settings.attach(hours, 1, 4, 2, 1)
 
         self.right = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE, hexpand=True)
@@ -766,8 +767,9 @@ class WaterPage(Page):
         w = self.water
         drunk, goal = w.today_ml, w.goal
         pct = min(100, round(100 * drunk / goal)) if goal else 0
-        self.amount.set_text(f"{drunk / 1000:.1f} / {goal / 1000:.1f} L".replace(".", ","))
-        self.status.set_text(f"Heute · {pct} %" + (" · Ziel erreicht 🎉" if drunk >= goal else ""))
+        self.amount.set_text(f"{decimal(drunk / 1000)} / {decimal(goal / 1000)} L")
+        goal_text = _(" · Ziel erreicht 🎉") if drunk >= goal else ""
+        self.status.set_text(_("Heute · {pct} %").format(pct=pct) + goal_text)
         self.bar.set_fraction(pct / 100)
         self.drink_btn.get_child().get_children()[-1].set_text(f"+{w.portion} ml")
         hours = w.per_hour()
@@ -788,16 +790,16 @@ class WeatherPage(Page):
         # ---- setup ------------------------------------------------------------
         setup = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10, valign=Gtk.Align.CENTER)
         setup.pack_start(icon("weather-few-clouds-symbolic", 40), False, False, 0)
-        setup.pack_start(label("Für welchen Ort soll das Wetter angezeigt werden?", ("title",), xalign=0.5),
+        setup.pack_start(label(_("Für welchen Ort soll das Wetter angezeigt werden?"), ("title",), xalign=0.5),
                          False, False, 0)
-        self.city_entry = Gtk.Entry(placeholder_text="z. B. Berlin", width_chars=24, halign=Gtk.Align.CENTER)
+        self.city_entry = Gtk.Entry(placeholder_text=_("z. B. Berlin"), width_chars=24, halign=Gtk.Align.CENTER)
         island.make_typeable(self.city_entry)
         self.city_entry.connect("activate", lambda *_: self._save_city())
         entry_row = Gtk.Box(spacing=8, halign=Gtk.Align.CENTER)
         entry_row.pack_start(self.city_entry, False, False, 0)
-        entry_row.pack_start(button(text="Speichern", css=("accent",), on_click=self._save_city), False, False, 0)
+        entry_row.pack_start(button(text=_("Speichern"), css=("accent",), on_click=self._save_city), False, False, 0)
         setup.pack_start(entry_row, False, False, 0)
-        setup.pack_start(label("Vorhersage: MET Norway · Ortssuche: OpenStreetMap · kein Konto nötig",
+        setup.pack_start(label(_("Vorhersage: MET Norway · Ortssuche: OpenStreetMap · kein Konto nötig"),
                                ("dim", "small"), xalign=0.5), False, False, 0)
         self.stack.add_named(setup, "setup")
 
@@ -814,8 +816,8 @@ class WeatherPage(Page):
         top.pack_start(self.now_icon, False, False, 0)
         top.pack_start(self.now_temp, False, False, 0)
         top.pack_start(desc, True, True, 0)
-        top.pack_end(button("document-edit-symbolic", tooltip="Ort ändern", on_click=self._edit_city), False, False, 0)
-        top.pack_end(button("view-refresh-symbolic", tooltip="Aktualisieren", on_click=island.weather.refresh),
+        top.pack_end(button("document-edit-symbolic", tooltip=_("Ort ändern"), on_click=self._edit_city), False, False, 0)
+        top.pack_end(button("view-refresh-symbolic", tooltip=_("Aktualisieren"), on_click=island.weather.refresh),
                      False, False, 0)
         data.pack_start(top, False, False, 0)
 
@@ -831,7 +833,7 @@ class WeatherPage(Page):
         city = self.city_entry.get_text().strip()
         if city:
             self.island.weather.set_city(city)
-            self.status.set_text("Lade Wetter …")
+            self.status.set_text(_("Lade Wetter …"))
             self.stack.set_visible_child_name("data")
 
     def _edit_city(self):
@@ -862,15 +864,16 @@ class WeatherPage(Page):
             self.now_city.set_text(c["city"])
             clear(self.hourly)
             for h in weather.hourly:
-                self.hourly.pack_start(self._column(f"{h['time']} Uhr", h["icon"], f"{h['temp']}°"), True, True, 0)
+                hour = _("{hour} Uhr").format(hour=h["time"])
+                self.hourly.pack_start(self._column(hour, h["icon"], f"{h['temp']}°"), True, True, 0)
             clear(self.daily)
             for d in weather.daily:
                 self.daily.pack_start(self._column(d["day"], d["icon"], f"{d['max']}° / {d['min']}°"), True, True, 0)
             self.hourly.show_all()
             self.daily.show_all()
-            self.status.set_text("Daten: MET Norway (CC BY 4.0)")
+            self.status.set_text(_("Daten: MET Norway (CC BY 4.0)"))
         elif weather.error:
-            self.now_text.set_text("Wetter nicht verfügbar")
+            self.now_text.set_text(_("Wetter nicht verfügbar"))
             self.now_city.set_text(weather.config.get("city", ""))
             self.status.set_text(weather.error[:80])
 
@@ -887,12 +890,12 @@ class ControlsPage(Page):
         # ---- toggles ----------------------------------------------------------
         grid = Gtk.Box(spacing=8, homogeneous=True)
         self.toggles = {
-            "wifi": self._toggle(grid, "network-wireless-symbolic", "WLAN", lambda on: system.wifi_set(on, self._later)),
+            "wifi": self._toggle(grid, "network-wireless-symbolic", _("WLAN"), lambda on: system.wifi_set(on, self._later)),
             "bluetooth": self._toggle(grid, "bluetooth-active-symbolic", "Bluetooth",
                                       lambda on: system.bluetooth_set(on, self._later)),
-            "dnd": self._toggle(grid, "notifications-disabled-symbolic", "Nicht stören", system.dnd_set),
+            "dnd": self._toggle(grid, "notifications-disabled-symbolic", _("Nicht stören"), system.dnd_set),
             "dark": self._toggle(grid, "weather-clear-night-symbolic", "Dark Mode", system.dark_set),
-            "mic": self._toggle(grid, "microphone-sensitivity-muted-symbolic", "Mikro aus",
+            "mic": self._toggle(grid, "microphone-sensitivity-muted-symbolic", _("Mikro aus"),
                                 lambda on: system.mic_mute_set(on, self._later)),
         }
         self.pack_start(grid, False, False, 0)
@@ -906,14 +909,15 @@ class ControlsPage(Page):
         self.pack_start(sliders, False, False, 0)
 
         # ---- actions ----------------------------------------------------------
-        actions = Gtk.Box(spacing=8, homogeneous=True)
+        # Not homogeneous: five buttons as wide as the longest label ("Ruhezustand") overflow the island
+        actions = Gtk.Box(spacing=8)
         actions.pack_start(button("camera-photo-symbolic", "Screenshot", on_click=self._screenshot), True, True, 0)
-        actions.pack_start(button("system-lock-screen-symbolic", "Sperren",
+        actions.pack_start(button("system-lock-screen-symbolic", _("Sperren"),
                                   on_click=lambda: (island.collapse(), system.lock())), True, True, 0)
         for key, icon_name, text, action in (
-                ("suspend", "weather-clear-night-symbolic", "Ruhezustand", system.suspend),
-                ("reboot", "system-reboot-symbolic", "Neustart", system.reboot),
-                ("poweroff", "system-shutdown-symbolic", "Aus", system.poweroff)):
+                ("suspend", "weather-clear-night-symbolic", _("Ruhezustand"), system.suspend),
+                ("reboot", "system-reboot-symbolic", _("Neustart"), system.reboot),
+                ("poweroff", "system-shutdown-symbolic", _("Aus"), system.poweroff)):
             btn = button(icon_name, text)
             btn.connect("clicked", self._on_dangerous, key, text, action)
             actions.pack_start(btn, True, True, 0)
@@ -1009,7 +1013,7 @@ class ControlsPage(Page):
             action()
             return
         box = btn.get_child()
-        box.get_children()[-1].set_text("Nochmal?")
+        box.get_children()[-1].set_text(_("Nochmal?"))
         css_class(btn, "danger")
 
         def disarm():

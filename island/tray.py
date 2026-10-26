@@ -7,6 +7,7 @@ import gi
 from gi.repository import Gtk
 
 from island import __version__
+from island.i18n import LANGUAGES, _
 from island.services import system
 
 try:
@@ -17,8 +18,9 @@ except (ValueError, ImportError):
 
 AUTOSTART = Path.home() / ".config" / "autostart" / "linuxmos-island.desktop"
 
-# Clipboard auto-delete choices in the tray (minutes, 0 = off); other values via config.json
-AUTODELETE_CHOICES = [(0, "Aus"), (15, "Nach 15 Minuten"), (60, "Nach 1 Stunde"), (1440, "Nach 24 Stunden")]
+# Clipboard auto-delete choices in the tray (minutes, 0 = off); other values via config.json.
+# Labels are German source strings, translated when the menu is built.
+AUTODELETE_CHOICES = [(0, "Nie"), (15, "Nach 15 Minuten"), (60, "Nach 1 Stunde"), (1440, "Nach 24 Stunden")]
 
 
 def _launcher():
@@ -53,40 +55,50 @@ class Tray:
             mi.connect("toggled", lambda w: callback(w.get_active()))
             menu.append(mi)
 
-        item("MosIsland öffnen", lambda: self.island.expand())
+        item(_("MosIsland öffnen"), lambda: self.island.expand())
         menu.append(Gtk.SeparatorMenuItem())
-        check("Mit Cinnamon starten", AUTOSTART.exists(), self._set_autostart)
-        check("Maskottchen", cfg.get("mascot", True), lambda on: self.island.set_option("mascot", on))
-        check("Minimal-Notch", cfg.get("compact_when_idle", False),
+        check(_("Mit Cinnamon starten"), AUTOSTART.exists(), self._set_autostart)
+        check(_("Maskottchen"), cfg.get("mascot", True), lambda on: self.island.set_option("mascot", on))
+        check(_("Minimal-Notch"), cfg.get("compact_when_idle", False),
               lambda on: self.island.set_option("compact_when_idle", on))
-        check("Lautstärke & Helligkeit anzeigen", cfg.get("osd", True), self._set_osd)
+        check(_("Lautstärke & Helligkeit anzeigen"), cfg.get("osd", True), self._set_osd)
         menu.append(self._autodelete_menu(cfg.get("clipboard_autodelete_min", 0)))
+        menu.append(self._language_menu(cfg.get("language", "auto")))
         menu.append(Gtk.SeparatorMenuItem())
-        item("Über MosIsland", self._about)
-        item("Beenden", lambda: self.island.get_application().quit())
+        item(_("Über MosIsland"), self._about)
+        item(_("Beenden"), lambda: self.island.get_application().quit())
         menu.show_all()
         return menu
 
-    def _autodelete_menu(self, current):
+    @staticmethod
+    def _radio_menu(label, choices, current, on_select):
+        """Submenu with one radio item per (value, label); on_select(value) for the newly chosen one."""
         sub = Gtk.Menu()
-        choices = list(AUTODELETE_CHOICES)
-        if current not in dict(choices):
-            choices.append((current, f"Nach {current} Minuten"))  # custom value from config.json
         group = None
-        for minutes, label in choices:
-            mi = Gtk.RadioMenuItem.new_with_label_from_widget(group, label)
+        for value, text in choices:
+            mi = Gtk.RadioMenuItem.new_with_label_from_widget(group, text)
             group = group or mi
-            mi.set_active(minutes == current)
-            mi.connect("toggled", self._on_autodelete, minutes)
+            mi.set_active(value == current)
+            # "toggled" also fires for the item that gets deselected
+            mi.connect("toggled", lambda w, v=value: w.get_active() and on_select(v))
             sub.append(mi)
-        parent = Gtk.MenuItem(label="Zwischenablage automatisch leeren")
+        parent = Gtk.MenuItem(label=label)
         parent.set_submenu(sub)
         return parent
 
-    def _on_autodelete(self, widget, minutes):
-        # "toggled" also fires for the item that gets deselected
-        if widget.get_active():
-            self.island.set_option("clipboard_autodelete_min", minutes)
+    def _autodelete_menu(self, current):
+        choices = [(minutes, _(text)) for minutes, text in AUTODELETE_CHOICES]
+        if current not in dict(choices):
+            # custom value from config.json
+            choices.append((current, _("Nach {minutes} Minuten").format(minutes=current)))
+        return self._radio_menu(_("Zwischenablage automatisch leeren"), choices, current,
+                                lambda minutes: self.island.set_option("clipboard_autodelete_min", minutes))
+
+    def _language_menu(self, current):
+        # Bilingual on purpose: whoever ends up in the wrong language still finds the way back
+        choices = [("auto", _("Automatisch (System)"))] + list(LANGUAGES.items())
+        return self._radio_menu("Sprache / Language", choices, current if current in LANGUAGES else "auto",
+                                self.island.set_language)
 
     @staticmethod
     def _set_autostart(enabled):
@@ -116,8 +128,8 @@ class Tray:
         dialog = Gtk.AboutDialog(
             program_name="MosIsland",
             version=__version__,
-            comments="Dynamic Island für Linux Mint Cinnamon – Teil von LinuxMos.\n"
-                     "Inspiriert von Island (exuupery) und Nusa (rama2555) – eigene Umsetzung.",
+            comments=_("Dynamic Island für Linux Mint Cinnamon – Teil von LinuxMos.\n"
+                       "Inspiriert von Island (exuupery) und Nusa (rama2555) – eigene Umsetzung."),
             website="https://github.com/xypep/LinuxMos",
             logo_icon_name="view-app-grid-symbolic",
         )

@@ -13,19 +13,23 @@ TODO_FILE = DATA_DIR / "todo.json"
 
 
 def parse_due(text, now=None):
-    """'14:30', '1430', '9', 'in 20 min', 'in 2 h' -> epoch seconds, or None."""
+    """'14:30', '1430', '9', '2pm', 'in 20 min', 'in 2 h' -> epoch seconds, or None."""
     now = now or datetime.now()
     text = (text or "").strip().lower()
     if not text:
         return None
-    m = re.fullmatch(r"in\s*(\d+)\s*(m|min|minuten?|h|std|stunden?)", text)
+    m = re.fullmatch(r"in\s*(\d+)\s*(m|mins?|minuten?|minutes?|h|hrs?|hours?|std|stunden?)", text)
     if m:
         amount = int(m.group(1))
         delta = timedelta(hours=amount) if m.group(2).startswith(("h", "s")) else timedelta(minutes=amount)
         return (now + delta).timestamp()
-    m = re.fullmatch(r"(\d{1,2})(?::|\.)?(\d{2})?\s*(uhr)?", text)
+    m = re.fullmatch(r"(\d{1,2})(?::|\.)?(\d{2})?\s*(uhr|am|pm)?", text)
     if m:
-        hour, minute = int(m.group(1)), int(m.group(2) or 0)
+        hour, minute, suffix = int(m.group(1)), int(m.group(2) or 0), m.group(3)
+        if suffix in ("am", "pm"):
+            if not 1 <= hour <= 12:
+                return None
+            hour = hour % 12 + (12 if suffix == "pm" else 0)
         if hour > 23 or minute > 59:
             return None
         due = now.replace(hour=hour, minute=minute, second=0, microsecond=0)

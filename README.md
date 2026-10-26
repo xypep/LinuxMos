@@ -8,7 +8,7 @@
 
 Macht Linux Mint Cinnamon zum leichtgewichtigen macOS-Look-alike – mit Dock, Top Bar, Widgets, Spotlight und optional einer Dynamic Island – ohne dass der Desktop im Leerlauf CPU frisst.
 
-![MosIsland](https://img.shields.io/badge/MosIsland-1.2.0-blue)
+![MosIsland](https://img.shields.io/badge/MosIsland-1.3.0-blue)
 ![Platform](https://img.shields.io/badge/platform-Linux%20Mint%2022%20Cinnamon-87CF3E)
 ![Display server](https://img.shields.io/badge/display-X11-lightgrey)
 
@@ -65,7 +65,8 @@ Macht Linux Mint Cinnamon zum leichtgewichtigen macOS-Look-alike – mit Dock, T
 - **Steuerung** – WLAN, Bluetooth, Nicht stören, Dark Mode, Mikro, Lautstärke, Helligkeit, Screenshot, Sperren, Ruhezustand, Neustart, Aus
 - **Live-Hinweise** – Lautstärke, Helligkeit, Feststelltaste, Tastatur-Sprache, Laden, WLAN weg, Kopfhörer verbunden
 - **Maskottchen** – Augen im Leerlauf, die eindösen und winken, wenn du zurückkommst
-- **Tray-Menü** – Autostart, Maskottchen, Minimal-Notch, OSD, Zwischenablage automatisch leeren, Beenden
+- **Tray-Menü** – Autostart, Maskottchen, Minimal-Notch, OSD, Zwischenablage automatisch leeren, Sprache, Beenden
+- **Deutsch oder Englisch** – folgt automatisch der Systemsprache, umschaltbar im Tray-Menü (`Sprache / Language`)
 
 **Leichtgewichtig** – gemessen: Conky-Widgets ~0,03 % CPU, MosIsland ~0,1 % CPU (unter Cinnamon 6, Musik läuft). Kein Blur-Compositor, keine Polling-Schleifen.
 
@@ -178,6 +179,7 @@ MosIsland: `~/.config/linuxmos/island/config.json` – die meisten Schalter gibt
 ```json
 {
   "city": "Berlin",
+  "language": "auto",
   "offset_y": 6,
   "compact_when_idle": false,
   "mascot": true,
@@ -193,6 +195,8 @@ MosIsland: `~/.config/linuxmos/island/config.json` – die meisten Schalter gibt
   "water_interval_min": 60
 }
 ```
+
+`language`: `auto` (Systemsprache: Deutsch bei `de_*`, sonst Englisch), `de` oder `en`. Beim Umschalten im Tray-Menü startet die MosIsland kurz neu (ein laufender Timer geht dabei verloren).
 
 Weitere Dateien:
 
@@ -210,7 +214,7 @@ Weitere Dateien:
 - **Kompletter `install.sh`-Lauf auf echtem Mint 22 noch nicht getestet** – MosIsland, Panel-Umbau, Update und Uninstall sind unter Cinnamon 6 getestet, der WhiteSur-Installationsschritt nicht. Bitte Fehler melden.
 - **MosIsland braucht ~115 MB RAM** – fast komplett Python + GTK3 selbst.
 - **Kein echtes „Genie“ und kein Blur** – bewusst, weil beides dauerhaft Leistung kostet.
-- **MosIsland nur unter X11** (Standard bei Mint Cinnamon); Oberfläche nur auf Deutsch.
+- **MosIsland nur unter X11** (Standard bei Mint Cinnamon). Oberfläche auf Deutsch und Englisch; `install.sh`, `update.sh` und `uninstall.sh` sprechen nur Deutsch.
 - **Lyrics/Wetter** hängen von LRCLIB bzw. MET Norway ab – nicht jeder Song hat synchronisierte Lyrics.
 - **Ist die MosIsland beendet**, fehlt das Lautstärke-OSD (weil Cinnamons eigenes abgeschaltet ist) – im Tray-Menü „Lautstärke & Helligkeit anzeigen“ ausschalten bringt Cinnamons OSD zurück.
 - **Einfügen per Klick** funktioniert nicht in Fenstern, die als root laufen – der Eintrag liegt dann trotzdem in der Zwischenablage.
@@ -227,7 +231,7 @@ Weitere Lösungen: [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.md#tro
 - [x] Live-Hinweise, Maskottchen, Tray-Menü
 - [x] Zwischenablage automatisch leeren (`clipboard_autodelete_min`)
 - [ ] Kompletter Testlauf auf Linux Mint 22.x
-- [ ] Englische Oberfläche für die MosIsland
+- [x] Englische Oberfläche für die MosIsland (`language`, Tray-Menü)
 
 ---
 

@@ -13,6 +13,7 @@ Every source is push based, nothing is polled:
 import gi
 from gi.repository import Gdk, Gio, GLib
 
+from island.i18n import _
 from island.services import system
 
 try:
@@ -221,7 +222,7 @@ class Indicators:
             icon = props.get("Icon", "")
             if not icon.startswith("audio"):
                 return  # only headphones, headsets and speakers
-            name = props.get("Alias") or props.get("Name") or "Bluetooth-Gerät"
+            name = props.get("Alias") or props.get("Name") or _("Bluetooth-Gerät")
             if connected:
                 self._battery(bus_, path, lambda pct: self._emit(
                     "bluetooth", name=name, connected=True, battery=pct, icon=f"{icon}-symbolic"))

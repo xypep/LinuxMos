@@ -12,12 +12,14 @@ from datetime import datetime
 
 from gi.repository import GLib
 
+from island.i18n import _, weekday
+
 USER_AGENT = "LinuxMos-Island/1.0 (+https://github.com/xypep/LinuxMos)"
 FORECAST_URL = "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat={lat:.4f}&lon={lon:.4f}"
 GEOCODE_URL = "https://nominatim.openstreetmap.org/search?format=json&limit=1&q={q}"
 REFRESH_SECONDS = 30 * 60
 
-# MET symbol code prefix -> (symbolic icon, German description)
+# MET symbol code prefix -> (symbolic icon, description as German source string)
 SYMBOLS = [
     ("clearsky", "weather-clear", "Klar"),
     ("fair", "weather-few-clouds", "Heiter"),
@@ -43,13 +45,13 @@ def describe(symbol_code):
     night = code.endswith("_night")
     base = code.split("_")[0]
     if "thunder" in base:
-        return "weather-storm-symbolic", "Gewitter"
+        return "weather-storm-symbolic", _("Gewitter")
     # Longest matching prefix wins (e.g. "lightrainshowers" before "rain")
     for prefix, icon, text in sorted(SYMBOLS, key=lambda s: -len(s[0])):
         if base.startswith(prefix):
             if night and icon in ("weather-clear", "weather-few-clouds"):
                 icon += "-night"
-            return f"{icon}-symbolic", text
+            return f"{icon}-symbolic", _(text)
     return "weather-overcast-symbolic", "–"
 
 
@@ -100,7 +102,7 @@ class Weather:
             if lat is None or lon is None:
                 hits = _get_json(GEOCODE_URL.format(q=urllib.parse.quote(self.config["city"])))
                 if not hits:
-                    raise LookupError(f"Ort „{self.config['city']}“ nicht gefunden")
+                    raise LookupError(_("Ort „{city}“ nicht gefunden").format(city=self.config["city"]))
                 lat, lon = float(hits[0]["lat"]), float(hits[0]["lon"])
                 GLib.idle_add(self._store_coords, lat, lon)
             data = _get_json(FORECAST_URL.format(lat=lat, lon=lon))
@@ -146,7 +148,7 @@ class Weather:
                 day.update(symbol=symbol(entry), dist=dist)
         daily = []
         for date, day in sorted(days.items())[:7]:
-            daily.append({"day": date.strftime("%a"), "min": round(min(day["temps"])),
+            daily.append({"day": weekday(date.weekday()), "min": round(min(day["temps"])),
                           "max": round(max(day["temps"])), "icon": describe(day["symbol"])[0]})
 
         rain_soon = rain(now) < 0.1 and len(series) > 1 and rain(series[1]) >= 0.2

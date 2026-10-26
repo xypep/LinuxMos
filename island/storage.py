@@ -20,6 +20,8 @@ DEFAULT_CONFIG = {
     "longitude": None,
     # Distance between the top bar and the island, in px
     "offset_y": 6,
+    # UI language: auto (follows the session's locale) | de | en
+    "language": "auto",
     # Shrink the idle island to a thin line (keeps browser tabs free)
     "compact_when_idle": False,
     "clipboard_limit": 50,

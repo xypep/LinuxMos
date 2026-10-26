@@ -18,8 +18,10 @@ the island changes size.
 
 import ctypes
 import math
+import os
 import signal
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import gi
@@ -37,7 +39,8 @@ try:
 except (ValueError, ImportError):
     Wnck = None
 
-from island import APP_ID, __version__  # noqa: E402
+from island import APP_ID, __version__, i18n  # noqa: E402
+from island.i18n import _, n_  # noqa: E402
 from island.pages import (ClipboardPage, ControlsPage, HomePage, NotePage, ShelfPage,  # noqa: E402
                           TodoPage, URI_TARGETS, WaterPage, WeatherPage)
 from island.services import art, system  # noqa: E402
@@ -65,6 +68,7 @@ WIN_W, WIN_H = EXPANDED_W, EXPANDED_H
 HOVER_OPEN_MS = 160
 HOVER_CLOSE_MS = 320
 
+# Tooltips are German source strings, translated when the tab bar is built
 TABS = [
     ("home", "audio-x-generic-symbolic", "Jetzt"),
     ("clipboard", "edit-paste-symbolic", "Zwischenablage"),
@@ -84,6 +88,7 @@ class IslandWindow(Gtk.Window):
     def __init__(self, app):
         super().__init__(application=app)
         self.config = Config.load()
+        i18n.setup(self.config.get("language", "auto"))
         self.expanded = False
         self.track = None
         self._activity = None       # dict(icon, text, level, sticky)
@@ -379,7 +384,7 @@ class IslandWindow(Gtk.Window):
                 text = self._lyrics_lines[self._lyric_idx][1] or "♪"
                 self.c_right.add(icon("media-view-subtitles-symbolic", 14))
             else:
-                text = self.track.title or "Wiedergabe"
+                text = self.track.title or _("Wiedergabe")
                 self.c_right.add(icon("audio-volume-high-symbolic", 14))
         elif kind == "mascot":
             self.eyes.set_mode({"sleep": "sleep", "hello": "hello"}.get(self._idle_state, "awake"))
@@ -447,7 +452,7 @@ class IslandWindow(Gtk.Window):
             btn.set_relief(Gtk.ReliefStyle.NONE)
             btn.set_can_focus(False)
             btn.add(icon(icon_name, 16))
-            btn.set_tooltip_text(tooltip)
+            btn.set_tooltip_text(_(tooltip))
             css_class(btn, "tab")
             btn.connect("clicked", lambda _b, n=name: self.select_tab(n))
             tabs.pack_start(btn, False, False, 0)
@@ -483,8 +488,7 @@ class IslandWindow(Gtk.Window):
             self.pages[name].on_show()
 
     def _update_header_time(self):
-        now = GLib.DateTime.new_now_local()
-        self.header_time.set_text(now.format("%a %e. %b  %H:%M"))
+        self.header_time.set_text(i18n.header_date(datetime.now()))
 
     def _update_position(self):
         if not self.expanded:
@@ -546,7 +550,7 @@ class IslandWindow(Gtk.Window):
         target = self._prev_window
         self.collapse()
         if target is None or not system.has("xdotool"):
-            self.show_activity("edit-copy-symbolic", "Kopiert")
+            self.show_activity("edit-copy-symbolic", _("Kopiert"))
             return
         names = {(target.get_class_group_name() or "").lower(), (target.get_class_instance_name() or "").lower()}
         keys = "ctrl+shift+v" if names & TERMINALS else "ctrl+v"
@@ -627,7 +631,7 @@ class IslandWindow(Gtk.Window):
             return False
         if self._activity and (self._activity.get("sticky") or self._activity.get("on_click")):
             callback = self._activity.get("on_click")
-            self._end_activity()  # e.g. dismiss "Timer abgelaufen"
+            self._end_activity()  # e.g. dismiss "Time's up"
             if callback:
                 callback()
             return True
@@ -651,7 +655,7 @@ class IslandWindow(Gtk.Window):
     def _on_volume(self, value, muted=False):
         if value is None:
             return
-        text = "Stumm" if muted else f"Lautstärke {value} %"
+        text = _("Stumm") if muted else _("Lautstärke {percent} %").format(percent=value)
         self.show_activity(volume_icon(value, muted), text, level=0 if muted else value / 100)
 
     def _on_key(self, _w, event):
@@ -689,7 +693,8 @@ class IslandWindow(Gtk.Window):
         uris = data.get_uris() or []
         added = self.shelf.add(uris)
         if added and not self.expanded:
-            self.show_activity("folder-symbolic", f"{added} Datei{'en' if added > 1 else ''} abgelegt")
+            text = n_("{n} Datei abgelegt", "{n} Dateien abgelegt", added).format(n=added)
+            self.show_activity("folder-symbolic", text)
 
     # =========================================================================
     # Service callbacks
@@ -713,7 +718,8 @@ class IslandWindow(Gtk.Window):
     def _on_battery(self, battery, just_plugged):
         self.pages["home"].update_battery(battery)
         if just_plugged:
-            self.show_activity(battery.icon_name, f"Lädt · {battery.percentage} %", level=battery.percentage / 100)
+            self.show_activity(battery.icon_name, _("Lädt · {percent} %").format(percent=battery.percentage),
+                               level=battery.percentage / 100)
         elif self._shown_kind == "idle" and not self.expanded:
             self._fill_collapsed("idle")
 
@@ -721,7 +727,7 @@ class IslandWindow(Gtk.Window):
         self.pages["home"].update_weather(weather)
         self.pages["weather"].update(weather)
         if rain_started:
-            self.show_activity("weather-showers-symbolic", "Regen in etwa 1 Std.", seconds=6)
+            self.show_activity("weather-showers-symbolic", _("Regen in etwa 1 Std."), seconds=6)
         elif self._shown_kind == "idle" and not self.expanded:
             self._fill_collapsed("idle")
 
@@ -737,27 +743,28 @@ class IslandWindow(Gtk.Window):
 
     def _on_timer_done(self):
         system.play_sound()
-        if self.timer.label == "Fokus":
+        if self.timer.kind == "focus":
             # Pomodoro: focus done -> break starts by itself (every 4th one is long)
             self._pomodoro_count += 1
             long_break = self._pomodoro_count % 4 == 0
             minutes = 15 if long_break else 5
-            system.notify("Fokus geschafft", f"Zeit für {minutes} Minuten Pause.")
-            self.timer.start(minutes * 60, "Pause")
-            self.show_activity("alarm-symbolic", f"Fokus geschafft · {minutes} min Pause", seconds=5)
-        elif self.timer.label == "Pause":
-            system.notify("Pause vorbei", "Klick auf die Insel startet die nächste Fokus-Runde.")
-            self.show_activity("alarm-symbolic", "Pause vorbei · Klick = weiter", sticky=True,
+            system.notify(_("Fokus geschafft"), _("Zeit für {minutes} Minuten Pause.").format(minutes=minutes))
+            self.timer.start(minutes * 60, "break")
+            self.show_activity("alarm-symbolic", _("Fokus geschafft · {minutes} min Pause").format(minutes=minutes),
+                               seconds=5)
+        elif self.timer.kind == "break":
+            system.notify(_("Pause vorbei"), _("Klick auf die Insel startet die nächste Fokus-Runde."))
+            self.show_activity("alarm-symbolic", _("Pause vorbei · Klick = weiter"), sticky=True,
                                on_click=lambda: self.start_pomodoro("focus"))
         else:
-            system.notify("Timer abgelaufen", f"{format_seconds(self.timer.total)} sind um.")
-            self.show_activity("alarm-symbolic", "Timer abgelaufen", sticky=True)
+            system.notify(_("Timer abgelaufen"), _("{time} sind um.").format(time=format_seconds(self.timer.total)))
+            self.show_activity("alarm-symbolic", _("Timer abgelaufen"), sticky=True)
 
     def start_pomodoro(self, phase):
         if phase == "focus":
-            self.timer.start(25 * 60, "Fokus")
+            self.timer.start(25 * 60, "focus")
         else:
-            self.timer.start(5 * 60, "Pause")
+            self.timer.start(5 * 60, "break")
 
     # ---- to-do, water --------------------------------------------------------
     def _on_todo(self):
@@ -765,7 +772,7 @@ class IslandWindow(Gtk.Window):
 
     def _on_todo_due(self, task):
         system.play_sound()
-        system.notify("Erinnerung", task["text"])
+        system.notify(_("Erinnerung"), task["text"])
         self.show_activity("alarm-symbolic", task["text"], sticky=True,
                            on_click=lambda: self.expand(tab="todo"))
 
@@ -774,7 +781,8 @@ class IslandWindow(Gtk.Window):
 
     def _on_water_remind(self):
         portion = self.water.portion
-        self.show_activity("weather-showers-scattered-symbolic", f"Zeit für Wasser · Klick = +{portion} ml",
+        self.show_activity("weather-showers-scattered-symbolic",
+                           _("Zeit für Wasser · Klick = +{ml} ml").format(ml=portion),
                            seconds=12, on_click=self.water.drink)
 
     # ---- system events (overlays) -----------------------------------------------
@@ -784,27 +792,31 @@ class IslandWindow(Gtk.Window):
         if kind == "volume":
             self._on_volume(data["percent"], data["muted"])
         elif kind == "brightness":
-            self.show_activity("display-brightness-symbolic", f"Helligkeit {data['percent']} %",
+            self.show_activity("display-brightness-symbolic",
+                               _("Helligkeit {percent} %").format(percent=data["percent"]),
                                level=data["percent"] / 100)
         elif kind == "capslock":
-            self.show_activity("input-keyboard-symbolic", "Feststelltaste an" if data["on"] else "Feststelltaste aus",
-                               seconds=1.6)
+            text = _("Feststelltaste an") if data["on"] else _("Feststelltaste aus")
+            self.show_activity("input-keyboard-symbolic", text, seconds=1.6)
         elif kind == "layout":
-            self.show_activity("input-keyboard-symbolic", f"Tastatur: {data['name']}", seconds=1.8)
+            self.show_activity("input-keyboard-symbolic", _("Tastatur: {name}").format(name=data["name"]), seconds=1.8)
         elif kind == "network":
             if data["connected"]:
                 icon_name = "network-wireless-symbolic" if data["wireless"] else "network-wired-symbolic"
-                self.show_activity(icon_name, f"Verbunden · {data['name']}" if data["name"] else "Wieder online")
+                self.show_activity(icon_name, _("Verbunden · {name}").format(name=data["name"]) if data["name"]
+                                   else _("Wieder online"))
             else:
-                self.show_activity("network-offline-symbolic", "Keine Verbindung", seconds=4)
+                self.show_activity("network-offline-symbolic", _("Keine Verbindung"), seconds=4)
         elif kind == "bluetooth":
             if data["connected"]:
                 battery = data["battery"]
-                text = f"{data['name']} · verbunden" + (f" · {battery} %" if battery is not None else "")
+                text = _("{name} · verbunden").format(name=data["name"])
+                if battery is not None:
+                    text += f" · {battery} %"
                 self.show_activity(data["icon"], text, level=battery / 100 if battery is not None else None,
                                    seconds=3.5)
             else:
-                self.show_activity(data["icon"], f"{data['name']} getrennt")
+                self.show_activity(data["icon"], _("{name} getrennt").format(name=data["name"]))
 
     # ---- mascot ------------------------------------------------------------------
     def _on_idle(self, state):
@@ -838,6 +850,14 @@ class IslandWindow(Gtk.Window):
             self.clipboard.set_autodelete(value)
         self.refresh_collapsed()
 
+    def set_language(self, choice):
+        """auto | de | en. A different UI language needs a fresh start (no live relabelling)."""
+        changed = i18n.resolve(choice) != i18n.current()
+        self.config["language"] = choice
+        self.config.save()
+        if changed:
+            self.get_application().restart()
+
     # ---- lyrics ------------------------------------------------------------------
     def set_lyrics_view(self, active):
         self._lyrics_view = active
@@ -856,7 +876,7 @@ class IslandWindow(Gtk.Window):
         if key != self._lyrics_key:
             self._lyrics_key = key
             self._lyrics_lines, self._lyric_idx = [], -1
-            self.pages["home"].set_lyrics([], "Lade Lyrics …")
+            self.pages["home"].set_lyrics([], _("Lade Lyrics …"))
             track = self.track
             self.lyrics.get(track, lambda lines, plain: self._on_lyrics(key, lines, plain))
         else:
@@ -870,11 +890,11 @@ class IslandWindow(Gtk.Window):
             self.pages["home"].set_lyrics(lines, None)
         elif plain:
             self.pages["home"].set_lyrics([(None, line) for line in plain.splitlines() if line.strip()],
-                                          "Nur unsynchronisierte Lyrics verfügbar")
+                                          _("Nur unsynchronisierte Lyrics verfügbar"))
             self._lyrics_lines = []
         else:
-            self.pages["home"].set_lyrics([], "Keine Lyrics gefunden" if plain is not None
-                                          else "Lyrics gerade nicht erreichbar (offline?)")
+            self.pages["home"].set_lyrics([], _("Keine Lyrics gefunden") if plain is not None
+                                          else _("Lyrics gerade nicht erreichbar (offline?)"))
         self._advance_lyrics()
 
     def _on_media_position(self):
@@ -939,6 +959,12 @@ class IslandApp(Gtk.Application):
     def __init__(self):
         super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.FLAGS_NONE)
         self.window = None
+        self.restart_requested = False
+
+    def restart(self):
+        """Quit and start again (main() re-executes the process after the clean shutdown)."""
+        self.restart_requested = True
+        self.quit()
 
     def do_startup(self):
         Gtk.Application.do_startup(self)
@@ -988,11 +1014,20 @@ def main(argv=None):
         cfg = Config.load()
         cfg.update(city=argv[i + 1].strip(), latitude=None, longitude=None)
         cfg.save()
-        print(f"Wetter-Ort gesetzt: {cfg['city']}")
+        i18n.setup(cfg.get("language", "auto"))
+        print(_("Wetter-Ort gesetzt: {city}").format(city=cfg["city"]))
         return 0
 
     _set_process_name()
     app = IslandApp()
     GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, lambda: app.quit() or GLib.SOURCE_REMOVE)
     GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, lambda: app.quit() or GLib.SOURCE_REMOVE)
-    return app.run(argv[:1])
+    status = app.run(argv[:1])
+    if app.restart_requested:
+        # Drop the bus connection first so the new process can take over the app ID at once
+        try:
+            Gio.bus_get_sync(Gio.BusType.SESSION, None).close_sync(None)
+        except GLib.Error:
+            pass
+        os.execv(sys.executable, [sys.executable, "-m", "island"])
+    return status
