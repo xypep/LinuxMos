@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Öffnet die Spotlight-Suche (rofi). Ein zweiter Aufruf schließt sie wieder.
+set -euo pipefail
+
+THEME="${XDG_CONFIG_HOME:-$HOME/.config}/linuxmos/rofi/spotlight.rasi"
+
+if pgrep -u "$(id -u)" -x rofi >/dev/null; then
+  pkill -u "$(id -u)" -x rofi
+  exit 0
+fi
+
+exec rofi -show drun -theme "${THEME}"

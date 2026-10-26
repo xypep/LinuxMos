@@ -1,0 +1,163 @@
+/* LinuxMos Island – black, Apple-like and independent of the GTK theme */
+
+#island,
+#island * {
+    color: #f5f5f7;
+    text-shadow: none;
+    -gtk-icon-shadow: none;
+    font-family: "Inter", "Cantarell", sans-serif;
+}
+
+#island .dim { color: rgba(245, 245, 247, 0.55); }
+#island .small { font-size: 9pt; }
+#island .title { font-weight: 600; }
+#island .pill-text { font-weight: 600; font-size: 10.5pt; }
+#island .big-value { font-size: 13pt; font-weight: 600; }
+#island .huge { font-size: 32pt; font-weight: 300; }
+#island .huge-sm { font-size: 22pt; font-weight: 300; }
+#island .warning { color: #ff9f0a; }
+#island .done { color: rgba(245, 245, 247, 0.4); text-decoration-line: line-through; }
+#island .lyric { color: rgba(245, 245, 247, 0.4); font-size: 11pt; font-weight: 600; padding: 3px 0; }
+#island .lyric.current { color: #ffffff; font-size: 13pt; }
+#island .timer-display { font-size: 26pt; font-weight: 300; font-feature-settings: "tnum"; }
+
+/* ---- buttons ---------------------------------------------------------- */
+#island button {
+    background: rgba(255, 255, 255, 0.08);
+    background-image: none;
+    border: none;
+    border-radius: 10px;
+    box-shadow: none;
+    padding: 6px 10px;
+    min-height: 0;
+    min-width: 0;
+    outline: none;
+    transition: background 120ms ease-out;
+}
+#island button:hover { background: rgba(255, 255, 255, 0.16); }
+#island button:active { background: rgba(255, 255, 255, 0.24); }
+#island button:disabled { opacity: 0.35; }
+
+#island button.tab { background: transparent; padding: 6px 9px; }
+#island button.tab:hover { background: rgba(255, 255, 255, 0.10); }
+#island button.tab.active { background: rgba(255, 255, 255, 0.18); }
+
+#island button.circle { border-radius: 999px; padding: 8px; }
+#island button.circle.big { background: #f5f5f7; padding: 10px; }
+#island button.circle.big image { color: #000000; }
+
+#island button.accent,
+#island button.tile:checked { background: #0a84ff; }
+#island button.danger { background: #ff453a; }
+
+#island button.mini { background: transparent; padding: 3px; border-radius: 6px; }
+#island button.mini:hover { background: rgba(255, 255, 255, 0.14); }
+#island button.mini.pinned image { color: #ffd60a; }
+#island button.tile-close { opacity: 0; }
+#island overlay:hover button.tile-close { opacity: 1; }
+
+#island button.tile { padding: 10px 4px; border-radius: 14px; }
+#island button.tile-button { padding: 10px 12px; }
+
+/* ---- cards ------------------------------------------------------------ */
+#island .card {
+    background: rgba(255, 255, 255, 0.07);
+    border-radius: 16px;
+    padding: 12px;
+}
+#island .cover-placeholder {
+    background: rgba(255, 255, 255, 0.10);
+    border-radius: 12px;
+}
+#island .dropzone {
+    border: 2px dashed rgba(255, 255, 255, 0.18);
+    border-radius: 16px;
+    padding: 18px;
+}
+#island .shelf-tile { padding: 8px 4px; border-radius: 10px; }
+#island .shelf-tile:hover { background: rgba(255, 255, 255, 0.08); }
+#island .drag-all { padding: 4px 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.08); }
+
+/* ---- checks & switches ------------------------------------------------- */
+#island check {
+    background: rgba(255, 255, 255, 0.10);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 999px;
+    min-width: 16px;
+    min-height: 16px;
+    -gtk-icon-source: none;
+}
+#island check:checked {
+    background: #0a84ff;
+    border-color: #0a84ff;
+    -gtk-icon-source: -gtk-icontheme("object-select-symbolic");
+    color: #ffffff;
+}
+#island switch { background: rgba(255, 255, 255, 0.16); border: none; border-radius: 999px; }
+#island switch:checked { background: #30d158; }
+#island switch slider { background: #ffffff; border: none; border-radius: 999px; min-width: 20px; min-height: 20px; }
+
+/* ---- inputs ----------------------------------------------------------- */
+#island entry,
+#island spinbutton,
+#island .note,
+#island textview,
+#island textview text {
+    background: rgba(255, 255, 255, 0.08);
+    background-image: none;
+    border: none;
+    border-radius: 10px;
+    box-shadow: none;
+    caret-color: #0a84ff;
+}
+#island textview,
+#island textview text { background: transparent; }
+#island spinbutton button { background: transparent; padding: 4px; }
+#island selection { background: #0a84ff; color: #ffffff; }
+
+/* ---- lists ------------------------------------------------------------ */
+#island scrolledwindow,
+#island viewport,
+#island list,
+#island flowbox,
+#island flowboxchild { background: transparent; border: none; }
+#island row { border-radius: 10px; padding: 5px 8px; background: transparent; }
+#island row:hover { background: rgba(255, 255, 255, 0.08); }
+#island row:selected,
+#island row:focus { background: rgba(10, 132, 255, 0.45); }
+#island scrollbar { background: transparent; border: none; }
+#island scrollbar slider { background: rgba(255, 255, 255, 0.25); border-radius: 4px; min-width: 4px; border: none; }
+
+/* ---- sliders & bars --------------------------------------------------- */
+#island scale trough,
+#island progressbar trough,
+#island levelbar trough {
+    background: rgba(255, 255, 255, 0.16);
+    border: none;
+    border-radius: 4px;
+    min-height: 6px;
+    box-shadow: none;
+}
+#island scale highlight,
+#island progressbar progress,
+#island levelbar block.filled {
+    background: #f5f5f7;
+    border: none;
+    border-radius: 4px;
+    min-height: 6px;
+}
+#island levelbar block.empty { background: transparent; border: none; }
+#island scale slider {
+    background: #ffffff;
+    border: none;
+    border-radius: 999px;
+    min-width: 16px;
+    min-height: 16px;
+    margin: -6px 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+#island progressbar trough,
+#island progressbar progress { min-height: 4px; }
+
+#island tooltip,
+#island tooltip * { background: #1c1c1e; color: #f5f5f7; border-radius: 8px; }
