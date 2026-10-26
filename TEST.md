@@ -13,7 +13,7 @@ Abhaken, was klappt. Was nicht klappt: Nummer + was passiert ist notieren (unten
 cd ~/LinuxMos
 git fetch && git checkout claude/affectionate-feynman-573ubj && git pull
 ./update.sh
-linuxmos-island --version          # erwartet: MosIsland 1.11.0
+linuxmos-island --version          # erwartet: MosIsland 1.12.0
 ```
 
 - [ ] **V1** `update.sh` läuft ohne Fehler durch, die Insel startet neu
@@ -417,6 +417,53 @@ grep -c "sk-" ~/.config/linuxmos/island/config.json                         # er
 - [ ] **X1** Tray → „Maskottchen“ zeigt Anzeigen-Haken und die Figuren Augen, Katze, Roboter, Blob
 - [ ] **X2** Figur wählen, 5 min nichts tun (oder `"idle"` abwarten) → die gewählte Figur erscheint in der Pille, blinzelt, schläft mit „z z“ ein
 - [ ] **X3** Maus bewegen → Figur winkt (^ ^), danach Uhr; die Wahl bleibt nach einem Neustart erhalten
+
+---
+
+## Paket 11 – Dehn-Erinnerung, Augen-Modus, Einstellungs-Zahnrad
+
+Im Container ist alles getestet, was mit Xvfb, einem echten Muffin (Leerlaufzeit, Fenster, Vollbild) und einer künstlichen Uhr (Logik, siehe `tests/`) geht. Hier steht, was **nur bei dir** geht: Ohren, echter Bildschirm, deine Standard-Programme.
+
+Zum Abkürzen: `linuxmos-island --quit; linuxmos-island --stretch-test` (Intervall 1 Minute, Pause nach 20 s, „Überspringen“ nach 40 s) und `linuxmos-island --stretch-now` (Karte sofort). Mit `LINUXMOS_LOG=debug linuxmos-island` im Terminal siehst du jede Messung.
+
+### AA. Dehn-Erinnerung
+
+- [ ] **AA1** `linuxmos-island --stretch-now` → Karte oben mit Übungsname, Anweisung, Start / Später / Heute aus / Aus; **weicher Doppelton**, leise, nicht schrill (Lautsprecher/Kopfhörer)
+- [ ] **AA2** `stretch_volume` auf `0.2` und `1.0` (Datei speichern, ohne Neustart): hörbar leiser/lauter; `stretch_sound: false` → still
+- [ ] **AA3** Karte ignorieren: sie klappt nach ~15 s in ein kleines **Figürchen rechts in der Pille** ein; ein Klick darauf zeigt die Karte wieder; nach 3 min kommt sie **größer und mit etwas höherem Ton** wieder, höchstens dreimal, danach verschwindet das Figürchen (Tab „Dehnen“: „Verpasst“ +1)
+- [ ] **AA4** „Start“: Ring links in der Pille läuft, Sekunden rechts; am Ende ein Ton und die Karte „Geschafft?“. Maus und Tastatur in Ruhe lassen → „Erledigt“ zählt als erledigt
+- [ ] **AA5** Dasselbe, aber während des Countdowns die Maus bewegen → „Du warst am Rechner“ mit „Noch mal“; beim zweiten Mal (wieder bewegt) zählt es als „Unbestätigt“
+- [ ] **AA6** „Später“ zweimal (5 min, dann 3 min), beim dritten Mal gibt es nur „Überspringen“
+- [ ] **AA7** `stretch-test`: 1 min Maus bewegen → Karte. Danach 25 s nichts tun → die Zählung beginnt von vorn (mit `LINUXMOS_LOG=debug` steht `away`)
+- [ ] **AA8** Bildschirm sperren (`Ctrl+Alt+L`), wenn die Erinnerung fällig wird → keine Karte; nach dem Entsperren wird neu gezählt
+- [ ] **AA9** Echtes Vollbild (Video im Browser mit `F11`) → Erinnerung wird fällig (Log `waiting (fullscreen)`) und erscheint, sobald du das Vollbild verlässt
+- [ ] **AA10** Pomodoro: Fokus starten, Erinnerung wird währenddessen fällig → am Ende der Fokusphase kommt die Karte noch vor der Pause (die Pause läuft dabei schon)
+- [ ] **AA11** Tray → „Dehnen“: „Dehn-Erinnerung“ aus → im Log `disabled, no timers`, danach keine Messzeilen mehr; „Heute aus“ → dasselbe bis Mitternacht (Datum in `stretch_off_date`)
+- [ ] **AA12** Karte „Aus“ → Hinweis, wie man es wieder einschaltet; Tray-Häkchen ist aus
+- [ ] **AA13** Tab „Dehnen“: Schalter, Zahlen von heute, „Jetzt dehnen“, „Heute aus“ gehen; `~/.local/share/linuxmos/island/stretch.json` enthält die Zahlen
+- [ ] **AA14** `~/.config/linuxmos/island/stretch_exercises.json` ändern (eigene Übung) → kommt bei der nächsten Erinnerung vor
+
+### AB. Augen-Modus
+
+- [ ] **AB1** Eine Minute nichts tun (oder `linuxmos-island --force-idle`) → Pille wird größer, Figur wird größer, Temperatur und Akku sind weg; Maus oder Taste → alles geht sanft zurück
+- [ ] **AB2** `eye_mode_scale` auf `1.5` und `3.0` (Datei speichern): Größe ändert sich sofort; `9` gilt als `3.0`
+- [ ] **AB3** Alle vier Figuren (Tray → Maskottchen) sehen groß gut aus; schlafend mit „z z“
+- [ ] **AB4** Musik läuft → keine großen Augen (Musik hat Vorrang); Timer läuft → dito; Karte „Akku niedrig“/Benachrichtigung erscheint auch im Augen-Modus normal
+- [ ] **AB5** Maskottchen ausgeschaltet → der Augen-Modus tut nichts; Tray → Maskottchen → „Augen-Modus“ aus → normale kleine Figur
+
+### AC. Zahnrad und Neuladen
+
+- [ ] **AC1** Insel aufklappen: kleines, blasses Zahnrad ganz rechts in der Kopfzeile, beim Drüberfahren deutlicher, Tooltip „Einstellungen“
+- [ ] **AC2** Klick → `config.json` öffnet sich im Standard-Editor und enthält jetzt **alle** Schlüssel. **Notieren, welches Programm aufgeht** (bei `.json` kann das auch der Browser sein): ______
+- [ ] **AC3** Wert ändern, speichern → Hinweis „Einstellungen übernommen“, ohne Neustart (z. B. `mascot_style`, `eye_mode_scale`)
+- [ ] **AC4** Komma weglassen, speichern → Karte „Config ungültig, alte Werte bleiben“ mit Zeile/Spalte; alles läuft mit den alten Werten weiter; Tray-Schalter ändern geht, überschreibt deine Datei aber nicht. Fehler beheben → Karte verschwindet
+- [ ] **AC5** Tray → „Einstellungen öffnen“ tut dasselbe wie das Zahnrad
+
+### AD. update.sh, uninstall.sh, Leistung
+
+- [ ] **AD1** `./update.sh` auf deiner bestehenden Installation: deine Werte in `config.json` sind danach unverändert; die neuen Schlüssel gelten mit ihren Standardwerten (sichtbar nach Klick aufs Zahnrad)
+- [ ] **AD2** `ls ~/.cache/linuxmos/island/stretch-*.wav` → zwei Töne nach der ersten Erinnerung; `./uninstall.sh` entfernt sie, `--purge` auch `stretch.json` und `stretch_exercises.json`
+- [ ] **AD3** `linuxmos-perf` im Leerlauf mit Erinnerung an: CPU ______ % (Erwartung ~0,1 %), RSS ______ MB (Erwartung ≤ 65 MB)
 
 ---
 

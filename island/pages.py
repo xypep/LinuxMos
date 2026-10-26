@@ -1,4 +1,4 @@
-"""The tabs of the opened island: Now, Clipboard, Shelf, To-do, Note & Focus, Water, Weather, Controls."""
+"""The tabs of the opened island: Now, Clipboard, Shelf, To-do, Note & Focus, Water, Stretch, Weather, Controls."""
 
 import time
 from datetime import datetime, timedelta
@@ -815,6 +815,104 @@ class WaterPage(Page):
         first, last = 6, 23
         self.chart.set_data(hours[first:last + 1],
                             [f"{h:02d}" if h % 3 == 0 else "" for h in range(first, last + 1)])
+
+
+# =============================================================================
+# Stretch reminder
+# =============================================================================
+class StretchPage(Page):
+    OUTCOMES = (("done", "Erledigt"), ("unconfirmed", "Unbestätigt"), ("snoozed", "Später"),
+                ("skipped", "Übersprungen"), ("missed", "Verpasst"))
+
+    def __init__(self, island):
+        super().__init__(island)
+        self._syncing = False
+        row = Gtk.Box(spacing=12)
+        self.pack_start(row, True, True, 0)
+
+        # ---- switches ---------------------------------------------------------
+        left = css_class(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10), "card")
+        left.set_size_request(270, -1)
+        head = Gtk.Box(spacing=8)
+        head.pack_start(label("Dehn-Erinnerung", ("title",)), True, True, 0)
+        self.switch = Gtk.Switch(valign=Gtk.Align.CENTER)
+        self.switch.connect("notify::active", self._on_switch)
+        head.pack_end(self.switch, False, False, 0)
+        self.status = label("", ("dim",), ellipsize=False)
+        self.status.set_line_wrap(True)
+        self.status.set_max_width_chars(30)
+        self.status.set_yalign(0.0)
+        self.off_today = Gtk.ToggleButton(label="Heute aus")
+        self.off_today.set_can_focus(False)
+        self.off_today.connect("toggled", self._on_today)
+        now = button("avatar-default-symbolic", "Jetzt dehnen", css=("accent",), on_click=self._stretch_now)
+        actions = Gtk.Box(spacing=6)
+        actions.pack_start(now, True, True, 0)
+        actions.pack_start(self.off_today, False, False, 0)
+        left.pack_start(head, False, False, 0)
+        left.pack_start(self.status, True, True, 0)
+        left.pack_end(actions, False, False, 0)
+        row.pack_start(left, False, False, 0)
+
+        # ---- today's numbers ---------------------------------------------------
+        right = css_class(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4), "card")
+        right.pack_start(label("Heute", ("dim", "small")), False, False, 0)
+        self.counts = {}
+        for key, text in self.OUTCOMES:
+            line = Gtk.Box(spacing=8)
+            number = label("0", ("big-value",), xalign=1.0, ellipsize=False)
+            line.pack_start(label(_(text)), True, True, 0)
+            line.pack_end(number, False, False, 0)
+            right.pack_start(line, False, False, 0)
+            self.counts[key] = number
+        self.footer = label("", ("dim", "small"), ellipsize=False)
+        self.footer.set_line_wrap(True)
+        self.footer.set_max_width_chars(30)
+        self.footer.set_xalign(0.0)
+        right.pack_end(self.footer, False, False, 0)
+        row.pack_start(right, True, True, 0)
+        self.update()
+
+    def _on_switch(self, switch, _param):
+        if not self._syncing:
+            self.island.set_option("stretch_enabled", switch.get_active())
+
+    def _on_today(self, toggle):
+        if not self._syncing:
+            self.island.stretch.on_today(toggle.get_active())
+
+    def _stretch_now(self):
+        self.island.collapse()    # the card comes up on the folded island
+        self.island.stretch.trigger_now()
+
+    def on_show(self):
+        self.update()
+
+    def update(self):
+        s, cfg = self.island.stretch, self.island.config
+        enabled, off_today = cfg.flag("stretch_enabled"), s.config.get("stretch_off_date") == s.env.today()
+        self._syncing = True
+        self.switch.set_active(enabled)
+        self.off_today.set_active(off_today)
+        self._syncing = False
+        if not enabled:
+            status = "Aus. Es läuft nichts im Hintergrund."
+        elif off_today:
+            status = "Heute aus. Morgen geht es von selbst wieder los."
+        elif s.unavailable:
+            status = "Pausiert: die Leerlaufzeit lässt sich nicht messen."
+        elif s.round is not None:
+            status = "Eine Dehnpause wartet auf dich."
+        elif s.pending:
+            status = "Fällig: kommt, sobald Vollbild oder Fokus-Timer vorbei sind."
+        else:
+            status = "Nach {interval} Min. aktiver Zeit am Rechner, bisher {done} Min.".format(
+                interval=s.rules.interval_s // 60, done=s.counter.active_s // 60)
+        self.status.set_text(status)
+        today = s.today()
+        for key, number in self.counts.items():
+            number.set_text(str(today[key]))
+        self.footer.set_text("Eigene Übungen: Tray › Dehnen › Übungen bearbeiten")
 
 
 # =============================================================================

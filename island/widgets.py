@@ -104,20 +104,41 @@ class Eyes(Gtk.DrawingArea):
     then, dozes off and says hello.
 
     It only animates while visible: a blink is ~180 ms of frames every few
-    seconds, sleeping and greeting are static drawings.
+    seconds, sleeping and greeting are static drawings. In the big-eyes mode
+    (set_scale) the same drawing is just scaled up.
     """
+
+    BASE_W, BASE_H = 60, 22
 
     def __init__(self, style=mascots.DEFAULT):
         super().__init__()
-        self.set_size_request(60, 22)
+        self.set_size_request(self.BASE_W, self.BASE_H)
         self.figure = style
+        self.scale = 1.0
         self.mode = "awake"     # awake | sleep | hello
         self._blink = 0.0       # 0 = open, 1 = closed
         self._blink_id = 0
         self._tick_id = 0
         self._start = 0
+        self._more_blinks = 0   # blinks still to follow the running one (blink_twice)
         self.connect("map", lambda *_: self._schedule_blink())
         self.connect("unmap", lambda *_: self._stop())
+
+    def set_scale(self, scale):
+        """1.0 = the normal size; bigger for the idle island's big-eyes mode."""
+        if scale != self.scale:
+            self.scale = scale
+            self.set_size_request(round(self.BASE_W * scale), round(self.BASE_H * scale))
+            self.queue_draw()
+
+    def blink_twice(self):
+        """Two quick blinks now (the heads-up before a stretch card); False if the eyes aren't on show."""
+        if self.mode != "awake" or not self.get_mapped():
+            return False
+        self._more_blinks = 1
+        self._stop()
+        self._begin_blink()
+        return True
 
     def set_figure(self, figure):
         if figure != self.figure:
@@ -151,44 +172,91 @@ class Eyes(Gtk.DrawingArea):
         now = clock.get_frame_time()
         self._start = self._start or now
         p = (now - self._start) / 180_000
-        self._blink = math.sin(math.pi * min(1.0, p))
+        self._blink = math.sin(math.pi * min(1.0, max(0.0, p)))
         self.queue_draw()
         if p < 1.0:
             return GLib.SOURCE_CONTINUE
-        self._tick_id = 0
         self._blink = 0.0
+        if self._more_blinks:
+            self._more_blinks -= 1
+            self._start = clock.get_frame_time() + 110_000    # eyes open for a moment, then the next blink
+            return GLib.SOURCE_CONTINUE
+        self._tick_id = 0
         self._schedule_blink()
         return GLib.SOURCE_REMOVE
 
     def do_draw(self, cr):
-        mascots.draw(self.figure, cr, self.get_allocated_width(), self.get_allocated_height(),
-                     self.mode, self._blink)
+        w, h = self.get_allocated_width(), self.get_allocated_height()
+        if self.scale != 1.0:
+            # The drawing is made for 60x22 px: centre that box and blow it up
+            cr.translate(0, (h - self.BASE_H * self.scale) / 2)
+            cr.scale(self.scale, self.scale)
+            w, h = w / self.scale, self.BASE_H
+        mascots.draw(self.figure, cr, w, h, self.mode, self._blink)
+        return False
+
+
+class Ring(Gtk.DrawingArea):
+    """A progress ring (the stretch countdown in the pill's left slot). Redraws only when the percent changes."""
+
+    SIZE = 22
+    COLOR = (0.30, 0.82, 0.70)
+
+    def __init__(self):
+        super().__init__()
+        self.set_size_request(self.SIZE, self.SIZE)
+        self.set_valign(Gtk.Align.CENTER)
+        self.fraction = 0.0
+
+    def set_fraction(self, fraction):
+        fraction = min(max(fraction, 0.0), 1.0)
+        if round(fraction * 100) != round(self.fraction * 100):
+            self.fraction = fraction
+            self.queue_draw()
+        else:
+            self.fraction = fraction
+
+    def do_draw(self, cr):
+        cx = cy = self.SIZE / 2
+        r = self.SIZE / 2 - 2.2
+        cr.set_line_width(3)
+        cr.set_source_rgba(1, 1, 1, 0.18)
+        cr.arc(cx, cy, r, 0, 2 * math.pi)
+        cr.stroke()
+        if self.fraction > 0:
+            cr.set_source_rgb(*self.COLOR)
+            cr.set_line_cap(cairo.LINE_CAP_ROUND)
+            cr.arc(cx, cy, r, -math.pi / 2, -math.pi / 2 + 2 * math.pi * self.fraction)
+            cr.stroke()
         return False
 
 
 class LiveDots(Gtk.DrawingArea):
-    """Status marks at the folded island's right end: microphone (orange), camera (green), download ring.
+    """Status marks at the folded island's right end: a stretching figure (a reminder waits for an answer),
+    microphone (orange), camera (green), download ring.
 
     Static drawings: they only redraw when their state changes.
     """
 
-    DOT, RING, GAP = 7, 14, 5
+    DOT, RING, GLYPH, GAP = 7, 14, 12, 5
     MIC, MUTED, CAM, RING_FG = (1.0, 0.62, 0.04), (0.6, 0.6, 0.62), (0.19, 0.82, 0.35), (0.04, 0.52, 1.0)
+    STRETCH = (0.30, 0.82, 0.70)
 
     def __init__(self):
         super().__init__()
         self.mic = None          # None | "on" | "muted"
         self.cam = False
         self.download = None     # None | -1 (no percentage) | 0..100
+        self.stretch = False
         self.set_valign(Gtk.Align.CENTER)
         self.set_no_show_all(True)
 
-    def set_state(self, mic, cam, download):
+    def set_state(self, mic, cam, download, stretch=False):
         """True if the width changed (the pill has to resize)."""
-        if (mic, cam, download) == (self.mic, self.cam, self.download):
+        if (mic, cam, download, stretch) == (self.mic, self.cam, self.download, self.stretch):
             return False
         before = self.width
-        self.mic, self.cam, self.download = mic, cam, download
+        self.mic, self.cam, self.download, self.stretch = mic, cam, download, stretch
         self.set_size_request(self.width, self.RING)
         self.set_visible(self.width > 0)
         self.queue_draw()
@@ -196,12 +264,20 @@ class LiveDots(Gtk.DrawingArea):
 
     @property
     def width(self):
-        parts = [self.DOT] * ((self.mic is not None) + self.cam) + ([self.RING] if self.download is not None else [])
+        parts = [self.GLYPH] * self.stretch + [self.DOT] * ((self.mic is not None) + self.cam) \
+            + ([self.RING] if self.download is not None else [])
         return sum(parts) + self.GAP * max(0, len(parts) - 1)
+
+    def hits_stretch(self, x):
+        """x in this widget's coordinates: on the stretching figure (a little margin to hit it easily)."""
+        return self.stretch and -4 <= x <= self.GLYPH + self.GAP
 
     def do_draw(self, cr):
         h = self.get_allocated_height()
         x, cy = 0.0, h / 2
+        if self.stretch:
+            self._draw_stretcher(cr, x + self.GLYPH / 2, cy)
+            x += self.GLYPH + self.GAP
         for color in ([self.MIC if self.mic == "on" else self.MUTED] if self.mic else []) + \
                      ([self.CAM] if self.cam else []):
             cr.set_source_rgb(*color)
@@ -229,6 +305,24 @@ class LiveDots(Gtk.DrawingArea):
             cr.line_to(cx + 2.5, cy)
             cr.stroke()
         return False
+
+    def _draw_stretcher(self, cr, cx, cy):
+        """A little figure with its arms up."""
+        cr.set_source_rgb(*self.STRETCH)
+        cr.set_line_width(1.7)
+        cr.set_line_cap(cairo.LINE_CAP_ROUND)
+        cr.set_line_join(cairo.LINE_JOIN_ROUND)
+        cr.arc(cx, cy - 4.6, 1.7, 0, 2 * math.pi)
+        cr.fill()
+        cr.move_to(cx - 4.2, cy - 5.2)    # arms up
+        cr.line_to(cx, cy - 1.6)
+        cr.line_to(cx + 4.2, cy - 5.2)
+        cr.move_to(cx, cy - 1.6)          # body
+        cr.line_to(cx, cy + 1.8)
+        cr.move_to(cx - 2.6, cy + 5.6)    # legs
+        cr.line_to(cx, cy + 1.8)
+        cr.line_to(cx + 2.6, cy + 5.6)
+        cr.stroke()
 
 
 class BarChart(Gtk.DrawingArea):

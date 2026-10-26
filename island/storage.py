@@ -1,8 +1,12 @@
 """Paths, config and small JSON persistence helpers."""
 
 import json
+import logging
+import math
 import os
 from pathlib import Path
+
+log = logging.getLogger("mosisland.config")
 
 
 def _xdg(var, fallback):
@@ -93,6 +97,28 @@ DEFAULT_CONFIG = {
     "water_start": "09:00",
     "water_end": "21:00",
     "water_interval_min": 60,
+    # Stretch reminder: counts active time (input within the last minute); a pause of
+    # stretch_break_reset_min replaces the stretching, a reminder that falls due while the screen is off or
+    # locked or the last input is stretch_idle_skip_min old is dropped. "Later" at most stretch_snooze_max
+    # times (stretch_snooze_min, then 3/5 of it), an ignored card comes back bigger (stretch_escalate)
+    # up to three times, "done" needs stretch_verify_idle (no input during the countdown), every 4th
+    # exercise is a long one but at most stretch_long_per_day a day. stretch_off_date = "YYYY-MM-DD" of
+    # the day "Today off" was chosen.
+    "stretch_enabled": True,
+    "stretch_interval_min": 45,
+    "stretch_break_reset_min": 5,
+    "stretch_idle_skip_min": 30,
+    "stretch_snooze_min": 5,
+    "stretch_snooze_max": 2,
+    "stretch_escalate": True,
+    "stretch_verify_idle": True,
+    "stretch_long_per_day": 2,
+    "stretch_sound": True,
+    "stretch_volume": 0.5,
+    "stretch_off_date": "",
+    # Big eyes in the idle island: the mascot grows by eye_mode_scale (1.5-3.0), temperature and battery go
+    "eye_mode": True,
+    "eye_mode_scale": 2.0,
 }
 
 
@@ -112,16 +138,110 @@ def save_json(path, data):
     os.replace(tmp, path)
 
 
+def read_config_file(path):
+    """(dict, None) from a config file; ({}, None) if it does not exist; (None, message) if it is broken.
+
+    The message names the place in the file ("Zeile 3, Spalte 8: ...") so a card can show it.
+    """
+    try:
+        text = Path(path).read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return {}, None
+    except OSError as error:
+        return None, str(error)
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as error:
+        return None, f"Zeile {error.lineno}, Spalte {error.colno}: {error.msg}"
+    if not isinstance(data, dict):
+        return None, "Zeile 1: Oben muss ein Objekt { … } stehen"
+    return data, None
+
+
+def number(value, low, high, default):
+    """value as a float clamped to low..high; anything that is not a number falls back to default."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or math.isnan(value):
+        value = default
+    return min(max(float(value), low), high)
+
+
 class Config(dict):
     PATH = CONFIG_DIR / "config.json"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._synced = dict(self)    # what the file held when we last read or wrote it
+        self.error = None            # why the file on disk is unusable (None = fine)
 
     @classmethod
     def load(cls):
         cfg = cls(DEFAULT_CONFIG)
-        stored = load_json(cls.PATH, {})
-        if isinstance(stored, dict):
+        stored, cfg.error = read_config_file(cls.PATH)
+        if stored:
             cfg.update(stored)
+        if cfg.error:
+            log.warning("config.json is not valid (%s): defaults stay active", cfg.error)
+        cfg._synced = dict(cfg)
         return cfg
 
+    def reload(self):
+        """Read the file again (it was edited). (keys that changed, error): on an error nothing changes."""
+        stored, error = read_config_file(self.PATH)
+        self.error = error
+        if error:
+            log.warning("config.json is not valid (%s): keeping the old values", error)
+            return [], error
+        fresh = dict(DEFAULT_CONFIG)
+        fresh.update(stored)
+        changed = [key for key in {*fresh, *self} if self.get(key, _MISSING) != fresh.get(key, _MISSING)]
+        self.clear()
+        self.update(fresh)
+        self._synced = dict(self)
+        return changed, None
+
     def save(self):
-        save_json(self.PATH, dict(self))
+        """Write what changed here onto what the file holds now.
+
+        The file may have been edited meanwhile and may hold keys this version does not know: both stay.
+        Nothing is written while the file is broken, so a half-edited text is never overwritten.
+        """
+        disk, error = read_config_file(self.PATH)
+        if error:
+            self.error = error
+            log.warning("config.json is not valid (%s): not saving", error)
+            return False
+        ours = {key: value for key, value in self.items() if key not in self._synced or self._synced[key] != value}
+        if ours or not self.PATH.exists():
+            disk.update(ours)
+            save_json(self.PATH, disk)
+        self._synced = dict(self)
+        return True
+
+    def fill_defaults(self):
+        """Put every missing key into the file with its default (so an editor shows all options).
+
+        Existing values and unknown keys stay; known keys come in the order of DEFAULT_CONFIG. False if the
+        file is broken (then nothing is touched).
+        """
+        disk, error = read_config_file(self.PATH)
+        if error:
+            return False
+        full = {key: disk.get(key, default) for key, default in DEFAULT_CONFIG.items()}
+        full.update({key: value for key, value in disk.items() if key not in DEFAULT_CONFIG})
+        if list(full.items()) != list(disk.items()) or not self.PATH.exists():
+            save_json(self.PATH, full)
+        return True
+
+    # ---- typed reads: a wrong type or an out-of-range value in the file never breaks a feature ----
+    def number(self, key, low, high):
+        return number(self.get(key), low, high, DEFAULT_CONFIG.get(key, low))
+
+    def integer(self, key, low, high):
+        return round(self.number(key, low, high))
+
+    def flag(self, key):
+        value = self.get(key, DEFAULT_CONFIG.get(key, False))
+        return value if isinstance(value, bool) else bool(DEFAULT_CONFIG.get(key, False))
+
+
+_MISSING = object()

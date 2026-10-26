@@ -8,7 +8,7 @@
 
 Turns Linux Mint Cinnamon into a lightweight macOS look-alike – dock, top bar, widgets, Spotlight and an optional Dynamic Island – without the desktop eating CPU while idle.
 
-![MosIsland](https://img.shields.io/badge/MosIsland-1.6.0-blue)
+![MosIsland](https://img.shields.io/badge/MosIsland-1.12.0-blue)
 ![Platform](https://img.shields.io/badge/platform-Linux%20Mint%2022%20Cinnamon-87CF3E)
 ![Display server](https://img.shields.io/badge/display-X11-lightgrey)
 
@@ -32,12 +32,14 @@ Turns Linux Mint Cinnamon into a lightweight macOS look-alike – dock, top bar,
 - [Usage](#usage)
 - [Important notes](#important-notes)
 - [Configuration](#configuration)
+- [Stretch reminder](#stretch-reminder)
+- [Tests](#tests)
 - [Known issues](#known-issues)
 - [Roadmap](#roadmap)
 - [License](#license)
 - [Credits](#credits)
 
-> The detailed step-by-step guide (including how to do everything by hand) is available in German: [docs/ANLEITUNG.md](docs/ANLEITUNG.md).
+> The detailed step-by-step guide (including how to do everything by hand) is available in German: [docs/ANLEITUNG.md](docs/ANLEITUNG.md). Every setting with its default and valid range is listed in [docs/CONFIG.md](docs/CONFIG.md) (German).
 
 ---
 
@@ -75,7 +77,10 @@ Turns Linux Mint Cinnamon into a lightweight macOS look-alike – dock, top bar,
 - **Screen recording** – `Ctrl+Alt+R` (area) or `Ctrl+Alt+Shift+R` (monitor under the pointer); the same key ends it. MP4 (H.264, with system sound or the microphone if you like) or GIF, saved in `~/Videos/LinuxMos`. The island steps out of the picture, the tray icon turns red (a click ends it), then a card with "Play" and "Show in folder". A forgotten recording stops by itself after 30 minutes
 - **AI chat & dictation** (optional, your own API key, off by default) – a chat tab (`Ctrl+Alt+A`), the answer streams in live. Works with any OpenAI-compatible server: OpenAI, OpenRouter, Ollama, LM Studio … The key lives in the keyring (libsecret), not in the config. **Dictation** (`Ctrl+Alt+M`): speak, press the key again – the text is typed into the active window (or lands in the chat field)
 - **Mascot** – eyes, a cat, a robot or a blob while you are away; they doze off and wave when you come back
-- **Tray menu** – autostart, mascot (pick the character), minimal notch, OSD, clipboard auto-clear, search (files, currencies, search engine), screenshot, text & QR, screen recording (format, sound), AI (chat, dictation, connection & API key), notifications (on/off, do not disturb, hide apps), live hints (mic & camera, VPN, downloads), monitor, language, quit
+- **Big-eyes mode** – while you are away the pill grows and the character gets 1.5 to 3 times as big (`eye_mode_scale`), temperature and battery go; hover, click or any input brings everything back within about 250 ms. Warnings, music, timers and the stretch card come first. Needs the mascot switched on (`mascot`), otherwise it does nothing
+- **Stretch reminder** – after 45 minutes of *active* time at the computer (input within the last minute) the island shows a card with an exercise and a soft two-note chime. "Start" runs a countdown with a ring in the pill, and **"Done" only counts if you really did not type during it.** A real break (5 minutes without input) replaces the stretching, and the card waits during fullscreen and while a focus timer runs. Later, Today off, Off, daily statistics, your own exercises → [details](#stretch-reminder)
+- **Settings gear** – the gear at the top right of the opened island opens `config.json` in your editor, with every option in it. Changes apply at once (inotify, costs nothing); a typo keeps the old values active and a card names the place in the file
+- **Tray menu** – autostart, mascot (pick the character, big-eyes mode), stretch (reminder, today off, stretch now, exercises), minimal notch, OSD, clipboard auto-clear, search (files, currencies, search engine), screenshot, text & QR, screen recording (format, sound), AI (chat, dictation, connection & API key), notifications (on/off, do not disturb, hide apps), live hints (mic & camera, VPN, downloads), monitor, language, open settings, quit
 - **English or German** – follows the system language automatically, switchable in the tray menu (`Sprache / Language`)
 
 **Lightweight** – measured: Conky widgets ~0.03 % CPU, MosIsland ~0.1 % CPU (Cinnamon 6, music playing) and ~60 MB RAM. No blur compositor, no polling loops.
@@ -90,6 +95,18 @@ Turns Linux Mint Cinnamon into a lightweight macOS look-alike – dock, top bar,
 The biggest chunk (−49 MB) was Mesa: GTK loads the OpenGL driver including LLVM at start-up just to pick a window format – yet the island never draws with OpenGL. The rest (−7 MB): tabs are built the first time they open, weather/lyrics/covers/rates come through `curl` instead of Python's HTTPS stack, and freed memory goes back to the system after the island folds. On real hardware the saving depends on the graphics driver – `linuxmos-perf` shows the island's RAM.
 
 Recording, chat and dictation cost nothing while idle: the chat tab is built the first time it opens (measured 59 MB RSS after start-up, +0.7 MB afterwards, idle CPU unchanged), and ffmpeg and curl only run while you record or ask.
+
+**"Wellbeing" package (1.12.0)** – measured in Xvfb with a real Muffin, `linuxmos-perf 60`, 12 s after start:
+
+| MosIsland                                              | RSS     | CPU (60 s) |
+|--------------------------------------------------------|---------|------------|
+| before (1.11.0)                                        | 59.1 MB | 0.5 %      |
+| after, stretch reminder on (default)                   | 59.7 MB | 0.5 %      |
+| after, stretch reminder off                            | 59.5 MB | 0.4 %      |
+| after, big-eyes mode (`--force-idle`)                  | 58.5 MB | 0.8 %      |
+| after, big-eyes mode off (normal mascot)               | 58.7 MB | 0.9 %      |
+
+The package costs about 0.6 MB of RAM. The CPU values are higher in this environment (software rendering, 0.5 % even before) than on real hardware (0.1–0.2 %); the comparison is what counts: the reminder's tick can't be measured (over 120 s with a tick every 5 s, twelve times as often as in use: 760 ms CPU, 763 ms without the reminder). The big eyes cost as much as the small ones – the blinking was there before.
 
 ---
 
@@ -169,6 +186,10 @@ linuxmos-island --chat       # open the AI chat
 linuxmos-island --voice      # start dictation, call again = recognise the text
 linuxmos-island --set-key    # store the AI chat's API key in the keyring
 linuxmos-island --set-city "Munich"
+linuxmos-island --stretch-now   # show a stretch card right away (also while the island runs)
+linuxmos-island --stretch-test  # test: 1-minute interval, idle thresholds in seconds (at start-up only)
+linuxmos-island --force-idle    # test: mascot/big eyes without waiting, hover ends it (at start-up only)
+LINUXMOS_LOG=debug linuxmos-island   # log with every measurement (default: info)
 ```
 
 ### Hotkeys
@@ -273,9 +294,25 @@ MosIsland: `~/.config/linuxmos/island/config.json` – most switches are also in
   "water_reminders": true,
   "water_start": "09:00",
   "water_end": "21:00",
-  "water_interval_min": 60
+  "water_interval_min": 60,
+  "stretch_enabled": true,
+  "stretch_interval_min": 45,
+  "stretch_break_reset_min": 5,
+  "stretch_idle_skip_min": 30,
+  "stretch_snooze_min": 5,
+  "stretch_snooze_max": 2,
+  "stretch_escalate": true,
+  "stretch_verify_idle": true,
+  "stretch_long_per_day": 2,
+  "stretch_sound": true,
+  "stretch_volume": 0.5,
+  "stretch_off_date": "",
+  "eye_mode": true,
+  "eye_mode_scale": 2.0
 }
 ```
+
+The easiest way is the **gear** at the top right of the opened island (or tray → "Open settings"): it adds missing keys with their defaults and opens the file with `xdg-open` (else `gio open`, else `xed`) – that is, in your default program for `.json` files. Save and it applies at once, no restart. If the JSON is invalid, the old values stay active, a card says "Config ungültig, alte Werte bleiben" (invalid config, old values stay) with line and column, and the island does not write to the file until it is right again. Unknown keys are kept, values outside the valid range are clamped. **Every key with its default, meaning and range: [docs/CONFIG.md](docs/CONFIG.md)** (German).
 
 `language`: `auto` (system language: German for `de_*`, English otherwise), `de` or `en`. Switching it in the tray menu restarts MosIsland briefly (a running timer is lost).
 
@@ -293,6 +330,10 @@ Command bar: `command_bar_engine` is the search engine (`duckduckgo`, `google`, 
 
 Mascot: `mascot_style` is `eyes` (the default), `cat`, `robot` or `blob`; `mascot` switches it off altogether. Both in the tray menu under "Mascot".
 
+Big-eyes mode: `eye_mode` (on by default, tray → "Mascot" → "Augen-Modus (groß im Leerlauf)") makes the character grow by `eye_mode_scale` while you are away (the same moment the mascot comes out), 1.5 to 3.0 – values outside are clamped. With the mascot off (`mascot: false`) it does nothing. If something else is on show in the pill (music, a timer, the stretch countdown, the stretch mark) the normal pill stays; cards and hints (battery low, Wi-Fi gone, the stretch card …) appear as usual and the eyes come back afterwards. The microphone/camera dots stay visible.
+
+<img src="docs/img/island-eyes.png" alt="Big-eyes mode: eyes, cat, robot and blob while you are away, big" width="60%">
+
 Screen recording: `record_format` is `mp4` or `gif` (GIFs have at most 15 frames per second, 960 px width and no sound), `record_audio` `off`, `system` (what the speakers play) or `mic` (MP4 only), `record_fps` 1–60, `record_max_min` ends a recording after that many minutes (`0` = never), `record_dir` changes the folder (empty = `~/Videos/LinuxMos`). The picture comes from ffmpeg (`x11grab`) and needs X11. Format and sound also in the tray menu under "Screen recording".
 
 AI: `ai_chat` shows the chat tab, `ai_voice` enables dictation, `ai_voice_autopaste` types the dictation into the previous window (otherwise a card with "Paste"). `ai_base_url` is the server's address up to `/v1` (empty = `https://api.openai.com/v1`, Ollama: `http://localhost:11434/v1`), `ai_model` the chat model (empty = `gpt-4o-mini`), `ai_stt_model` the model for dictation (empty = `whisper-1`; the server needs `/audio/transcriptions`). `ai_system_prompt` replaces the short default instruction, `ai_history` is the number of messages sent along, `ai_voice_language` a language code like `en` (empty = detect), `ai_voice_max_s` the longest dictation. Set address, models and key in the tray menu under "AI" → "Connection & API key …", or the key with `linuxmos-island --set-key`.
@@ -304,7 +345,61 @@ Other files:
 | `~/.config/linuxmos/conky/*.conf`             | Widget position and look (`gap_x`, `gap_y`, `alignment`) |
 | `~/.config/linuxmos/rofi/spotlight.rasi`      | Look of the Spotlight search                   |
 | `~/.local/share/linuxmos/install.conf`        | Chosen install options (used by `update.sh`)   |
-| `~/.local/share/linuxmos/island/`             | MosIsland data: note, to-dos, water log, clipboard history, shelf |
+| `~/.local/share/linuxmos/island/`             | MosIsland data: note, to-dos, water log, clipboard history, shelf, stretch statistics (`stretch.json`, 30 days) |
+| `~/.config/linuxmos/island/stretch_exercises.json` | Your stretch exercises (name, text, seconds, `long`) – created with the default list the first time |
+| `~/.cache/linuxmos/island/stretch-*.wav`      | The two chimes of the stretch reminder, made by the island on first use (`uninstall.sh` removes them) |
+
+---
+
+## Stretch reminder
+
+<p align="center"><img src="docs/img/island-stretch.png" alt="Stretch reminder: the card with an exercise, the bigger card the second time, the little figure in the pill and the countdown ring" width="80%"></p>
+
+All on the island, no dialog windows. The main switch is tray → "Dehnen" → "Dehn-Erinnerung" (`stretch_enabled`), plus "Heute aus" (today off, until midnight) and the "Dehnen" tab. **Off means off:** no timer, no tick, no query (the log says `stretch: disabled, no timers`). The stretch texts are German only.
+
+**When it comes**
+- Only *active* time counts: one tick a minute asks once how long ago the last input was (Muffin's IdleMonitor, which the island already uses for the mascot; outside Cinnamon libXss takes over). Input within the last minute makes the minute count. While the computer sits idle the tick slows to every 5 minutes.
+- **5 minutes without input** (`stretch_break_reset_min`) is a real break: counting starts over and no card follows.
+- If it falls due while the screen is off or locked (`cinnamon-screensaver-command -q`, `xset q`, asked once, only then) or the last input is older than `stretch_idle_skip_min`, it is dropped and counting starts again on your return.
+- **Fullscreen** (film, game): it waits and comes once you leave. The island listens to libwnck's window signals, it asks nothing. **Focus timer:** while one runs no card comes; if it falls due meanwhile, it comes at the end of the focus phase, before the break. If nothing is due then, nothing happens.
+
+**The card:** exercise name, instruction, "Start", "Später" (later), "Heute aus", "Aus" (sets `stretch_enabled` to `false` and briefly shows how to switch it on again). The card folds after 15 s and leaves a small figure at the pill's right end until you react; a click on it brings the card back. Before the card the eyes blink twice (if they are on show).
+
+**Against just clicking "done"**
+- "Start" runs a countdown (short exercises 10–20 s, long ones 30–60 s) with a ring at the pill's left. "Erledigt" (done) only comes after it and only counts if the idle time at the end is at least **70 %** of the countdown (`stretch_verify_idle`). Otherwise: "Du warst am Rechner, noch mal?" (you were at the computer, again?) – the second time it counts as "unconfirmed".
+- "Später" at most twice per round (5, then 3 minutes), after that only Start or "Überspringen" (skip).
+- An ignored card comes back after 3 minutes, bigger and with a slightly higher chime, at most three times (`stretch_escalate`), then it counts as missed.
+- The daily statistics (done, unconfirmed, later, skipped, missed; 30 days) are in the "Dehnen" tab and in `~/.local/share/linuxmos/island/stretch.json`.
+
+**Exercises** live in `~/.config/linuxmos/island/stretch_exercises.json` (tray → Dehnen → "Übungen bearbeiten …") and you can extend them: `name`, `text`, `seconds`, `long`. They rotate without an immediate repeat; every fourth reminder is a long one (`long: true`), at most `stretch_long_per_day` times a day.
+
+**Sound:** a soft two-note chime (C5 → E5, about 0.5 s, fading in and out), a little higher and longer when the card returns (E5 → G5), and the first one again at the end of the countdown. The island makes the two WAV files from sine waves on first use (nothing from third parties) in `~/.cache/linuxmos/island/` and plays them with `paplay`; `stretch_sound` and `stretch_volume` (0.0–1.0) control it.
+
+None of this leaves the computer: no network requests, and the island only stores the statistics' numbers, never what you type.
+
+---
+
+## Tests
+
+Tested in the container without real hardware: Xvfb with a real **Muffin** (idle time, windows, fullscreen) and a private D-Bus; the reminder's rules also with a fake clock (`python3 -m unittest discover -s tests -t .`, 45 tests, Python only). What that cannot do (ears, a real screen, your default programs) is in [TEST.md](TEST.md) (German) under "Paket 11".
+
+Helpers for trying it out: `linuxmos-island --stretch-now` (a card right away), `--stretch-test` (1-minute interval; tick 5 s, break after 20 s, skip after 40 s, "later" 10 s/6 s, card returns after 15 s), `--force-idle` (big-eyes mode without waiting).
+
+| Test | Result |
+|---|---|
+| Debug helpers | ✅ `--stretch-now` (starts the island with a card, over D-Bus if it runs; if a round is open it shows it again), `--stretch-test`, `--force-idle`; the two start-up switches say "already running" if the island runs |
+| Idle CPU and RAM before/after | ✅ see the table above: +0.6 MB RSS, CPU unchanged |
+| `stretch_enabled: false`, tray box off, "today off", card "Aus" | ✅ log `disabled, no timers`, then 20 s without a measurement line (test mode, 5 s tick); neither tick nor Wnck signal connected; tray boxes follow; "today off" ends by itself when the date changes |
+| Idle logic | ✅ break: 30 s without input (test mode, threshold 20 s) → count 0; screen locked (stub for `cinnamon-screensaver-command`) → dropped, counting again; unit tests with a fake clock: 5-minute break, tick pace (60 s / 5 min), "last input too old", unmeasurable idle → pauses instead of guessing. The 30-minute rule rarely acts alone for real because the 5-minute break strikes first |
+| Fullscreen | ✅ a real fullscreen window under Muffin: the reminder falls due, waits (`waiting (fullscreen)`), comes on leaving |
+| Focus timer | ✅ due during focus → card once the focus timer is cancelled or at its natural end (the break already runs then); nothing due → nothing happens |
+| Countdown moving vs. sitting still | ✅ Muffin's real idle time: mouse moved → "Du warst am Rechner" (second try moved → "unconfirmed"), mouse still → "done"; also "moved first, still the second time" → done |
+| "Later" limit, escalation, statistics | ✅ later twice (10 s/6 s in test mode), a third refused; an ignored card returns bigger three times, then "missed"; `stretch.json` holds the numbers; 30-day limit and rotation (every 4th long, at most 2 a day, no direct repeat) as unit tests |
+| Sound | ⚠️ made and analysed (0.62 s and 0.77 s, mono 44.1 kHz; 97 % of the energy below 1 kHz, nothing above 3 kHz, peak −5 dBFS, first and last sample zero); `paplay` is called with the right volume (`--volume`), `stretch_sound: false` stops the calls. **I could not hear it** (no audio device) → TEST.md |
+| Big-eyes mode | ✅ sizes 1.5, 2.0 and 3.0, all four characters (also asleep), warning and card show normally, music/timer/stretch mark come first, return on hover/click, `eye_mode: false` and `mascot: false` |
+| Gear | ✅ the file is filled with every key (own values and unknown keys stay), `xdg-open` is called, a changed value applies without restart, broken JSON → a card with "Zeile 4, Spalte 1" and the old values stay, nothing is written into the broken file, fixed → card gone. Which program opens on your system depends on it (TEST.md) |
+| `update.sh` on an existing install | ⚠️ the script itself can't run in the container (apt, no root). Tested: a `config.json` written by 1.11.0 keeps all user values, new keys take their defaults, the installed folder (`island-app`) starts. The script needed no change |
+| `uninstall.sh` | ✅ without `--purge` the pair of WAV files is gone, statistics and exercises stay; with `--purge` everything is gone |
 
 ---
 
@@ -328,6 +423,9 @@ Other files:
 - **Several monitors:** in `"pointer"` mode the island only changes monitors on a hotkey – hovering opens it where it currently sits. If it sits too high on a second monitor (under the top bar), use `offset_y`.
 - **Screen recording** is X11 only. "System sound" records PulseAudio/PipeWire's default output (`@DEFAULT_MONITOR@`); if you switch devices during a recording the sound stays on the old one. Another screenshot, OCR or QR hotkey during a recording ends it (and saves it). Long GIFs get big – use MP4 for those.
 - **AI chat:** answers appear as plain text (no Markdown). Dictation needs a server with `/audio/transcriptions` (OpenAI, Groq, LocalAI, faster-whisper-server …); Ollama has none. If the keyring is locked, GNOME asks for its password on first access. The chat shows no images and remembers nothing beyond a restart.
+- **Stretch reminder:** The island recognises fullscreen by the window manager's window state (`_NET_WM_STATE_FULLSCREEN`); games that don't set it go unnoticed. Counting is tied to input: if you only watch a video (no mouse, no keyboard), that is not active time. Whether the chime sounds good only your own ears can tell (`stretch_volume`). Without PulseAudio/PipeWire or `paplay` the reminder stays silent (the log says so).
+- **Big-eyes mode:** when nothing else is in the pill it replaces the normal mascot pill; the microphone/camera dots and the download ring stay visible next to it. With the mascot off (`mascot: false`) it does nothing.
+- **Gear:** the file opens in your default program for `.json` (`xdg-open`). If that is the browser, change it with `xdg-mime default xed.desktop application/json`. A restart is only needed for `language`; tabs that were already built show changed values the next time the island opens.
 - **A screenshot on the clipboard** is held by a small `xclip` process in the background until you copy something else (so the image survives quitting the island).
 
 More solutions (German): [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.md#troubleshooting)
@@ -353,6 +451,10 @@ More solutions (German): [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.
 - [x] Screen recording as MP4 or GIF (`Ctrl+Alt+R`, `Ctrl+Alt+Shift+R`)
 - [x] AI chat and dictation with your own API key in the keyring (`ai_chat`, `ai_voice`, `Ctrl+Alt+A`, `Ctrl+Alt+M`)
 - [x] More mascots: cat, robot, blob (`mascot_style`)
+- [x] Stretch reminder with activity counting, countdown, a check against just clicking, chime and statistics (`stretch_*`)
+- [x] Big-eyes mode: a big character while you are away (`eye_mode`, `eye_mode_scale`)
+- [x] Settings gear with reload without restart and [docs/CONFIG.md](docs/CONFIG.md)
+- [ ] Check the stretch reminder and big-eyes mode on a real Mint (sound, lock screen, real fullscreen)
 
 ---
 

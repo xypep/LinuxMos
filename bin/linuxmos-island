@@ -3,7 +3,7 @@
 #
 #   linuxmos-island                 starten (läuft sie schon: auf-/zuklappen)
 #   linuxmos-island --toggle        auf-/zuklappen
-#   linuxmos-island --tab NAME      Tab öffnen: search|home|clipboard|shelf|todo|note|water|weather|controls
+#   linuxmos-island --tab NAME      Tab öffnen: search|home|clipboard|shelf|todo|note|water|stretch|weather|controls
 #                                   (search = Command Bar: Apps, Dateien, Rechner, Einheiten, Web)
 #   linuxmos-island --shot MODE     Screenshot: area (Bereich) | screen (Monitor unter der Maus)
 #   linuxmos-island --ocr           Text aus einem Bereich erkennen -> Zwischenablage
@@ -13,6 +13,10 @@
 #   linuxmos-island --chat         KI-Chat öffnen (Tab, braucht "ai_chat": true)
 #   linuxmos-island --voice        Diktat: Aufnahme starten, nochmal aufrufen = Text erkennen
 #   linuxmos-island --set-key      API-Key für den KI-Chat im Schlüsselbund speichern
+#   linuxmos-island --stretch-now  sofort eine Dehn-Karte zeigen (zum Ausprobieren)
+#   linuxmos-island --stretch-test starten mit 1 Minute Intervall und Leerlauf-Schwellen in Sekunden
+#   linuxmos-island --force-idle   starten im Leerlauf: Maskottchen bzw. Augen-Modus ohne Warten
+#                                  (Hover oder Klick beendet es). Die beiden letzten gehen nur beim Start.
 #   linuxmos-island --quit          beenden
 #   linuxmos-island --set-city ORT  Wetter-Ort festlegen
 set -euo pipefail
@@ -36,7 +40,7 @@ case "${1:-}" in
   --toggle)
     action toggle "[]" && exit 0 ;;
   --tab)
-    [[ "${2:-}" =~ ^[a-z]+$ ]] || { echo "Usage: $(basename "$0") --tab search|home|clipboard|shelf|todo|note|water|weather|controls" >&2; exit 2; }
+    [[ "${2:-}" =~ ^[a-z]+$ ]] || { echo "Usage: $(basename "$0") --tab search|home|clipboard|shelf|todo|note|water|stretch|weather|controls" >&2; exit 2; }
     action tab "[<'$2'>]" && exit 0 ;;
   --shot)
     [[ "${2:-}" =~ ^(area|screen)$ ]] || { echo "Usage: $(basename "$0") --shot area|screen" >&2; exit 2; }
@@ -61,6 +65,8 @@ case "${1:-}" in
     action voice "[]" && exit 0
     echo "MosIsland läuft nicht – Diktat geht nur mit laufender Insel." >&2
     exit 1 ;;
+  --stretch-now)
+    action stretch-now "[]" && exit 0 ;;   # läuft sie nicht, startet die Insel damit und zeigt die Karte
   --quit)
     action quit "[]" || true
     exit 0 ;;

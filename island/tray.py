@@ -39,6 +39,8 @@ class Tray:
         self._notify_refresh_id = 0
         self._monitor_menu = None
         self._record_stop = None
+        self._checks = {}           # tray switches that other parts of the island can flip: key -> menu item
+        self._syncing = False
         if XApp is None:
             return
         self.icon = XApp.StatusIcon()
@@ -68,6 +70,7 @@ class Tray:
         menu.append(Gtk.SeparatorMenuItem())
         check(_("Mit Cinnamon starten"), AUTOSTART.exists(), self._set_autostart)
         menu.append(self._mascot_menu(cfg))
+        menu.append(self._stretch_menu(cfg))
         check(_("Minimal-Notch"), cfg.get("compact_when_idle", False),
               lambda on: self.island.set_option("compact_when_idle", on))
         check(_("Lautstärke & Helligkeit anzeigen"), cfg.get("osd", True), self._set_osd)
@@ -82,10 +85,40 @@ class Tray:
         menu.append(self._monitors_menu())
         menu.append(self._language_menu(cfg.get("language", "auto")))
         menu.append(Gtk.SeparatorMenuItem())
+        item("Einstellungen öffnen", self.island.open_settings)
         item(_("Über MosIsland"), self._about)
         item(_("Beenden"), lambda: self.island.get_application().quit())
         menu.show_all()
         return menu
+
+    def rebuild(self):
+        """config.json was edited: build the menu again so every switch shows what the file says."""
+        if self.icon is not None:
+            self.icon.set_secondary_menu(self._build_menu())
+
+    def _flag(self, key, label, active, callback):
+        """A check item whose state can also be set from outside (refresh_stretch): callback only for clicks."""
+        mi = Gtk.CheckMenuItem(label=label)
+        mi.set_active(active)
+        mi.connect("toggled", lambda w: None if self._syncing else callback(w.get_active()))
+        self._checks[key] = mi
+        return mi
+
+    def refresh_stretch(self):
+        """The reminder was switched on or off elsewhere (card button, tab, edited file): tick the right boxes."""
+        if not self._checks:
+            return
+        cfg = self.island.config
+        values = {"stretch_enabled": cfg.flag("stretch_enabled"),
+                  "stretch_today": cfg.get("stretch_off_date") == self.island.stretch.env.today(),
+                  "eye_mode": cfg.flag("eye_mode")}
+        self._syncing = True
+        try:
+            for key, value in values.items():
+                if key in self._checks and self._checks[key].get_active() != value:
+                    self._checks[key].set_active(value)
+        finally:
+            self._syncing = False
 
     def _open(self, action):
         """Open/toggle from the tray – in pointer mode on the monitor the tray was clicked on."""
@@ -127,12 +160,31 @@ class Tray:
         show.set_active(cfg.get("mascot", True))
         show.connect("toggled", lambda w: self.island.set_option("mascot", w.get_active()))
         sub.append(show)
+        sub.append(self._flag("eye_mode", "Augen-Modus (groß im Leerlauf)", cfg.flag("eye_mode"),
+                              lambda on: self.island.set_option("eye_mode", on)))
         sub.append(Gtk.SeparatorMenuItem())
         current = cfg.get("mascot_style", mascots.DEFAULT)
         self._radio_items(sub, [(key, _(name)) for key, name in mascots.STYLES.items()],
                           current if current in mascots.STYLES else mascots.DEFAULT,
                           lambda key: self.island.set_option("mascot_style", key))
         parent = Gtk.MenuItem(label=_("Maskottchen"))
+        parent.set_submenu(sub)
+        return parent
+
+    def _stretch_menu(self, cfg):
+        sub = Gtk.Menu()
+        sub.append(self._flag("stretch_enabled", "Dehn-Erinnerung", cfg.flag("stretch_enabled"),
+                              lambda on: self.island.set_option("stretch_enabled", on)))
+        sub.append(self._flag("stretch_today", "Heute aus",
+                              cfg.get("stretch_off_date") == self.island.stretch.env.today(),
+                              self.island.stretch.on_today))
+        sub.append(Gtk.SeparatorMenuItem())
+        for text, callback in (("Jetzt dehnen", self.island.stretch.trigger_now),
+                               ("Übungen bearbeiten …", self.island.open_exercises)):
+            mi = Gtk.MenuItem(label=text)
+            mi.connect("activate", lambda _w, cb=callback: cb())
+            sub.append(mi)
+        parent = Gtk.MenuItem(label="Dehnen")
         parent.set_submenu(sub)
         return parent
 

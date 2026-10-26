@@ -8,7 +8,7 @@
 
 Macht Linux Mint Cinnamon zum leichtgewichtigen macOS-Look-alike – mit Dock, Top Bar, Widgets, Spotlight und optional einer Dynamic Island – ohne dass der Desktop im Leerlauf CPU frisst.
 
-![MosIsland](https://img.shields.io/badge/MosIsland-1.6.0-blue)
+![MosIsland](https://img.shields.io/badge/MosIsland-1.12.0-blue)
 ![Platform](https://img.shields.io/badge/platform-Linux%20Mint%2022%20Cinnamon-87CF3E)
 ![Display server](https://img.shields.io/badge/display-X11-lightgrey)
 
@@ -32,12 +32,14 @@ Macht Linux Mint Cinnamon zum leichtgewichtigen macOS-Look-alike – mit Dock, T
 - [Nutzung](#nutzung)
 - [Wichtige Hinweise](#wichtige-hinweise)
 - [Konfiguration](#konfiguration)
+- [Dehn-Erinnerung](#dehn-erinnerung)
+- [Tests](#tests)
 - [Bekannte Probleme](#bekannte-probleme)
 - [Roadmap](#roadmap)
 - [Lizenz](#lizenz)
 - [Credits](#credits)
 
-> Die ausführliche Schritt-für-Schritt-Anleitung (auch ohne Script, alles von Hand) steht in [docs/ANLEITUNG.md](docs/ANLEITUNG.md).
+> Die ausführliche Schritt-für-Schritt-Anleitung (auch ohne Script, alles von Hand) steht in [docs/ANLEITUNG.md](docs/ANLEITUNG.md), alle Einstellungen mit Standardwert und gültigem Bereich in [docs/CONFIG.md](docs/CONFIG.md).
 
 ---
 
@@ -75,7 +77,10 @@ Macht Linux Mint Cinnamon zum leichtgewichtigen macOS-Look-alike – mit Dock, T
 - **Bildschirmaufnahme** – `Ctrl+Alt+R` (Bereich) oder `Ctrl+Alt+Shift+R` (Bildschirm unter der Maus), dieselbe Taste beendet sie. MP4 (H.264, auf Wunsch mit Systemton oder Mikrofon) oder GIF, gespeichert in `~/Videos/LinuxMos`. Die Insel blendet sich aus dem Bild aus, das Tray-Icon wird rot (ein Klick beendet), danach eine Karte mit „Abspielen“ und „Im Ordner zeigen“. Eine vergessene Aufnahme stoppt nach 30 Minuten von selbst
 - **KI-Chat & Diktat** (optional, eigener API-Key, standardmäßig aus) – ein Chat-Tab (`Ctrl+Alt+A`), die Antwort läuft live ein. Funktioniert mit jedem OpenAI-kompatiblen Server: OpenAI, OpenRouter, Ollama, LM Studio … Der Key liegt im Schlüsselbund (libsecret), nicht in der Config. **Diktat** (`Ctrl+Alt+M`): sprechen, Taste nochmal drücken – der Text wird ins aktive Fenster getippt (oder landet in der Chat-Zeile)
 - **Maskottchen** – im Leerlauf Augen, Katze, Roboter oder Blob; sie dösen ein und winken, wenn du zurückkommst
-- **Tray-Menü** – Autostart, Maskottchen (Figur wählen), Minimal-Notch, OSD, Zwischenablage automatisch leeren, Suche (Dateien, Währungen, Suchmaschine), Screenshot, Text & QR, Bildschirmaufnahme (Format, Ton), KI (Chat, Diktat, Verbindung & API-Key), Benachrichtigungen (an/aus, Nicht stören, Apps ausblenden), Live-Hinweise (Mikro & Kamera, VPN, Downloads), Monitor, Sprache, Beenden
+- **Augen-Modus** – im Leerlauf wächst die Pille, die Figur wird 1,5- bis 3-mal so groß (`eye_mode_scale`), Temperatur und Akku verschwinden; Hover, Klick oder Eingabe bringen alles in ca. 250 ms zurück. Warnungen, Musik, Timer und die Dehn-Karte gehen vor. Setzt eingeschaltetes Maskottchen voraus (`mascot`), sonst bewirkt er nichts
+- **Dehn-Erinnerung** – nach 45 Minuten *aktiver* Zeit am Rechner (Eingabe in der letzten Minute) zeigt die Insel eine Karte mit einer Übung und einem weichen Doppelton. „Start“ lässt einen Countdown mit Ring in der Pille laufen, **„Erledigt“ zählt nur, wenn du in der Zeit wirklich nicht getippt hast.** Eine echte Pause (5 min ohne Eingabe) ersetzt das Dehnen, bei Vollbild und während eines Fokus-Timers wartet die Karte. Später, Heute aus, Aus, Statistik pro Tag, eigene Übungen → [Details](#dehn-erinnerung)
+- **Einstellungs-Zahnrad** – das Zahnrad oben rechts in der aufgeklappten Insel öffnet `config.json` im Editor, alle Optionen stehen dann drin. Änderungen gelten sofort (inotify, kostet nichts); ein Tippfehler lässt die alten Werte aktiv und meldet die Fehlerstelle auf einer Karte
+- **Tray-Menü** – Autostart, Maskottchen (Figur wählen, Augen-Modus), Dehnen (Erinnerung, Heute aus, Jetzt dehnen, Übungen), Minimal-Notch, OSD, Zwischenablage automatisch leeren, Suche (Dateien, Währungen, Suchmaschine), Screenshot, Text & QR, Bildschirmaufnahme (Format, Ton), KI (Chat, Diktat, Verbindung & API-Key), Benachrichtigungen (an/aus, Nicht stören, Apps ausblenden), Live-Hinweise (Mikro & Kamera, VPN, Downloads), Monitor, Sprache, Einstellungen öffnen, Beenden
 - **Deutsch oder Englisch** – folgt automatisch der Systemsprache, umschaltbar im Tray-Menü (`Sprache / Language`)
 
 **Leichtgewichtig** – gemessen: Conky-Widgets ~0,03 % CPU, MosIsland ~0,1 % CPU (unter Cinnamon 6, Musik läuft) und ~60 MB RAM. Kein Blur-Compositor, keine Polling-Schleifen.
@@ -90,6 +95,18 @@ Macht Linux Mint Cinnamon zum leichtgewichtigen macOS-Look-alike – mit Dock, T
 Der größte Brocken (−49 MB) war Mesa: GTK lädt beim Start den OpenGL-Treiber samt LLVM, nur um ein Fenster-Format auszusuchen – die Insel zeichnet aber gar nicht mit OpenGL. Der Rest (−7 MB): Tabs werden erst beim ersten Öffnen gebaut, Wetter/Lyrics/Cover/Kurse kommen über `curl` statt über Pythons HTTPS-Stack, und freier Speicher geht nach dem Zuklappen zurück ans System. Auf echter Hardware hängt die Ersparnis vom Grafiktreiber ab – `linuxmos-perf` zeigt den RAM der Insel.
 
 Aufnahme, Chat und Diktat kosten im Leerlauf nichts: der Chat-Tab entsteht erst beim ersten Öffnen (gemessen 59 MB RSS nach dem Start, +0,7 MB danach, Leerlauf-CPU unverändert), ffmpeg und curl laufen nur, solange du aufnimmst bzw. fragst.
+
+**Paket „Wellbeing“ (1.12.0)** – gemessen in Xvfb mit echtem Muffin, `linuxmos-perf 60`, 12 s nach dem Start:
+
+| MosIsland                                              | RSS     | CPU (60 s) |
+|--------------------------------------------------------|---------|------------|
+| vorher (1.11.0)                                        | 59,1 MB | 0,5 %      |
+| nachher, Dehn-Erinnerung an (Standard)                 | 59,7 MB | 0,5 %      |
+| nachher, Dehn-Erinnerung aus                           | 59,5 MB | 0,4 %      |
+| nachher, Augen-Modus (groß, `--force-idle`)            | 58,5 MB | 0,8 %      |
+| nachher, Augen-Modus aus (normales Maskottchen)        | 58,7 MB | 0,9 %      |
+
+Das Paket kostet etwa 0,6 MB RAM. Die CPU-Werte sind in dieser Umgebung (Software-Rendering, schon vorher 0,5 %) höher als auf echter Hardware (0,1–0,2 %); entscheidend ist der Vergleich: Der Tick der Erinnerung ist nicht messbar (über 120 s mit Tick alle 5 s, also zwölfmal häufiger als im Betrieb: 760 ms CPU, ohne Erinnerung 763 ms). Die Augen kosten groß so viel wie klein – das Blinzeln gab es schon vorher.
 
 ---
 
@@ -169,6 +186,10 @@ linuxmos-island --chat       # KI-Chat öffnen
 linuxmos-island --voice      # Diktat starten, nochmal aufrufen = Text erkennen
 linuxmos-island --set-key    # API-Key für den KI-Chat im Schlüsselbund speichern
 linuxmos-island --set-city "München"
+linuxmos-island --stretch-now   # sofort eine Dehn-Karte zeigen (auch bei laufender Insel)
+linuxmos-island --stretch-test  # Test: Intervall 1 Minute, Leerlauf-Schwellen in Sekunden (nur beim Start)
+linuxmos-island --force-idle    # Test: Maskottchen/Augen-Modus ohne Warten, Hover beendet es (nur beim Start)
+LINUXMOS_LOG=debug linuxmos-island   # Log mit jeder Messung (Standard: info)
 ```
 
 ### Hotkeys
@@ -273,9 +294,25 @@ MosIsland: `~/.config/linuxmos/island/config.json` – die meisten Schalter gibt
   "water_reminders": true,
   "water_start": "09:00",
   "water_end": "21:00",
-  "water_interval_min": 60
+  "water_interval_min": 60,
+  "stretch_enabled": true,
+  "stretch_interval_min": 45,
+  "stretch_break_reset_min": 5,
+  "stretch_idle_skip_min": 30,
+  "stretch_snooze_min": 5,
+  "stretch_snooze_max": 2,
+  "stretch_escalate": true,
+  "stretch_verify_idle": true,
+  "stretch_long_per_day": 2,
+  "stretch_sound": true,
+  "stretch_volume": 0.5,
+  "stretch_off_date": "",
+  "eye_mode": true,
+  "eye_mode_scale": 2.0
 }
 ```
+
+Am bequemsten über das **Zahnrad** oben rechts in der aufgeklappten Insel (oder Tray → „Einstellungen öffnen“): Es trägt fehlende Schlüssel mit ihren Standardwerten ein und öffnet die Datei per `xdg-open` (sonst `gio open`, sonst `xed`) – also im Standardprogramm für `.json`-Dateien. Gespeichert gilt sofort, ohne Neustart. Ist das JSON ungültig, bleiben die alten Werte aktiv, eine Karte meldet „Config ungültig, alte Werte bleiben“ mit Zeile und Spalte, und die Insel schreibt nicht in die Datei, bis sie wieder stimmt. Unbekannte Schlüssel bleiben erhalten, Werte außerhalb des gültigen Bereichs werden auf die Grenze gesetzt. **Alle Schlüssel mit Standardwert, Bedeutung und Bereich: [docs/CONFIG.md](docs/CONFIG.md).**
 
 `language`: `auto` (Systemsprache: Deutsch bei `de_*`, sonst Englisch), `de` oder `en`. Beim Umschalten im Tray-Menü startet die MosIsland kurz neu (ein laufender Timer geht dabei verloren).
 
@@ -293,6 +330,10 @@ Command Bar: `command_bar_engine` ist die Suchmaschine (`duckduckgo`, `google`, 
 
 Maskottchen: `mascot_style` ist `eyes` (Augen, Standard), `cat`, `robot` oder `blob`; `mascot` schaltet es ganz ab. Beides im Tray-Menü unter „Maskottchen“.
 
+Augen-Modus: `eye_mode` (Standard an, Tray → „Maskottchen“ → „Augen-Modus (groß im Leerlauf)“) lässt die Figur im Leerlauf (derselbe Moment, in dem das Maskottchen kommt) um `eye_mode_scale` wachsen, 1,5 bis 3,0 – Werte außerhalb gelten als die nächste Grenze. Bei ausgeschaltetem Maskottchen (`mascot: false`) bewirkt er nichts. Läuft sonst etwas in der Pille (Musik, Timer, Dehn-Countdown, das Dehn-Symbol), bleibt es bei der normalen Pille; Karten und Hinweise (Akku niedrig, WLAN weg, Dehn-Karte …) erscheinen wie immer, danach kehren die Augen zurück. Mikrofon-/Kamerapunkte bleiben sichtbar.
+
+<img src="docs/img/island-eyes.png" alt="Augen-Modus: Augen, Katze, Roboter und Blob im Leerlauf, groß" width="60%">
+
 Bildschirmaufnahme: `record_format` ist `mp4` oder `gif` (GIFs haben höchstens 15 Bilder pro Sekunde, 960 px Breite und keinen Ton), `record_audio` `off`, `system` (was die Lautsprecher spielen) oder `mic` (nur MP4), `record_fps` 1–60, `record_max_min` beendet eine Aufnahme nach so vielen Minuten (`0` = nie), `record_dir` ändert den Ordner (leer = `~/Videos/LinuxMos`). Das Bild kommt von ffmpeg (`x11grab`) und braucht X11. Format und Ton auch im Tray-Menü unter „Bildschirmaufnahme“.
 
 KI: `ai_chat` zeigt den Chat-Tab, `ai_voice` schaltet das Diktat frei, `ai_voice_autopaste` tippt das Diktat ins vorige Fenster (sonst Karte mit „Einfügen“). `ai_base_url` ist die Adresse des Servers bis `/v1` (leer = `https://api.openai.com/v1`, Ollama: `http://localhost:11434/v1`), `ai_model` das Chat-Modell (leer = `gpt-4o-mini`), `ai_stt_model` das Modell für Diktat (leer = `whisper-1`; der Server braucht `/audio/transcriptions`). `ai_system_prompt` ersetzt die kurze Standardanweisung, `ai_history` ist die Zahl der Nachrichten, die mitgeschickt werden, `ai_voice_language` ein Sprachcode wie `de` (leer = erkennen lassen), `ai_voice_max_s` die längste Diktat-Aufnahme. Adresse, Modelle und Key setzt du im Tray-Menü unter „KI“ → „Verbindung & API-Key …“, oder den Key mit `linuxmos-island --set-key`.
@@ -304,7 +345,61 @@ Weitere Dateien:
 | `~/.config/linuxmos/conky/*.conf`             | Position und Aussehen der Widgets (`gap_x`, `gap_y`, `alignment`) |
 | `~/.config/linuxmos/rofi/spotlight.rasi`      | Aussehen der Spotlight-Suche                   |
 | `~/.local/share/linuxmos/install.conf`        | Gewählte Install-Optionen (nutzt `update.sh`)  |
-| `~/.local/share/linuxmos/island/`             | MosIsland-Daten: Notiz, Aufgaben, Wasser-Log, Verlauf, Ablage |
+| `~/.local/share/linuxmos/island/`             | MosIsland-Daten: Notiz, Aufgaben, Wasser-Log, Verlauf, Ablage, Dehn-Statistik (`stretch.json`, 30 Tage) |
+| `~/.config/linuxmos/island/stretch_exercises.json` | Deine Dehn-Übungen (Name, Anweisung, Sekunden, `long`) – beim ersten Mal mit der Standardliste angelegt |
+| `~/.cache/linuxmos/island/stretch-*.wav`      | Die beiden Töne der Dehn-Erinnerung, beim ersten Gebrauch selbst erzeugt (`uninstall.sh` löscht sie) |
+
+---
+
+## Dehn-Erinnerung
+
+<p align="center"><img src="docs/img/island-stretch.png" alt="Dehn-Erinnerung: Karte mit Übung, die größere Karte beim zweiten Mal, das Figürchen in der Pille und der Countdown-Ring" width="80%"></p>
+
+Alles auf der Insel, keine Dialogfenster. Der Hauptschalter ist Tray → „Dehnen“ → „Dehn-Erinnerung“ (`stretch_enabled`), dazu „Heute aus“ (bis Mitternacht) und der Tab „Dehnen“. **Aus heißt wirklich aus:** kein Timer, kein Tick, keine Abfrage (im Log steht `stretch: disabled, no timers`).
+
+**Wann sie kommt**
+- Gezählt wird nur *aktive* Zeit: Ein Tick pro Minute fragt einmal die Zeit seit der letzten Eingabe ab (Muffins IdleMonitor, den die Insel fürs Maskottchen ohnehin nutzt; Ersatz außerhalb von Cinnamon: libXss). War in der letzten Minute Eingabe, zählt die Minute. Ist der Rechner länger im Leerlauf, tickt es nur alle 5 Minuten.
+- **5 Minuten ohne Eingabe** (`stretch_break_reset_min`) sind eine echte Pause: Die Zählung beginnt von vorn, es kommt keine Karte „hinterher“.
+- Ist die Erinnerung fällig und der Bildschirm aus oder gesperrt (`cinnamon-screensaver-command -q`, `xset q`, einmalig, nur jetzt) oder die letzte Eingabe länger als `stretch_idle_skip_min` her, fällt sie aus; neu gezählt wird ab der Rückkehr.
+- **Vollbild** (Film, Spiel): Die Erinnerung wartet und kommt, sobald du raus bist. Die Insel hört dafür auf libwncks Fenster-Signale, fragt nichts ab. **Fokus-Timer:** Läuft einer, kommt keine Karte; wird sie währenddessen fällig, kommt sie beim Ende der Fokusphase, noch vor der Pause. Ist dann nichts fällig, passiert nichts.
+
+**Was auf der Karte steht:** Übungsname, Anweisung, „Start“, „Später“, „Heute aus“, „Aus“ (setzt `stretch_enabled` auf `false` und zeigt kurz, wie man es wieder einschaltet). Die Karte klappt nach 15 s ein und lässt ein kleines Figürchen rechts in der Pille zurück, bis du reagiert hast; ein Klick darauf zeigt sie wieder. Vor der Karte blinzeln die Augen zweimal (wenn sie gerade zu sehen sind).
+
+**Gegen „einfach Erledigt klicken“**
+- „Start“ startet einen Countdown (kurze Übungen 10–20 s, aufwendige 30–60 s) mit einem Ring links in der Pille. „Erledigt“ gibt es erst danach, und es zählt nur, wenn die Leerlaufzeit am Ende mindestens **70 %** der Countdown-Dauer beträgt (`stretch_verify_idle`). Sonst: „Du warst am Rechner, noch mal?“ – beim zweiten Mal zählt es als „unbestätigt“.
+- „Später“ höchstens zweimal pro Runde (5, dann 3 Minuten), danach nur noch Start oder „Überspringen“.
+- Wird die Karte ignoriert, kommt sie nach 3 Minuten größer und mit etwas höherem Ton wieder, höchstens dreimal (`stretch_escalate`), danach zählt sie als „verpasst“.
+- Die Statistik pro Tag (erledigt, unbestätigt, später, übersprungen, verpasst; 30 Tage) steht im Tab „Dehnen“ und in `~/.local/share/linuxmos/island/stretch.json`.
+
+**Übungen** stehen in `~/.config/linuxmos/island/stretch_exercises.json` (Tray → Dehnen → „Übungen bearbeiten …“) und sind erweiterbar: `name`, `text`, `seconds`, `long`. Die Auswahl rotiert ohne direkte Wiederholung; jede vierte Erinnerung ist eine aufwendige (`long: true`), höchstens `stretch_long_per_day`-mal pro Tag.
+
+**Ton:** Ein weicher Doppelton (C5 → E5, ca. 0,5 s, sanft ein- und ausklingend), beim Wiederkommen etwas höher und länger (E5 → G5), am Ende des Countdowns noch einmal der erste. Die beiden WAV-Dateien erzeugt die Insel beim ersten Gebrauch aus Sinuswellen (nichts von Dritten) in `~/.cache/linuxmos/island/` und spielt sie mit `paplay`; `stretch_sound` und `stretch_volume` (0.0–1.0) steuern ihn.
+
+Nichts davon verlässt den Rechner: Es gibt keine Netzabfragen, und die Insel speichert nur die Zahlen der Statistik, nie was du tippst.
+
+---
+
+## Tests
+
+Im Container getestet, ohne echte Hardware: Xvfb mit echtem **Muffin** (Leerlaufzeit, Fenster, Vollbild) und privatem D-Bus, die Regeln der Erinnerung zusätzlich mit einer künstlichen Uhr (`python3 -m unittest discover -s tests -t .`, 45 Tests, brauchen nur Python). Was damit nicht geht (Ohren, echter Bildschirm, deine Standard-Programme), steht in [TEST.md](TEST.md) unter „Paket 11“.
+
+Hilfen zum Ausprobieren: `linuxmos-island --stretch-now` (Karte sofort), `--stretch-test` (Intervall 1 Minute; Takt 5 s, Pause nach 20 s, Überspringen nach 40 s, „Später“ 10 s/6 s, Wiederkommen nach 15 s), `--force-idle` (Augen-Modus ohne Warten).
+
+| Test | Ergebnis |
+|---|---|
+| Debug-Hilfen | ✅ `--stretch-now` (startet die Insel mit Karte, bei laufender Insel per D-Bus; läuft schon eine Runde, zeigt es sie wieder), `--stretch-test`, `--force-idle`; die beiden Start-Schalter melden bei laufender Insel „läuft schon“ |
+| Idle-CPU und RAM vorher/nachher | ✅ siehe Tabelle oben: +0,6 MB RSS, CPU unverändert |
+| `stretch_enabled: false`, Tray-Häkchen aus, „Heute aus“, Karte „Aus“ | ✅ Log `disabled, no timers`, danach 20 s lang keine Messzeile (Testmodus, 5-s-Takt); weder Tick noch Wnck-Signal verbunden; Tray-Häkchen folgen; „Heute aus“ endet beim Datumswechsel von selbst |
+| Idle-Logik | ✅ Pause: 30 s ohne Eingabe (Testmodus, Schwelle 20 s) → Zählung 0; Bildschirm gesperrt (Stub für `cinnamon-screensaver-command`) → verworfen, danach neu gezählt; Unit-Tests mit künstlicher Uhr: 5-Minuten-Pause, Tick-Takt (60 s / 5 min), „letzte Eingabe zu alt“, Messung nicht möglich → pausiert statt zu raten. Die 30-Minuten-Regel greift im echten Ablauf selten allein, weil die 5-Minuten-Pause früher zuschlägt |
+| Vollbild | ✅ echtes Vollbildfenster unter Muffin: Erinnerung wird fällig, wartet (`waiting (fullscreen)`), kommt beim Verlassen |
+| Fokus-Timer | ✅ fällig im Fokus → Karte, sobald der Fokus-Timer abgebrochen wird bzw. am natürlichen Ende (die Pause läuft dann schon); nichts fällig → nichts passiert |
+| Countdown mit Bewegung / sitzen bleiben | ✅ echte Leerlaufzeit von Muffin: Maus bewegt → „Du warst am Rechner“ (zweiter Versuch bewegt → „unbestätigt“), Maus ruhig → „erledigt“; auch „erst bewegt, dann ruhig“ → erledigt |
+| „Später“-Limit, Eskalation, Statistik | ✅ zweimal Später (10 s/6 s im Testmodus), dritte Runde abgelehnt; ignorierte Karte kommt dreimal größer wieder, dann „verpasst“; `stretch.json` enthält die Zahlen; 30-Tage-Grenze und Rotation (jede 4. lang, höchstens 2/Tag, keine direkte Wiederholung) als Unit-Tests |
+| Ton | ⚠️ erzeugt und analysiert (0,62 s und 0,77 s, mono 44,1 kHz; 97 % der Energie unter 1 kHz, nichts über 3 kHz, Spitze −5 dBFS, erste und letzte Probe null); `paplay` wird mit der richtigen Lautstärke (`--volume`) aufgerufen, `stretch_sound: false` ruft es nicht mehr auf. **Hören konnte ich ihn nicht** (kein Audiogerät) → TEST.md |
+| Augen-Modus | ✅ Größe 1.5, 2.0 und 3.0, alle vier Figuren (auch schlafend), Warnhinweis und Karte erscheinen normal, Musik/Timer/Dehn-Symbol gehen vor, Rückkehr bei Hover/Klick, `eye_mode: false` und `mascot: false` |
+| Zahnrad | ✅ Datei wird mit allen Schlüsseln befüllt (eigene Werte und unbekannte Schlüssel bleiben), `xdg-open` wird gerufen, geänderter Wert gilt ohne Neustart, kaputtes JSON → Karte mit „Zeile 4, Spalte 1“ und alte Werte bleiben, in die kaputte Datei wird nicht geschrieben, repariert → Karte weg. Welches Programm sich bei dir öffnet, hängt vom System ab (TEST.md) |
+| `update.sh` auf bestehende Installation | ⚠️ das Script selbst lässt sich im Container nicht laufen (apt, kein root). Getestet: Eine von 1.11.0 geschriebene `config.json` bleibt mit allen Nutzerwerten, die neuen Schlüssel gelten mit Standardwerten, der installierte Ordner (`island-app`) startet. Das Script musste nicht geändert werden |
+| `uninstall.sh` | ✅ ohne `--purge` ist das WAV-Paar weg, Statistik und Übungsdatei bleiben; mit `--purge` ist alles weg |
 
 ---
 
@@ -328,6 +423,9 @@ Weitere Dateien:
 - **Mehrere Monitore:** Ohne Hotkey wechselt die Insel im Modus `"pointer"` den Monitor nicht – Hovern öffnet sie nur dort, wo sie gerade sitzt. Sitzt sie auf einem Nebenmonitor zu hoch (unter der Top Bar), hilft `offset_y`.
 - **Bildschirmaufnahme** gibt es nur unter X11. „Systemton“ nimmt den Standard-Ausgang von PulseAudio/PipeWire auf (`@DEFAULT_MONITOR@`); wechselst du während der Aufnahme das Gerät, bleibt der Ton beim alten. Ein anderer Screenshot-, OCR- oder QR-Hotkey während einer Aufnahme beendet sie (und speichert sie). Lange GIFs werden groß – dafür MP4 nehmen.
 - **KI-Chat:** Antworten erscheinen als reiner Text (kein Markdown). Das Diktat braucht einen Server mit `/audio/transcriptions` (OpenAI, Groq, LocalAI, faster-whisper-server …); Ollama hat das nicht. Ist der Schlüsselbund gesperrt, fragt GNOME beim ersten Zugriff nach dem Passwort. Der Chat zeigt keine Bilder und merkt sich nichts über einen Neustart hinaus.
+- **Dehn-Erinnerung:** Vollbild erkennt die Insel am Fenster-Status des Fensterverwalters (`_NET_WM_STATE_FULLSCREEN`); Spiele, die ihn nicht setzen, bleiben unerkannt. Die Zählung ist an Eingabe gekoppelt: Wer nur ein Video schaut (ohne Maus und Tastatur), zählt nicht als aktiv. Ob der Ton gut klingt, lässt sich nur mit eigenen Ohren prüfen (`stretch_volume`). Läuft kein PulseAudio/PipeWire oder fehlt `paplay`, bleibt die Erinnerung still (steht im Log).
+- **Augen-Modus:** Läuft sonst nichts in der Pille, ersetzt er die normale Maskottchen-Pille; Mikrofon-/Kamerapunkte und Download-Ring bleiben daneben sichtbar. Ohne Maskottchen (`mascot: false`) bewirkt er nichts.
+- **Zahnrad:** Die Datei öffnet sich im Standardprogramm für `.json` (`xdg-open`). Ist das bei dir der Browser, per `xdg-mime default xed.desktop application/json` ändern. Ein Neustart ist nur für `language` nötig; offene, schon gebaute Tabs zeigen geänderte Werte erst beim nächsten Öffnen der Insel.
 - **Screenshot-Bild in der Zwischenablage** hält ein kleiner `xclip`-Prozess im Hintergrund, bis du etwas anderes kopierst (so überlebt das Bild auch ein Beenden der Insel).
 
 Weitere Lösungen: [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.md#troubleshooting)
@@ -353,6 +451,10 @@ Weitere Lösungen: [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.md#tro
 - [x] Bildschirmaufnahme als MP4 oder GIF (`Ctrl+Alt+R`, `Ctrl+Alt+Shift+R`)
 - [x] KI-Chat und Diktat mit eigenem API-Key im Schlüsselbund (`ai_chat`, `ai_voice`, `Ctrl+Alt+A`, `Ctrl+Alt+M`)
 - [x] Weitere Maskottchen: Katze, Roboter, Blob (`mascot_style`)
+- [x] Dehn-Erinnerung mit Aktivitätszählung, Countdown, Prüfung gegen „einfach klicken“, Ton und Statistik (`stretch_*`)
+- [x] Augen-Modus: große Figur im Leerlauf (`eye_mode`, `eye_mode_scale`)
+- [x] Einstellungs-Zahnrad mit Neuladen ohne Neustart und [docs/CONFIG.md](docs/CONFIG.md)
+- [ ] Dehn-Erinnerung und Augen-Modus auf echtem Mint prüfen (Ton, Sperrbildschirm, echtes Vollbild)
 
 ---
 

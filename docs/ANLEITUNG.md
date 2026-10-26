@@ -33,7 +33,7 @@ Die Linux-Mint-Version des Videos „Windows 27 Golden Gate“: Linux Mint sieht
 - **Animationen** – schnelle Minimize-Animation Richtung Dock
 - **Widgets** – große Desktop-Uhr und ein System-Widget (CPU/RAM/Disk/Akku, optional Wetter)
 - **Spotlight** – `Super+Space` öffnet die rofi-Suche (Apps, Befehle, Fenster, Dateien)
-- **MosIsland** *(optional, `--island`)* – Dynamic Island oben in der Mitte: Musik mit Synced Lyrics, Clipboard-Verlauf, Datei-Ablage, Aufgaben, Pomodoro, Wasser-Erinnerung, Wetter, Controls, Overlays, Screenshots mit Editor, Text & QR vom Bildschirm, Benachrichtigungen als Karte, Mikrofon-/Kamera-Punkt, VPN- und Download-Hinweise, Bildschirmaufnahme (MP4/GIF), KI-Chat und Diktat mit eigenem API-Key und ein Maskottchen (Augen, Katze, Roboter, Blob) → [Details](#mosisland-dynamic-island)
+- **MosIsland** *(optional, `--island`)* – Dynamic Island oben in der Mitte: Musik mit Synced Lyrics, Clipboard-Verlauf, Datei-Ablage, Aufgaben, Pomodoro, Wasser-Erinnerung, Wetter, Controls, Overlays, Screenshots mit Editor, Text & QR vom Bildschirm, Benachrichtigungen als Karte, Mikrofon-/Kamera-Punkt, VPN- und Download-Hinweise, Bildschirmaufnahme (MP4/GIF), KI-Chat und Diktat mit eigenem API-Key ein Maskottchen (Augen, Katze, Roboter, Blob) mit Augen-Modus, eine Dehn-Erinnerung und ein Einstellungs-Zahnrad mit Neuladen ohne Neustart → [Details](#mosisland-dynamic-island)
 - **Update** – `./update.sh` holt die neue Version und aktualisiert alles, ohne deine Einstellungen anzufassen
 - **Backup & Undo** – Timeshift-Snapshot (optional) und Sicherung aller geänderten Einstellungen
 
@@ -247,18 +247,22 @@ Eingeklappt zeigt sie immer das Wichtigste (Priorität von oben nach unten):
 |------------------|---------------------------------------------------------------|
 | Karte            | Größer als die Pille, mit Text und Buttons: **Benachrichtigungen**, **erkannter Text** (`Ctrl+Alt+O`), **QR-Code** (`Ctrl+Alt+Q`) |
 | Live-Aktivität   | **Lautstärke** & **Helligkeit** (ersetzt Cinnamons OSD), **Feststelltaste**, **Tastatur-Sprache**, **Ladegerät eingesteckt**, **WLAN weg / wieder da**, **Kopfhörer verbunden (mit Akku)**, Datei abgelegt, Regen in etwa 1 Std., Aufgabe fällig, Wasser-Erinnerung, Timer/Pomodoro, **Mikrofon/Kamera an**, **VPN an/aus**, **Download gestartet/fertig** |
+| Dehn-Countdown   | Ring links, Übungsname, Sekunden rechts, solange eine Dehnübung läuft ([Dehn-Erinnerung](#dehn-erinnerung)) |
 | Timer            | Countdown live in der Pille (Timer, Fokus oder Pause)          |
 | Lyrics           | Die Zeile, die gerade gesungen wird (optional)                 |
 | Musik            | Cover + Titel (Spotify, Firefox/YouTube, VLC, Rhythmbox, … über MPRIS) |
 | Minimal-Notch    | Nur ein dünner Strich (Alerts, Lyrics und Hover gehen trotzdem) |
 | Maskottchen      | Bist du weg, ruht die Uhr und zwei Augen kommen raus. Sie dösen nach 5 min ein und winken, wenn du zurückkommst. |
+| Augen-Modus      | Wie das Maskottchen, aber **groß**: Die Pille wächst, die Figur wird 1,5- bis 3-mal so groß (`eye_mode_scale`), Temperatur und Akku verschwinden. Hover, Klick oder Eingabe bringen alles in ca. 250 ms zurück. Nur wenn sonst nichts in der Pille läuft (Musik, Timer, Dehn-Countdown, Dehn-Symbol); Karten und Hinweise erscheinen wie immer. Ohne Maskottchen tut er nichts. |
 | Leerlauf         | Uhrzeit, Temperatur, Akku                                      |
 
-<img src="img/island-mascot.png" width="520" alt="Maskottchen: wach, schläft, winkt">
+<img src="img/island-mascot.png" width="520" alt="Maskottchen: wach, schläft, winkt"> <img src="img/island-eyes.png" width="320" alt="Augen-Modus: dieselben Figuren groß">
+
+Rechts in der Pille steht, solange eine Dehn-Karte auf eine Antwort wartet, ein kleines Figürchen mit erhobenen Armen; ein Klick darauf zeigt die Karte wieder.
 
 Manche Hinweise sind klickbar: Ein Klick auf die Wasser-Erinnerung trägt eine Portion ein, „Pause vorbei“ startet die nächste Fokus-Runde, und eine fällige Aufgabe öffnet die Aufgabenliste.
 
-### Aufgeklappt: neun Tabs
+### Aufgeklappt: zehn Tabs
 
 | Tab | Inhalt |
 |---|---|
@@ -270,8 +274,23 @@ Manche Hinweise sind klickbar: Ein Klick auf die Wasser-Erinnerung trägt eine P
 | ![Aufgaben](img/island-todo.png) | **Aufgaben** – To-do-Liste mit Erinnerung: Aufgabe eintippen, Zeit dazu (`14:30`, `9`, `2pm`, `in 20 min`, `in 2 h`), und die Insel tippt dir zur Zeit auf die Schulter. Erledigtes von gestern räumt sich selbst auf. |
 | ![Notiz & Fokus](img/island-note.png) | **Notiz & Fokus** – Notiz, die sich selbst speichert. **Pomodoro**: 25 min Fokus, dann startet die Pause automatisch (jede 4. ist 15 min lang), dazu ein leiser Gong. Dazu normale Timer. |
 | ![Wasser](img/island-water.png) | **Wasser** – Portion (Flasche/Glas) und Tagesziel einstellen, mit einem Klick trinken, Diagramm pro Stunde. Erinnert nur in deinen aktiven Stunden und nur, solange das Ziel nicht erreicht ist. |
+| ![Dehnen](img/island-stretch-tab.png) | **Dehnen** – Schalter für die [Dehn-Erinnerung](#dehn-erinnerung), die Zahlen von heute (erledigt, unbestätigt, später, übersprungen, verpasst), „Jetzt dehnen“ und „Heute aus“. Wird erst beim ersten Öffnen gebaut. |
 | ![Wetter](img/island-weather.png) | **Wetter** – jetzt, die nächsten 24 Stunden und 7 Tage. Daten von [MET Norway](https://www.met.no/en), ohne API-Key und ohne Konto; Warnung kurz bevor es zu regnen beginnt. |
 | ![Steuerung](img/island-controls.png) | **Steuerung** – WLAN, Bluetooth, Nicht stören, Dark Mode (schaltet das ganze WhiteSur-Theme um), Mikro aus, Lautstärke, Helligkeit (Laptop), Screenshot, Sperren. Ruhezustand/Neustart/Aus wollen zweimal geklickt werden. |
+
+#### Dehn-Erinnerung
+
+<img src="img/island-stretch.png" width="640" alt="Dehn-Erinnerung: Karte mit Übung, größere Karte beim zweiten Mal, Figürchen in der Pille, Countdown-Ring">
+
+Nach 45 Minuten *aktiver* Zeit am Rechner zeigt die Insel eine Karte mit einer Übung (z. B. „Schultern kreisen“) und spielt einen weichen Doppelton. Gezählt wird nur, wenn du am Rechner arbeitest: Ein Tick pro Minute fragt, wann die letzte Eingabe war, und zählt die Minute nur, wenn es in der letzten Minute eine gab. Wer 5 Minuten nichts tippt, macht eine echte Pause – die ersetzt das Dehnen und die Zählung beginnt von vorn. Bei Vollbild (Film, Spiel) und während eines Pomodoro-Fokus wartet die Erinnerung; sie kommt, sobald du raus bist bzw. am Ende der Fokusphase, noch vor der Pause. Ist der Bildschirm gesperrt oder aus, fällt sie aus.
+
+Auf der Karte: **Start**, **Später** (höchstens zweimal, 5 und 3 Minuten), **Heute aus** (bis Mitternacht), **Aus**. Ignorierst du sie, klappt sie nach 15 Sekunden in ein kleines Figürchen rechts in der Pille ein (Klick = Karte wieder), kommt nach 3 Minuten größer und mit etwas höherem Ton wieder (höchstens dreimal) und zählt dann als „verpasst“.
+
+„Start“ lässt einen Countdown laufen (kurze Übungen 10–20 s, aufwendige 30–60 s), der Ring links in der Pille zeigt den Fortschritt. **„Erledigt“ gibt es erst danach, und es zählt nur, wenn du in der Zeit kaum an Maus und Tastatur warst** (Leerlaufzeit am Ende mindestens 70 % der Countdown-Dauer). Sonst fragt die Insel „Du warst am Rechner, noch mal?“; beim zweiten Mal zählt es als „unbestätigt“. Die Zahlen pro Tag (erledigt, unbestätigt, später, übersprungen, verpasst) stehen im Tab „Dehnen“ und in `~/.local/share/linuxmos/island/stretch.json` (30 Tage).
+
+Die Übungen stehen in `~/.config/linuxmos/island/stretch_exercises.json` (Tray → Dehnen → „Übungen bearbeiten …“): `name`, `text`, `seconds` (Dauer), `long` (`true` = aufwendig). Jede vierte Erinnerung ist eine aufwendige, höchstens zweimal pro Tag; sonst rotiert die Auswahl ohne direkte Wiederholung. Den Ton erzeugt die Insel beim ersten Mal selbst (Sinuswellen, nichts von Dritten) und spielt ihn mit `paplay`.
+
+Aus ist aus: Mit `stretch_enabled: false` (Tray-Häkchen „Dehn-Erinnerung“) laufen weder Timer noch Ticks noch Abfragen; im Log steht `disabled, no timers`. Zum Ausprobieren: `linuxmos-island --stretch-now`, oder `--stretch-test` (1 Minute Intervall, Schwellen in Sekunden).
 
 #### Suche (Command Bar)
 
@@ -402,7 +421,8 @@ Das MosIsland-Icon liegt in der Top Bar neben der Uhr (Rechtsklick):
 | Schalter                          | Wirkung                                                         |
 |-----------------------------------|-----------------------------------------------------------------|
 | Mit Cinnamon starten              | Autostart an/aus                                                |
-| Maskottchen                       | Im Leerlauf an/aus und Figur: Augen, Katze, Roboter, Blob       |
+| Maskottchen                       | Im Leerlauf an/aus, Figur (Augen, Katze, Roboter, Blob) und „Augen-Modus (groß im Leerlauf)“ |
+| Dehnen                            | „Dehn-Erinnerung“ an/aus, „Heute aus“ (bis Mitternacht), „Jetzt dehnen“, „Übungen bearbeiten …“ |
 | Minimal-Notch                     | Eingeklappt nur ein dünner Strich, z. B. für Laptops mit dickem Rand oben oder damit Browser-Tabs frei bleiben |
 | Lautstärke & Helligkeit anzeigen  | MosIsland-Overlays statt Cinnamons eigenem OSD (aus = Cinnamon-OSD zurück) |
 | Zwischenablage automatisch leeren | Nicht angepinnte Einträge nach 15 min, 1 h oder 24 h löschen (Standard: nie) |
@@ -415,6 +435,7 @@ Das MosIsland-Icon liegt in der Top Bar neben der Uhr (Rechtsklick):
 | Live-Hinweise                     | „Mikrofon & Kamera“, „VPN-Status“, „VPN: Land & IP (fragt ipinfo.io)“, „Download-Fortschritt“ |
 | Monitor                           | „Hauptmonitor“, „Monitor mit der Maus (beim Öffnen)“ oder einer der angeschlossenen Monitore (Anschlussname · Auflösung) |
 | Sprache / Language                | Automatisch (Systemsprache), Deutsch oder English – die Insel startet dabei kurz neu |
+| Einstellungen öffnen              | `config.json` im Editor (wie das Zahnrad in der aufgeklappten Insel) |
 | Über MosIsland · Beenden          |                                                                 |
 
 Ein Linksklick aufs Icon klappt die Insel auf.
@@ -442,14 +463,17 @@ Per Terminal steuern:
 
 ```bash
 linuxmos-island --toggle
-linuxmos-island --tab todo          # search|home|clipboard|shelf|todo|note|water|weather|controls
+linuxmos-island --tab todo          # search|home|clipboard|shelf|todo|note|water|stretch|weather|controls
 linuxmos-island --set-city "München"
+linuxmos-island --stretch-now       # sofort eine Dehn-Karte zeigen
+linuxmos-island --stretch-test      # Test beim Start: 1 Minute Intervall, Leerlauf-Schwellen in Sekunden
+linuxmos-island --force-idle        # Test beim Start: Augen-Modus ohne Warten
 linuxmos-island --quit
 ```
 
 ### Einstellungen
 
-Die meisten Schalter liegen im Tray-Menü bzw. im Wasser-Tab (⚙). Alles steht außerdem in `~/.config/linuxmos/island/config.json` (nach dem Ändern: `linuxmos-island --quit && linuxmos-island &`):
+Die meisten Schalter liegen im Tray-Menü bzw. im Wasser-Tab (⚙). Alles steht außerdem in `~/.config/linuxmos/island/config.json`. Das **Zahnrad** oben rechts in der aufgeklappten Insel (oder Tray → „Einstellungen öffnen“) trägt fehlende Schlüssel mit ihren Standardwerten ein und öffnet die Datei im Editor (`xdg-open`, sonst `gio open`, sonst `xed`). **Änderungen gelten sofort, ohne Neustart** (nur `language` braucht einen). Ist das JSON ungültig, bleiben die alten Werte aktiv und eine Karte meldet „Config ungültig, alte Werte bleiben“ mit Zeile und Spalte. Alle Schlüssel mit Standardwert, Bedeutung und gültigem Bereich stehen in **[CONFIG.md](CONFIG.md)**; hier die wichtigsten:
 
 | Key                  | Default   | Bedeutung                                                    |
 |----------------------|-----------|--------------------------------------------------------------|
@@ -460,6 +484,17 @@ Die meisten Schalter liegen im Tray-Menü bzw. im Wasser-Tab (⚙). Alles steht 
 | `compact_when_idle`  | `false`   | Minimal-Notch                                                |
 | `mascot`             | `true`    | Maskottchen                                                  |
 | `mascot_style`       | `"eyes"`  | `eyes`, `cat`, `robot` oder `blob`                            |
+| `eye_mode`           | `true`    | Augen-Modus: im Leerlauf große Figur, Temperatur und Akku weg (nur mit `mascot`) |
+| `eye_mode_scale`     | `2.0`     | Vergrößerung im Augen-Modus, 1,5 bis 3,0                      |
+| `stretch_enabled`    | `true`    | Dehn-Erinnerung (aus = keine Timer, keine Abfragen)           |
+| `stretch_interval_min` | `45`    | Minuten *aktiver* Zeit bis zur Erinnerung                     |
+| `stretch_break_reset_min` | `5`  | Minuten ohne Eingabe, die als Pause zählen (Zählung von vorn)  |
+| `stretch_idle_skip_min` | `30`   | Letzte Eingabe so lange her (oder Bildschirm aus/gesperrt): Erinnerung fällt aus |
+| `stretch_snooze_min` / `stretch_snooze_max` | `5` / `2` | Minuten bis zum Wiederkommen nach „Später“ (das zweite Mal 3/5 davon) / wie oft „Später“ geht |
+| `stretch_escalate`   | `true`    | Ignorierte Karte kommt nach 3 min größer und höher wieder (höchstens dreimal) |
+| `stretch_verify_idle` | `true`   | „Erledigt“ zählt nur, wenn während des Countdowns kaum Eingabe kam |
+| `stretch_long_per_day` | `2`     | Höchstens so viele aufwendige Übungen pro Tag (jede vierte ist eine)  |
+| `stretch_sound` / `stretch_volume` | `true` / `0.5` | Ton an/aus und Lautstärke 0.0–1.0              |
 | `osd`                | `true`    | Lautstärke-/Helligkeits-Overlays                             |
 | `lyrics_in_pill`     | `false`   | Aktuelle Lyrics-Zeile in der eingeklappten Pille             |
 | `clipboard_limit`    | `50`      | Einträge im Verlauf (angepinnte zählen nicht)                 |
@@ -535,9 +570,11 @@ Möglich wird das, weil es keinen Polling-Loop gibt. Jede Quelle meldet sich von
 | Downloads              | inotify auf den Download-Ordner, max. 1 Update/s; nur während eines Downloads alle 15 s ein Blick auf hängende |
 | Monitore               | GDK-Signal `monitors-changed` beim Ein-/Ausstecken; im Modus `pointer` wird die Maus nur beim Hotkey gefragt |
 | Wetter, Lyrics, Cover  | `curl` als kurzer eigener Prozess, nur bei Bedarf (Wetter alle 30 min) |
+| Dehn-Erinnerung        | Nur solange sie an ist: ein Tick pro Minute (alle 5 min bei Leerlauf) mit einer Abfrage der Leerlaufzeit; Vollbild über libwncks Fenster-Signale; Bildschirm aus/gesperrt wird nur bei Fälligkeit einmal abgefragt. Aus = nichts davon läuft |
+| config.json            | Gio-Dateimonitor (inotify): rührt sich nur, wenn die Datei geschrieben wird |
 | Uhr                    | Einmal pro Minute                                              |
 
-Gezeichnet wird nur, während sich etwas bewegt: beim Auf- und Zuklappen (~240 ms) oder beim Blinzeln des Maskottchens (~180 ms alle paar Sekunden).
+Gezeichnet wird nur, während sich etwas bewegt: beim Auf- und Zuklappen (~240 ms), beim Blinzeln des Maskottchens (~180 ms alle paar Sekunden) und beim Dehn-Countdown (Ring, 4 Bilder pro Sekunde, nur die 10–60 Sekunden lang).
 
 **RAM: ~60 MB** (bis Version 1.9: ~115 MB, gemessen unter Xvfb mit frischem Profil). Der Rest kommt fast komplett von Python + GTK3 selbst: Ein leeres GTK-Fenster in Python braucht schon ~37 MB. Nusa schafft ~30 MB, weil es in Rust geschrieben ist. Dafür braucht MosIsland keinen Compiler und lässt sich direkt anpassen.
 

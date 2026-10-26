@@ -42,6 +42,8 @@ rm -f "${CONFIG_DIR}/autostart/linuxmos-plank.desktop" \
       "${BIN_DIR}/linuxmos-island"
 rm -rf "${STATE_DIR}/island-app"
 rm -f "${STATE_DIR}/install.conf"
+# Die Töne der Dehn-Erinnerung (WAV) erzeugt die Insel selbst im Cache – die gehen immer mit
+rm -f "${CACHE_DIR}"/island/stretch-*.wav "${CACHE_DIR}"/island/stretch-*.wav.tmp
 # Die MosIsland schaltet Cinnamons Benachrichtigungs-Banner ab, solange sie die Karten zeigt,
 # und beim Beenden wieder an. Ist sie vorher abgestürzt, hier nachholen.
 if grep -qs '"banners_hidden": true' "${STATE_DIR}/island/notifications.json"; then
@@ -93,7 +95,7 @@ if (( PURGE )); then
          "${DATA_DIR}/backgrounds/linuxmos" \
          "${CACHE_DIR}" \
          "${STATE_DIR}/island" "${CONFIG_DIR}/linuxmos"
-  ok "Gelöscht (inkl. MosIsland-Daten: Notiz, Clipboard-Verlauf, Ablage, App-Zähler der Suche)"
+  ok "Gelöscht (inkl. MosIsland-Daten: Notiz, Clipboard-Verlauf, Ablage, App-Zähler der Suche, Dehn-Statistik und Übungsliste)"
   # API-Key des KI-Chats aus dem Schlüsselbund
   if command -v secret-tool >/dev/null 2>&1; then
     secret-tool clear service linuxmos-island account ai-api-key 2>/dev/null || true
@@ -128,8 +130,8 @@ fi
 
 if (( ! PURGE )) && [[ -d "${STATE_DIR}/island" ]]; then
   echo
-  echo "    MosIsland-Daten (Notiz, Clipboard-Verlauf, Ablage) bleiben in ${STATE_DIR}/island"
-  echo "    – löschen mit: ./uninstall.sh --purge"
+  echo "    MosIsland-Daten (Notiz, Clipboard-Verlauf, Ablage, Dehn-Statistik) bleiben in ${STATE_DIR}/island"
+  echo "    – löschen mit: ./uninstall.sh --purge (auch deine config.json und stretch_exercises.json in ${CONFIG_DIR}/linuxmos/island)"
 fi
 
 step "Fertig – einmal ab- und wieder anmelden."

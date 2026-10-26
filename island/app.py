@@ -5,16 +5,19 @@ States of the pill (in priority order while folded):
             text, QR code)
   activity  short live event (volume, brightness, Caps Lock, layout, charging,
             network, headphones, timer/Pomodoro, to-do due, water, rain, ...)
+  stretch   the countdown of a stretch exercise: a ring, its name, the seconds left
   timer     a running countdown (timer or Pomodoro)
   lyrics    the line being sung (if "lyrics in the pill" is on)
   media     music is playing
   compact   a thin line (minimal notch)
   mascot    the user is away: the clock rests and the mascot comes out (eyes, cat, robot or blob)
+  eyes      the same, big: the pill grows, temperature and battery go (config "eye_mode")
   idle      clock, temperature, battery
 Live marks sit at the folded island's right end in every state but a card:
 an orange dot while a microphone records, a green one while a camera is on,
-a ring while a download runs (details and the mute button in the opened
-island's header). "compact" gives way to "idle" while one shows.
+a ring while a download runs, a little figure while a stretch reminder waits
+for an answer (details and the mute button in the opened island's header).
+"compact" gives way to "idle" and "eyes" to the mark while one shows.
 Hovering, clicking or a hotkey opens it into the tab view. The first tab is
 the command bar (Ctrl+Alt+Space): apps, files, calculator, units, currencies
 and web search in one field, built on first use.
@@ -23,8 +26,9 @@ It sits on the primary monitor, a chosen one or the one with the mouse
 
 Idle cost: no polling. The clock ticks once a minute; everything else is
 D-Bus signals or X11 events (notifications: a D-Bus monitor that only wakes
-up when one is sent; camera and downloads: inotify). Animations run on the frame clock only while
-the island changes size.
+up when one is sent; camera, downloads and config.json: inotify). The stretch
+reminder adds one coarse tick a minute, and only while it is switched on.
+Animations run on the frame clock only while the island changes size.
 Memory: GTK starts without the OpenGL probe (island/__init__.py), the tabs
 but "Now" are built on first use, HTTP goes through curl (services/http.py)
 and freed memory is handed back a few seconds after the island folds.
@@ -32,6 +36,7 @@ and freed memory is handed back a few seconds after the island folds.
 
 import ctypes
 import gc
+import logging
 import math
 import os
 import signal
@@ -60,7 +65,7 @@ except (ValueError, ImportError):
 from island import APP_ID, __version__, i18n  # noqa: E402
 from island.i18n import _, n_  # noqa: E402
 from island.pages import (ClipboardPage, ControlsPage, HomePage, LazyPage, NotePage, ShelfPage,  # noqa: E402
-                          TodoPage, URI_TARGETS, WaterPage, WeatherPage)
+                          StretchPage, TodoPage, URI_TARGETS, WaterPage, WeatherPage)
 from island.services import art, monitors, ocr, recorder, screenshot, system  # noqa: E402
 from island.services.clipboard import ClipboardHistory  # noqa: E402
 from island.services.downloads import Downloads, download_dir, human_size  # noqa: E402
@@ -72,19 +77,27 @@ from island.services.notifications import URGENCY_CRITICAL, Notifications, deskt
 from island.services.power import Battery  # noqa: E402
 from island.services.privacy import Privacy  # noqa: E402
 from island.services.shelf import Shelf  # noqa: E402
+from island.services.stretch import Stretch  # noqa: E402
 from island.services.timer import Timer, format_seconds  # noqa: E402
 from island.services.todo import TodoList  # noqa: E402
 from island.services.vpn import Vpn  # noqa: E402
 from island.services.water import Water  # noqa: E402
 from island.services.weather import Weather  # noqa: E402
 from island.storage import Config  # noqa: E402
+from island.stretchview import GlibEnv, IslandGates, StretchView  # noqa: E402
 from island.tray import Tray  # noqa: E402
-from island.widgets import (Animator, Eyes, LiveDots, Pill, button, clear, css_class, icon, label,  # noqa: E402
+from island.widgets import (Animator, Eyes, LiveDots, Pill, Ring, button, clear, css_class, icon, label,  # noqa: E402
                             rounded_image)
+
+log = logging.getLogger("mosisland")
 
 EXPANDED_W, EXPANDED_H, EXPANDED_R = 660, 350, 30
 COLLAPSED_H = 34
-COLLAPSED_W = {"idle": 196, "mascot": 196, "media": 320, "lyrics": 440, "timer": 220, "activity": 340}
+COLLAPSED_W = {"idle": 196, "mascot": 196, "media": 320, "lyrics": 440, "timer": 220, "activity": 340,
+               "stretch": 300}
+# Big-eyes mode: the figure is 60x22 px at scale 1, the pill grows around it (scale 1 = the normal mascot pill)
+EYE_SCALE_MIN, EYE_SCALE_MAX = 1.5, 3.0
+EYES_PAD_H, EYES_GROW_W, EYES_MAX_R = 12, 40, 26
 COMPACT_W, COMPACT_H = 110, 8
 CARD_W, CARD_H, CARD_R = 460, 150, 26
 # Cards without buttons shrink to their text: header + margins, body lines (or the 40 px picture)
@@ -108,6 +121,8 @@ DOWNLOAD_HINT_MS = 1200
 # Memory freed while the island was open (tabs, results, editor) goes back to the system this long after it
 # folds; the first time a little after start-up
 TRIM_MS, TRIM_START_MS = 5000, 15000
+# config.json is read again this long after the last write to it (editors save in several steps)
+CONFIG_RELOAD_MS = 300
 # Cinnamon's switch for its own banners; the island turns it off while it shows the cards
 BANNERS = ("org.cinnamon.desktop.notifications", "display-notifications")
 
@@ -121,6 +136,7 @@ TABS = [
     ("note", "document-edit-symbolic", "Notiz & Fokus"),
     ("chat", "face-smile-symbolic", "KI-Chat  (Ctrl+Alt+A)"),
     ("water", "weather-showers-scattered-symbolic", "Wasser"),
+    ("stretch", "avatar-default-symbolic", "Dehnen"),
     ("weather", "weather-few-clouds-symbolic", "Wetter"),
     ("controls", "emblem-system-symbolic", "Steuerung"),
 ]
@@ -132,6 +148,7 @@ TERMINALS = {"gnome-terminal-server", "gnome-terminal", "xfce4-terminal", "tilix
 class IslandWindow(Gtk.Window):
     def __init__(self, app):
         super().__init__(application=app)
+        self.debug = app.debug      # --stretch-test, --force-idle (see main())
         self.config = Config.load()
         i18n.setup(self.config.get("language", "auto"))
         self.expanded = False
@@ -147,7 +164,8 @@ class IslandWindow(Gtk.Window):
         self._shown_kind = None
         self._scroll_acc = 0.0
         self._current_tab = "home"
-        self._idle_state = "active"   # active | idle | sleep | hello
+        self._idle_state = "idle" if self.debug.get("force_idle") else "active"   # active | idle | sleep | hello
+        self._force_idle = bool(self.debug.get("force_idle"))   # stays idle until the island is opened
         self._hello_id = 0
         self._pomodoro_count = 0
         self._shooting = False
@@ -165,6 +183,11 @@ class IslandWindow(Gtk.Window):
         self._downloads_seen = False
         self._download_hint_id = 0
         self._header_live_dirty = False
+        self._stretch_mark = False       # a stretch reminder waits for an answer: a figure in the pill
+        self._stretch_progress = None    # (name, fraction, seconds left) while a countdown runs
+        self._config_monitor = None      # Gio.FileMonitor on config.json (inotify)
+        self._config_reload_id = 0
+        self._config_card = None         # the "config invalid" card, while it is up
         self._trim_id = 0
         # Lyrics: fetched lazily, advanced by one timeout per line (no polling)
         self._lyrics_view = False
@@ -202,6 +225,13 @@ class IslandWindow(Gtk.Window):
         self.stack.add_named(self._build_expanded(), "expanded")
         self.pill.add(self.stack)
 
+        if Wnck:
+            Wnck.set_client_type(Wnck.ClientType.PAGER)
+            self.wnck = Wnck.Screen.get_default()
+        else:
+            self.wnck = None
+        self._wnck = self.wnck
+
         self.battery = Battery(self._on_battery)
         self.indicators = Indicators(self._on_indicator)
         self.idle = IdleWatcher(self._on_idle)
@@ -213,6 +243,9 @@ class IslandWindow(Gtk.Window):
         self._banner_settings = system.settings(BANNERS[0])
         if self._banner_settings:
             self._banner_settings.connect(f"changed::{BANNERS[1]}", self._on_banners_changed)
+        self.stretch = Stretch(self.config, GlibEnv(self), StretchView(self), IslandGates(self),
+                               test=bool(self.debug.get("stretch_test")))
+        self.stretch.view.stretch = self.stretch
         self.tray = Tray(self)
         self.anim = Animator(self, self._apply_geometry)
         if self.config.get("notifications_on_island", True):
@@ -232,12 +265,12 @@ class IslandWindow(Gtk.Window):
                 self._panel_settings.connect(f"changed::{key}", lambda *_: self._place_soon())
         self._place_soon(4000)
         self._schedule_trim(TRIM_START_MS)
-
-        if Wnck:
-            Wnck.set_client_type(Wnck.ClientType.PAGER)
-            self._wnck = Wnck.Screen.get_default()
-        else:
-            self._wnck = None
+        self._watch_config()
+        self.stretch.apply()
+        if self.config.error:
+            GLib.idle_add(self._config_invalid_card, self.config.error, False)
+        if self.debug.get("stretch_now"):
+            GLib.timeout_add(1500, self._debug_stretch_now)
 
     # =========================================================================
     # Window setup
@@ -357,11 +390,16 @@ class IslandWindow(Gtk.Window):
             self.input_shape_combine_region(
                 cairo.Region(cairo.RectangleInt(x, 0, int(math.ceil(w)), int(math.ceil(h)))))
 
+    def _eye_scale(self):
+        return self.config.number("eye_mode_scale", EYE_SCALE_MIN, EYE_SCALE_MAX)
+
     def _collapsed_kind(self):
         if self._card:
             return "card"
         if self._activity:
             return "activity"
+        if self._stretch_progress:
+            return "stretch"
         if self.timer.running:
             return "timer"
         if self.track and self.track.playing:
@@ -371,6 +409,9 @@ class IslandWindow(Gtk.Window):
         if self.config.get("compact_when_idle") and not self.live_dots.width:
             return "compact"
         if self.config.get("mascot", True) and self._idle_state != "active":
+            # Big eyes only while nothing else would be on show: a waiting stretch reminder keeps its mark
+            if self.config.flag("eye_mode") and self._idle_state in ("idle", "sleep") and not self._stretch_mark:
+                return "eyes"
             return "mascot"
         return "idle"
 
@@ -379,8 +420,13 @@ class IslandWindow(Gtk.Window):
         if kind == "compact":
             return (COMPACT_W, COMPACT_H, COMPACT_H / 2)
         if kind == "card":
-            return (CARD_W, self._card["height"], CARD_R)
+            return (self._card.get("width", CARD_W), self._card["height"], CARD_R)
         marks = self.live_dots.width
+        if kind == "eyes":
+            scale = self._eye_scale()
+            height = EYES_PAD_H + Eyes.BASE_H * scale
+            width = COLLAPSED_W["mascot"] + EYES_GROW_W * (scale - 1)
+            return (width + (marks + 8 if marks else 0), height, min(height / 2, EYES_MAX_R))
         return (COLLAPSED_W[kind] + (marks + 8 if marks else 0), COLLAPSED_H, COLLAPSED_H / 2)
 
     def _show_collapsed(self):
@@ -414,6 +460,8 @@ class IslandWindow(Gtk.Window):
             return
         self._remember_active_window()
         self.expanded = True
+        if self._force_idle:
+            self._force_idle, self._idle_state = False, "active"    # hover or click ends the big eyes
         self.stack.set_visible_child_full("blank", Gtk.StackTransitionType.NONE)
         self.anim.to((EXPANDED_W, EXPANDED_H, EXPANDED_R), on_done=self._on_expanded, bounce=True)
 
@@ -482,8 +530,9 @@ class IslandWindow(Gtk.Window):
         self.c_left = Gtk.Box(spacing=6)
         self.c_center = label("", ("pill-text",), xalign=0.5)
         self.eyes = Eyes(self.config.get("mascot_style", "eyes"))
+        # vhomogeneous off: the big eyes must not make the stack (and the pill) tall while the clock shows
         self.c_center_stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE,
-                                        transition_duration=400, hhomogeneous=False)
+                                        transition_duration=400, hhomogeneous=False, vhomogeneous=False)
         self.c_center_stack.add_named(self.c_center, "text")
         self.c_center_stack.add_named(self.eyes, "eyes")
         self.c_right = Gtk.Box(spacing=6)
@@ -503,7 +552,8 @@ class IslandWindow(Gtk.Window):
             return
         clear(self.c_left)
         clear(self.c_right)
-        self.c_center_stack.set_visible_child_name("eyes" if kind == "mascot" else "text")
+        self.c_center_stack.set_visible_child_name("eyes" if kind in ("mascot", "eyes") else "text")
+        self.eyes.set_scale(self._eye_scale() if kind == "eyes" else 1.0)
         text = ""
         if kind == "activity":
             a = self._activity
@@ -513,6 +563,14 @@ class IslandWindow(Gtk.Window):
                 bar = Gtk.LevelBar(min_value=0, max_value=1, value=a["level"], valign=Gtk.Align.CENTER)
                 bar.set_size_request(80, -1)
                 self.c_right.add(bar)
+        elif kind == "stretch":
+            name, fraction, left = self._stretch_progress
+            self.ring = Ring()
+            self.ring.set_fraction(fraction)
+            self.stretch_time = label(format_seconds(left), ("dim", "small"), ellipsize=False)
+            self.c_left.add(self.ring)
+            self.c_right.add(self.stretch_time)
+            text = name
         elif kind == "timer":
             self.c_left.add(icon("alarm-symbolic", 16))
             text = format_seconds(self.timer.remaining)
@@ -528,7 +586,7 @@ class IslandWindow(Gtk.Window):
             else:
                 text = self.track.title or _("Wiedergabe")
                 self.c_right.add(icon("audio-volume-high-symbolic", 14))
-        elif kind == "mascot":
+        elif kind in ("mascot", "eyes"):
             self.eyes.set_mode({"sleep": "sleep", "hello": "hello"}.get(self._idle_state, "awake"))
         if kind in ("idle", "mascot"):
             if kind == "idle":
@@ -593,7 +651,8 @@ class IslandWindow(Gtk.Window):
         """
         self._card = {"icon": icon_name, "title": title, "body": body, "meta": meta, "actions": list(actions),
                       "image": image, "on_click": on_click, "tools": list(tools), "ms": ms, **extra}
-        self._card["lines"], self._card["height"] = self._card_size(self._card)
+        self._card["lines"], computed = self._card_size(self._card)
+        self._card["height"] = self._card.get("height", computed)
         if ms is None:
             self._stop_card_timer()
         else:
@@ -609,7 +668,8 @@ class IslandWindow(Gtk.Window):
         font = self.get_pango_context().get_font_description().copy()
         font.set_size(10 * Pango.SCALE)  # .card-body in style.css
         layout.set_font_description(font)
-        layout.set_width((CARD_W - 30 - (CARD_IMAGE_H + 10 if card["image"] is not None else 0)) * Pango.SCALE)
+        layout.set_width((card.get("width", CARD_W) - 30 - (CARD_IMAGE_H + 10 if card["image"] is not None else 0))
+                         * Pango.SCALE)
         layout.set_wrap(Pango.WrapMode.WORD_CHAR)
         count = layout.get_line_count()
         line_h = layout.get_pixel_extents()[1].height / count
@@ -650,11 +710,13 @@ class IslandWindow(Gtk.Window):
         self._card_shown = card
         clear(self.card_box)
         # Margins come on top of the size request -> subtract them
-        self.card_box.set_size_request(CARD_W - 30, card["height"] - 26)
+        self.card_box.set_size_request(card.get("width", CARD_W) - 30, card["height"] - 26)
+        ctx = self.card_box.get_style_context()
+        (ctx.add_class if card.get("big") else ctx.remove_class)("card-big")
         # Small max widths keep the labels' natural size below the card's, so the pill never grows
         head = Gtk.Box(spacing=8)
         head.pack_start(self._card_icon(card["icon"]), False, False, 0)
-        head.pack_start(label(card["title"], ("title",), max_chars=20), True, True, 0)
+        head.pack_start(label(card["title"], ("title",), max_chars=28 if card.get("big") else 20), True, True, 0)
         if card["meta"]:
             head.pack_start(label(card["meta"], ("dim", "small"), max_chars=22), False, False, 0)
         for icon_name, tooltip, callback in card["tools"]:
@@ -663,7 +725,7 @@ class IslandWindow(Gtk.Window):
         head.pack_start(button("window-close-symbolic", tooltip=_("Schließen"), css=("mini",), size=14,
                                on_click=self.dismiss_card), False, False, 0)
 
-        body = label(card["body"], ("card-body",), max_chars=30)
+        body = label(card["body"], ("card-body",), max_chars=40 if card.get("big") else 30)
         body.set_line_wrap(True)
         body.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
         body.set_lines(card["lines"])
@@ -730,6 +792,7 @@ class IslandWindow(Gtk.Window):
             "note": LazyPage(self, NotePage),
             "chat": LazyPage(self, _chat_page),
             "water": LazyPage(self, WaterPage),
+            "stretch": LazyPage(self, StretchPage),
             "weather": LazyPage(self, WeatherPage),
             "controls": LazyPage(self, ControlsPage),
         }
@@ -752,8 +815,11 @@ class IslandWindow(Gtk.Window):
 
         self.header_time = label("", ("title",), ellipsize=False)
         self.header_live = Gtk.Box(spacing=2, valign=Gtk.Align.CENTER)   # microphone, camera, VPN, downloads
+        gear = button("emblem-system-symbolic", tooltip="Einstellungen", size=14, css=("mini", "settings"),
+                      on_click=self.open_settings)
         header = Gtk.Box(spacing=8)
         header.pack_start(tabs, False, False, 0)
+        header.pack_end(gear, False, False, 0)
         header.pack_end(self.header_time, False, False, 0)
         header.pack_end(self.header_live, False, False, 0)
 
@@ -959,6 +1025,9 @@ class IslandWindow(Gtk.Window):
             return False
         if self._card:
             return True  # only the card's own buttons act
+        if self._stretch_mark and self._click_on_stretch_mark(event):
+            self.stretch.reshow()
+            return True
         if self._activity and (self._activity.get("sticky") or self._activity.get("on_click")):
             callback = self._activity.get("on_click")
             self._end_activity()  # e.g. dismiss "Time's up"
@@ -967,6 +1036,13 @@ class IslandWindow(Gtk.Window):
             return True
         self.expand()
         return True
+
+    def _click_on_stretch_mark(self, event):
+        """Did the click land on the little figure at the pill's right end?"""
+        if not self.live_dots.get_mapped():
+            return False
+        x, _y = self.live_dots.translate_coordinates(self, 0, 0)
+        return self.live_dots.hits_stretch(event.x - x)
 
     def _on_scroll(self, _w, event):
         if self.expanded:
@@ -1065,6 +1141,8 @@ class IslandWindow(Gtk.Window):
             self._fill_collapsed("idle")
 
     def _on_timer_tick(self):
+        if self.stretch.pending:
+            self.stretch.release()    # focus phase over (or cancelled): the held-back reminder comes now
         if note := self._built("note"):
             note.update_timer(self.timer)
         self.pages["home"].update_timer(self.timer)
@@ -1165,7 +1243,7 @@ class IslandWindow(Gtk.Window):
         p, d = self.privacy, self.downloads
         mic = ("muted" if p.mic_muted else "on") if p.mic_apps else None
         download = (-1 if d.percent is None else d.percent) if d.active else None
-        if self.live_dots.set_state(mic, bool(p.cam_apps), download):
+        if self.live_dots.set_state(mic, bool(p.cam_apps), download, self._stretch_mark):
             self.refresh_collapsed()   # the pill grows or shrinks by the marks
         self._fill_header_live()
 
@@ -1296,6 +1374,10 @@ class IslandWindow(Gtk.Window):
 
     # ---- mascot ------------------------------------------------------------------
     def _on_idle(self, state):
+        if state == "back":
+            self.stretch.user_back()    # counting speeds up again
+        if self._force_idle:
+            return    # --force-idle: the real idle watcher has nothing to say until the island is opened
         if self._hello_id:
             GLib.source_remove(self._hello_id)
             self._hello_id = 0
@@ -1305,7 +1387,8 @@ class IslandWindow(Gtk.Window):
             self._hello_id = GLib.timeout_add(2500, self._end_hello)
         else:
             self._idle_state = state
-        if self._shown_kind == "mascot" and self._collapsed_kind() == "mascot":
+        kind = self._collapsed_kind()
+        if self._shown_kind == kind and kind in ("mascot", "eyes"):
             self.eyes.set_mode({"sleep": "sleep", "hello": "hello"}.get(self._idle_state, "awake"))
         else:
             self.refresh_collapsed()
@@ -1817,6 +1900,11 @@ class IslandWindow(Gtk.Window):
     def set_option(self, key, value):
         self.config[key] = value
         self.config.save()
+        self._apply_option(key, value)
+        self.refresh_collapsed()
+
+    def _apply_option(self, key, value):
+        """Make a changed config value take effect (no saving: the value is already in self.config)."""
         if key == "lyrics_in_pill":
             self._update_lyrics_track()
         elif key == "clipboard_autodelete_min":
@@ -1825,10 +1913,18 @@ class IslandWindow(Gtk.Window):
             self._set_notification_cards(value)
         elif key in LIVE_SWITCHES:
             self._apply_live_switches()
-        elif key == "monitor":
+        elif key in ("monitor", "offset_y"):
             self._place()
         elif key == "mascot_style":
             self.eyes.set_figure(value)
+        elif key.startswith("stretch_"):
+            self.stretch.apply()
+        elif key == "clipboard_limit":
+            self.clipboard.limit = self.config.integer("clipboard_limit", 1, 1000)
+        elif key.startswith("water_"):
+            self.water.schedule()
+            if page := self._built("water"):
+                page.update()
         elif key == "ai_chat":
             self._apply_ai_tab()
         elif key == "ai_voice" and (page := self._built("chat")):
@@ -1837,7 +1933,137 @@ class IslandWindow(Gtk.Window):
             self.vpn.refresh_info()
         elif key.startswith("command_bar_") and (page := self._built("search")):
             page.refresh()
+
+    # ---- config.json: opened with the gear, reloaded when it changes ---------------------------------------
+    def open_settings(self):
+        """The gear: every missing key goes into config.json (so the editor shows all options), then it opens."""
+        if not self.config.fill_defaults():
+            log.warning("config.json is invalid: opening it as it is")
+        self._open_config_file()
+
+    def open_exercises(self):
+        """The stretch exercises file in the editor (made with the default list on first use)."""
+        from island.services import stretch
+        stretch.load_exercises()
+        self._open_config_file(stretch.EXERCISES_FILE)
+
+    def _open_config_file(self, target=None):
+        """xdg-open, else gio open, else xed (the first one that works)."""
+        path = str(target or Config.PATH)
+        candidates = [argv for argv in (["xdg-open", path], ["gio", "open", path], ["xed", path])
+                      if system.has(argv[0])]
+
+        def attempt(remaining):
+            if not remaining:
+                self.show_activity("dialog-warning-symbolic", f"Kein Editor gefunden · Datei: {path}", seconds=7)
+                return
+            system.run(remaining[0], lambda ok, _out: None if ok else attempt(remaining[1:]))
+
+        attempt(candidates)
+
+    def _watch_config(self):
+        """Gio's file monitor (inotify): costs nothing until config.json is written."""
+        try:
+            Config.PATH.parent.mkdir(parents=True, exist_ok=True)    # inotify polls for a folder that is missing
+            self._config_monitor = Gio.File.new_for_path(str(Config.PATH)).monitor_file(
+                Gio.FileMonitorFlags.NONE, None)
+        except (GLib.Error, OSError) as error:
+            log.warning("config.json is not watched: %s", error)
+            return
+        self._config_monitor.connect("changed", self._on_config_event)
+
+    def _on_config_event(self, _monitor, _file, _other, event):
+        if event == Gio.FileMonitorEvent.ATTRIBUTE_CHANGED:
+            return
+        # An editor writes in several steps (and our own save renames a file into place): look once, shortly after
+        if self._config_reload_id:
+            GLib.source_remove(self._config_reload_id)
+        self._config_reload_id = GLib.timeout_add(CONFIG_RELOAD_MS, self._reload_config)
+
+    def _reload_config(self):
+        self._config_reload_id = 0
+        changed, error = self.config.reload()
+        if error:
+            self._config_invalid_card(error, True)
+            return GLib.SOURCE_REMOVE
+        if self._config_card is not None and self._card is self._config_card:
+            self.dismiss_card()
+        self._config_card = None
+        if changed:
+            log.info("config.json changed: %s", ", ".join(sorted(changed)))
+            self._apply_config_changes(changed)
+        return GLib.SOURCE_REMOVE
+
+    def _apply_config_changes(self, changed):
+        if "city" in changed and not {"latitude", "longitude"} & set(changed):
+            self.config.update(latitude=None, longitude=None)    # another city: look its coordinates up again
+            self.weather.refresh()
+        for key in changed:
+            self._apply_option(key, self.config.get(key))
+        if "language" in changed:
+            self.show_activity("preferences-desktop-locale-symbolic", "Sprache: wirkt nach dem Neustart der Insel",
+                               seconds=5)
+        else:
+            self.show_activity("emblem-ok-symbolic", "Einstellungen übernommen", seconds=2)
+        self.tray.rebuild()
         self.refresh_collapsed()
+        self.on_stretch_changed()
+
+    def _config_invalid_card(self, error, kept_old):
+        title = "Config ungültig, alte Werte bleiben" if kept_old else "Config ungültig, Standardwerte aktiv"
+        self.show_card("dialog-warning-symbolic", title, error,
+                       actions=[("Datei öffnen", self._open_config_file, True)], ms=25000)
+        self._config_card = self._card
+        return GLib.SOURCE_REMOVE
+
+    # ---- stretch reminder: what the view and the tray ask of the window --------------------------------------
+    def current_card(self):
+        return self._card
+
+    @property
+    def capturing(self):
+        """A screenshot, text recognition or recording has the island hidden."""
+        return self._shooting
+
+    def blink_eyes(self):
+        """Two blinks as the heads-up before a stretch card; False if the eyes aren't on show."""
+        if self.expanded or self._shown_kind not in ("mascot", "eyes"):
+            return False
+        return self.eyes.blink_twice()
+
+    def set_stretch_mark(self, on):
+        if on != self._stretch_mark:
+            self._stretch_mark = on
+            self._update_live()
+
+    def set_stretch_progress(self, name, fraction=0.0, seconds_left=0):
+        """The countdown of an exercise: ring and seconds in the pill (name None = over)."""
+        if name is None:
+            if self._stretch_progress is not None:
+                self._stretch_progress = None
+                self.refresh_collapsed()
+            return
+        before = self._stretch_progress
+        self._stretch_progress = (name, fraction, seconds_left)
+        if before is None:
+            self.refresh_collapsed()
+        elif self._shown_kind == "stretch" and not self.expanded:
+            self.ring.set_fraction(fraction)
+            if before[2] != seconds_left:
+                self.stretch_time.set_text(format_seconds(seconds_left))
+
+    def drop_stretch_card(self):
+        if self._card is not None and self._card.get("stretch"):
+            self.dismiss_card()
+
+    def on_stretch_changed(self):
+        if page := self._built("stretch"):
+            page.update()
+        self.tray.refresh_stretch()
+
+    def _debug_stretch_now(self):
+        self.stretch.trigger_now()
+        return GLib.SOURCE_REMOVE
 
     def set_language(self, choice):
         """auto | de | en. A different UI language needs a fresh start (no live relabelling)."""
@@ -2083,6 +2309,7 @@ class IslandWindow(Gtk.Window):
             self.c_center.set_text(GLib.DateTime.new_now_local().format("%H:%M"))
         if self.expanded:
             self._update_header_time()
+        self.stretch.on_minute()
         self._schedule_clock()
         return GLib.SOURCE_REMOVE
 
@@ -2098,10 +2325,11 @@ def _chat_page(island):
 
 
 class IslandApp(Gtk.Application):
-    def __init__(self):
+    def __init__(self, debug=None):
         super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.FLAGS_NONE)
         self.window = None
         self.restart_requested = False
+        self.debug = debug or {}    # stretch_test | force_idle | stretch_now: switches for trying things out
 
     def restart(self):
         """Quit and start again (main() re-executes the process after the clean shutdown)."""
@@ -2132,9 +2360,10 @@ class IslandApp(Gtk.Application):
         record = hotkey("record", "s", lambda win, mode: win.record(mode))
         chat_tab = hotkey("chat", None, lambda win, _p: win.open_chat())
         voice = hotkey("voice", None, lambda win, _p: win.voice())
+        stretch_now = hotkey("stretch-now", None, lambda win, _p: win.stretch.trigger_now())
         quit_action = Gio.SimpleAction.new("quit", None)
         quit_action.connect("activate", lambda *_: self.quit())
-        for action in (toggle, tab, shot, read_text, read_qr, record, chat_tab, voice, quit_action):
+        for action in (toggle, tab, shot, read_text, read_qr, record, chat_tab, voice, stretch_now, quit_action):
             self.add_action(action)
 
     def do_activate(self):
@@ -2189,6 +2418,29 @@ def _set_key():
     return 0
 
 
+# Switches for trying things out (linuxmos-island --stretch-test ...), only read at start-up
+DEBUG_FLAGS = {"--stretch-now": "stretch_now", "--stretch-test": "stretch_test", "--force-idle": "force_idle"}
+
+
+def _setup_logging():
+    """Log lines on stderr: LINUXMOS_LOG=debug|info|warning (default info: a few lines at start-up and per reminder)."""
+    level = getattr(logging, os.environ.get("LINUXMOS_LOG", "info").upper(), logging.INFO)
+    logging.basicConfig(level=level, format="%(asctime)s %(name)s: %(message)s", datefmt="%H:%M:%S")
+
+
+def _island_running():
+    """Is another island already on the session bus? (Options that only work at start-up say so instead of
+    silently toggling the running one.)"""
+    try:
+        bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+        reply = bus.call_sync("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "NameHasOwner",
+                              GLib.Variant("(s)", (APP_ID,)), GLib.VariantType("(b)"), Gio.DBusCallFlags.NONE,
+                              1000, None)
+        return bool(reply.unpack()[0])
+    except GLib.Error:
+        return False
+
+
 def main(argv=None):
     argv = list(sys.argv if argv is None else argv)
     if "--version" in argv:
@@ -2210,7 +2462,12 @@ def main(argv=None):
         return _set_key()
 
     _set_process_name()
-    app = IslandApp()
+    _setup_logging()
+    debug = {name: flag in argv for flag, name in DEBUG_FLAGS.items()}
+    app = IslandApp(debug)
+    if (debug["stretch_test"] or debug["force_idle"]) and _island_running():
+        print("MosIsland läuft schon · erst beenden: linuxmos-island --quit", file=sys.stderr)
+        return 1
     GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, lambda: app.quit() or GLib.SOURCE_REMOVE)
     GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, lambda: app.quit() or GLib.SOURCE_REMOVE)
     status = app.run(argv[:1])

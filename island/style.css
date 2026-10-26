@@ -174,3 +174,11 @@
 #island .chat-user { background: #0a84ff; color: #ffffff; }
 #island .chat-bot { background: rgba(255, 255, 255, 0.10); }
 #island .chat-bubble.chat-error { background: rgba(255, 69, 58, 0.22); }
+
+/* ---- stretch reminder, settings gear ------------------------------------- */
+/* The card that comes back bigger when it was ignored */
+#island .card-big .title { font-size: 13pt; }
+#island .card-big .card-body { font-size: 12pt; }
+/* The gear in the opened island's header: quiet until you point at it */
+#island button.settings image { color: rgba(245, 245, 247, 0.38); }
+#island button.settings:hover image { color: rgba(245, 245, 247, 0.95); }
