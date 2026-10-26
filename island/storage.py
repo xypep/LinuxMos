@@ -20,6 +20,9 @@ DEFAULT_CONFIG = {
     "longitude": None,
     # Distance between the top bar and the island, in px
     "offset_y": 6,
+    # Monitor: primary | pointer (follows the mouse when a hotkey or the tray opens it) |
+    # a number from the left (0 = leftmost) | a connector name like "HDMI-1" (xrandr)
+    "monitor": "primary",
     # UI language: auto (follows the session's locale) | de | en
     "language": "auto",
     # Shrink the idle island to a thin line (keeps browser tabs free)

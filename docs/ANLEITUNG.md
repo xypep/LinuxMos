@@ -389,6 +389,7 @@ Das MosIsland-Icon liegt in der Top Bar neben der Uhr (Rechtsklick):
 | Text & QR                         | Text erkennen, QR-Code lesen, „Zeilenumbrüche behalten“, „Links aus QR-Codes sofort öffnen“ |
 | Benachrichtigungen                | „Auf der Insel anzeigen“ (aus = Cinnamons Banner zurück), „Nicht stören“, zuletzt gesehene Apps zum Ausblenden |
 | Live-Hinweise                     | „Mikrofon & Kamera“, „VPN-Status“, „VPN: Land & IP (fragt ipinfo.io)“, „Download-Fortschritt“ |
+| Monitor                           | „Hauptmonitor“, „Monitor mit der Maus (beim Öffnen)“ oder einer der angeschlossenen Monitore (Anschlussname · Auflösung) |
 | Sprache / Language                | Automatisch (Systemsprache), Deutsch oder English – die Insel startet dabei kurz neu |
 | Über MosIsland · Beenden          |                                                                 |
 
@@ -429,6 +430,7 @@ Die meisten Schalter liegen im Tray-Menü bzw. im Wasser-Tab (⚙). Alles steht 
 | `city`               | `""`      | Wetter-Ort (wird einmalig über OpenStreetMap gesucht)         |
 | `language`           | `"auto"`  | Oberfläche: `auto` (Deutsch bei `de_*`-Systemsprache, sonst Englisch), `de`, `en` |
 | `offset_y`           | `6`       | Abstand zur Top Bar in px                                    |
+| `monitor`            | `"primary"` | `primary`, `pointer` (Monitor mit der Maus beim Öffnen per Hotkey/Tray), Nummer von links (`0` = ganz links) oder Anschlussname wie `"HDMI-1"` (`xrandr --listmonitors`); nicht angeschlossen = Hauptmonitor |
 | `compact_when_idle`  | `false`   | Minimal-Notch                                                |
 | `mascot`             | `true`    | Maskottchen                                                  |
 | `osd`                | `true`    | Lautstärke-/Helligkeits-Overlays                             |
@@ -487,6 +489,7 @@ Möglich wird das, weil es keinen Polling-Loop gibt. Jede Quelle meldet sich von
 | Kamera                 | inotify auf `/dev/video*` (öffnen/schließen) und `/dev` (Kamera eingesteckt); `/proc`-Suche nur danach |
 | VPN                    | NetworkManager-Signale (aktive Verbindungen, Geräte)            |
 | Downloads              | inotify auf den Download-Ordner, max. 1 Update/s; nur während eines Downloads alle 15 s ein Blick auf hängende |
+| Monitore               | GDK-Signal `monitors-changed` beim Ein-/Ausstecken; im Modus `pointer` wird die Maus nur beim Hotkey gefragt |
 | Uhr                    | Einmal pro Minute                                              |
 
 Gezeichnet wird nur, während sich etwas bewegt: beim Auf- und Zuklappen (~240 ms) oder beim Blinzeln des Maskottchens (~180 ms alle paar Sekunden).
@@ -668,6 +671,16 @@ Typische Ursache: Python aus pyenv/conda statt System-Python. Die Insel nutzt be
 sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-wnck-3.0 xdotool maim slop xclip \
   tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng zbar-tools
 ```
+
+</details>
+
+<details>
+<summary><b>MosIsland: falscher Monitor oder unter der Top Bar</b></summary>
+
+- **Welcher Monitor heißt wie?** `xrandr --listmonitors` zeigt die Anschlussnamen (`HDMI-1`, `DP-2`, `eDP-1`) – genau diese Namen stehen auch im Tray-Menü unter „Monitor“ und gehen in `config.json` als `"monitor": "HDMI-1"`.
+- **Insel bleibt auf dem Hauptmonitor:** Der gewählte Monitor ist aus oder nicht angeschlossen (dann steht er im Tray als „nicht angeschlossen“). Sobald er läuft, wechselt die Insel von selbst.
+- **Insel klebt unter der Top Bar eines Nebenmonitors:** Die Insel nimmt den Arbeitsbereich, den Cinnamon pro Monitor meldet, und liest notfalls die Panel-Höhe aus den Cinnamon-Einstellungen. Passt es trotzdem nicht, `offset_y` erhöhen (gilt für alle Monitore).
+- **Modus „Monitor mit der Maus“:** Die Insel wechselt nur, wenn du sie per Hotkey (`Ctrl+Alt+I`, `Ctrl+Alt+Space`, `Ctrl+Alt+V` …) oder über das Tray-Icon öffnest – nicht beim bloßen Bewegen der Maus (das würde dauernd Rechenzeit kosten).
 
 </details>
 

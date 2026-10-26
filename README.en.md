@@ -71,8 +71,9 @@ Turns Linux Mint Cinnamon into a lightweight macOS look-alike – dock, top bar,
 - **Live activities** – volume, brightness, Caps Lock, keyboard layout, charging, Wi-Fi lost, headphones connected, VPN on/off (optionally with country and IP)
 - **Microphone & camera in use** – an orange dot while an app records, a green one while the camera is on (like iOS), with the app's name; opened, the header has a mic button to mute
 - **Download progress** – a small ring on the island while Firefox or Chromium/Chrome downloads (with a percentage for Chromium), "Download finished" with a click to the file
+- **Several monitors** – the island sits on the primary monitor, a fixed one or the one with the mouse (it moves when a hotkey or the tray opens it); it follows monitors being plugged in and out by itself
 - **Mascot** – a pair of eyes while you are away; they doze off and wave when you come back
-- **Tray menu** – autostart, mascot, minimal notch, OSD, clipboard auto-clear, search (files, currencies, search engine), screenshot, text & QR, notifications (on/off, do not disturb, hide apps), live hints (mic & camera, VPN, downloads), language, quit
+- **Tray menu** – autostart, mascot, minimal notch, OSD, clipboard auto-clear, search (files, currencies, search engine), screenshot, text & QR, notifications (on/off, do not disturb, hide apps), live hints (mic & camera, VPN, downloads), monitor, language, quit
 - **English or German** – follows the system language automatically, switchable in the tray menu (`Sprache / Language`)
 
 **Lightweight** – measured: Conky widgets ~0.03 % CPU, MosIsland ~0.1 % CPU (Cinnamon 6, music playing). No blur compositor, no polling loops.
@@ -200,6 +201,7 @@ MosIsland: `~/.config/linuxmos/island/config.json` – most switches are also in
   "city": "Berlin",
   "language": "auto",
   "offset_y": 6,
+  "monitor": "primary",
   "compact_when_idle": false,
   "mascot": true,
   "osd": true,
@@ -233,6 +235,8 @@ MosIsland: `~/.config/linuxmos/island/config.json` – most switches are also in
 ```
 
 `language`: `auto` (system language: German for `de_*`, English otherwise), `de` or `en`. Switching it in the tray menu restarts MosIsland briefly (a running timer is lost).
+
+`monitor`: `"primary"` (primary monitor, default), `"pointer"` (the monitor the mouse is on when you open the island via a hotkey or the tray – folded, it stays there until you open it somewhere else), a number from the left (`0` = leftmost, `1` = the one next to it …) or the connector name as in `xrandr --listmonitors` (`"HDMI-1"`, `"DP-2"`, `"eDP-1"`). If the chosen monitor is not connected, the island goes to the primary monitor and comes back when it is plugged in – the setting stays. The tray menu lists all connected monitors under "Monitor"; it stores the name, because the numbers can shift when monitors are replugged.
 
 Screenshots: `screenshot_save` also keeps every shot as a PNG (otherwise clipboard only), `screenshot_dir` changes the folder (empty = `~/Pictures/LinuxMos`, localised like `~/Bilder/LinuxMos`), `screenshot_open_editor` opens the editor right after the shot. "Done" in the editor overwrites the shot with the marked-up version. All of it is also in the tray menu under "Screenshot".
 
@@ -272,6 +276,7 @@ Other files:
 - **Download percentages** only exist when the browser reports its progress (Chromium/Chrome do); Firefox downloads show size and speed. Downloads into other folders than `downloads_dir` are not seen.
 - **Files in the command bar** are only found in the home folder (up to 5 levels, no hidden folders) and in the recently used list – for the whole disk there is still the rofi search (`Super+Space`, "Files" mode). New files show up 10 minutes later at the latest.
 - **The camera's app** is only found for your own user's programs; when the camera runs through PipeWire (e.g. Flatpak apps via the portal) it says "PipeWire" instead of the app. The camera can't be muted like the microphone – there is no system switch for it.
+- **Several monitors:** in `"pointer"` mode the island only changes monitors on a hotkey – hovering opens it where it currently sits. If it sits too high on a second monitor (under the top bar), use `offset_y`.
 - **A screenshot on the clipboard** is held by a small `xclip` process in the background until you copy something else (so the image survives quitting the island).
 
 More solutions (German): [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.md#troubleshooting)
@@ -292,6 +297,7 @@ More solutions (German): [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.
 - [x] Notifications as cards on the island (`notifications_on_island`, exclusion list)
 - [x] Microphone/camera dot with mute button, VPN status, download progress (`privacy_indicator`, `vpn_status`, `downloads_progress`)
 - [x] Command bar in the island (`Ctrl+Alt+Space`): apps, files, calculator, units, currencies, web search
+- [x] Several monitors: primary, a fixed one or the one with the mouse (`monitor`, tray menu), follows plugging in and out
 
 ---
 

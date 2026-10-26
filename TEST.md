@@ -13,7 +13,7 @@ Abhaken, was klappt. Was nicht klappt: Nummer + was passiert ist notieren (unten
 cd ~/LinuxMos
 git fetch && git checkout claude/affectionate-feynman-573ubj && git pull
 ./update.sh
-linuxmos-island --version          # erwartet: MosIsland 1.8.0
+linuxmos-island --version          # erwartet: MosIsland 1.9.0
 ```
 
 - [ ] **V1** `update.sh` läuft ohne Fehler durch, die Insel startet neu
@@ -289,6 +289,42 @@ mv "$D/test.bin.part" "$D/test.bin"
 - [ ] **U5** Leerlauf ohne die Suche je geöffnet zu haben: `linuxmos-perf 20` → `linuxmos-island` ≤ 0,2 % CPU wie vorher
 - [ ] **U6** Suche benutzt (Datei gesucht), zugeklappt, 1 Minute warten: `linuxmos-perf 20` → ebenfalls ≤ 0,2 %
 - [ ] **U7** RAM: `ps -o rss= -C linuxmos-island` vor der ersten Suche und danach notieren (erwartet: etwa +5 MB)
+
+---
+
+## Paket 8 – Mehrere Monitore
+
+Braucht einen zweiten Monitor (oder Laptop + externer Bildschirm). `xrandr --listmonitors` zeigt die Namen.
+
+### W. Monitor wählen
+
+- [ ] **W1** Ohne Änderung sitzt die Insel oben mittig auf dem Hauptmonitor, direkt unter der Top Bar (wie vorher)
+- [ ] **W2** Tray → „Monitor“ listet „Hauptmonitor“, „Monitor mit der Maus (beim Öffnen)“ und jeden angeschlossenen Monitor mit Name und Auflösung (der Hauptmonitor mit „(Hauptmonitor)“)
+- [ ] **W3** Den anderen Monitor wählen → die Insel springt sofort hinüber, oben mittig; in `config.json` steht z. B. `"monitor": "HDMI-1"`
+- [ ] **W4** Hat der andere Monitor eine eigene Top Bar: die Insel sitzt darunter, nicht dahinter. Ohne Top Bar dort: 6 px vom oberen Rand
+- [ ] **W5** In `config.json` `"monitor": 0` bzw. `1` eintragen, Insel neu starten → linker bzw. rechter Monitor; im Tray ist der passende Monitor markiert
+- [ ] **W6** Hovern, Karten (`notify-send Test Hallo`), Screenshot-Hinweis und Command Bar erscheinen auf dem gewählten Monitor
+
+### X. Ein- und Ausstecken
+
+- [ ] **X1** Insel auf dem externen Monitor, Kabel ziehen (oder in den Bildschirmeinstellungen ausschalten) → die Insel wechselt binnen ~2 s auf den Hauptmonitor
+- [ ] **X2** Tray → „Monitor“ zeigt den Monitor jetzt als „… (nicht angeschlossen)“, die Einstellung in `config.json` ist unverändert
+- [ ] **X3** Wieder einstecken → die Insel kehrt auf den externen Monitor zurück, unter dessen Top Bar
+- [ ] **X4** Monitore in den Bildschirmeinstellungen tauschen (links/rechts) oder Auflösung ändern → die Insel bleibt mittig auf dem gewählten Monitor
+- [ ] **X5** Laptop: Deckel zu mit externem Monitor (falls so eingerichtet) und wieder auf → die Insel landet nie außerhalb des Bildschirms
+
+### Y. Monitor mit der Maus
+
+- [ ] **Y1** Tray → „Monitor“ → „Monitor mit der Maus (beim Öffnen)“: die Insel bleibt erst einmal, wo sie ist
+- [ ] **Y2** Maus auf den anderen Monitor, `Ctrl+Alt+I` → die Insel öffnet sich dort; zugeklappt bleibt sie dort
+- [ ] **Y3** Maus zurück, `Ctrl+Alt+Space` (oder `Ctrl+Alt+V`) → die Insel öffnet sich auf diesem Monitor
+- [ ] **Y4** Linksklick aufs Tray-Icon in der Top Bar des Nebenmonitors (falls dort eine ist) → die Insel öffnet sich dort
+- [ ] **Y5** Nur die Maus bewegen (ohne Hotkey) → die Insel bleibt, wo sie ist
+
+### Z. Leistung
+
+- [ ] **Z1** Leerlauf: `linuxmos-perf 20` → `linuxmos-island` ≤ 0,2 % CPU wie vorher, mit `"primary"` und mit `"pointer"`
+- [ ] **Z2** Englisch: Tray → „Monitor“ heißt „Monitor“, Einträge „Primary monitor“, „Monitor with the mouse (when opened)“
 
 ---
 

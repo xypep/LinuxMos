@@ -71,8 +71,9 @@ Macht Linux Mint Cinnamon zum leichtgewichtigen macOS-Look-alike – mit Dock, T
 - **Live-Hinweise** – Lautstärke, Helligkeit, Feststelltaste, Tastatur-Sprache, Laden, WLAN weg, Kopfhörer verbunden, VPN an/aus (optional mit Land und IP)
 - **Mikrofon & Kamera in Benutzung** – oranger Punkt, solange eine App aufnimmt, grüner bei aktiver Kamera (wie bei iOS), mit App-Namen; aufgeklappt sitzt oben ein Mikro-Button zum Stummschalten
 - **Download-Fortschritt** – kleiner Ring auf der Insel, solange Firefox oder Chromium/Chrome lädt (bei Chromium mit Prozent), „Download fertig“ mit Klick zur Datei
+- **Mehrere Monitore** – die Insel sitzt auf dem Hauptmonitor, einem festen Monitor oder dem, auf dem die Maus steht (wechselt beim Öffnen per Hotkey oder Tray); Ein- und Ausstecken verfolgt sie von selbst
 - **Maskottchen** – Augen im Leerlauf, die eindösen und winken, wenn du zurückkommst
-- **Tray-Menü** – Autostart, Maskottchen, Minimal-Notch, OSD, Zwischenablage automatisch leeren, Suche (Dateien, Währungen, Suchmaschine), Screenshot, Text & QR, Benachrichtigungen (an/aus, Nicht stören, Apps ausblenden), Live-Hinweise (Mikro & Kamera, VPN, Downloads), Sprache, Beenden
+- **Tray-Menü** – Autostart, Maskottchen, Minimal-Notch, OSD, Zwischenablage automatisch leeren, Suche (Dateien, Währungen, Suchmaschine), Screenshot, Text & QR, Benachrichtigungen (an/aus, Nicht stören, Apps ausblenden), Live-Hinweise (Mikro & Kamera, VPN, Downloads), Monitor, Sprache, Beenden
 - **Deutsch oder Englisch** – folgt automatisch der Systemsprache, umschaltbar im Tray-Menü (`Sprache / Language`)
 
 **Leichtgewichtig** – gemessen: Conky-Widgets ~0,03 % CPU, MosIsland ~0,1 % CPU (unter Cinnamon 6, Musik läuft). Kein Blur-Compositor, keine Polling-Schleifen.
@@ -200,6 +201,7 @@ MosIsland: `~/.config/linuxmos/island/config.json` – die meisten Schalter gibt
   "city": "Berlin",
   "language": "auto",
   "offset_y": 6,
+  "monitor": "primary",
   "compact_when_idle": false,
   "mascot": true,
   "osd": true,
@@ -233,6 +235,8 @@ MosIsland: `~/.config/linuxmos/island/config.json` – die meisten Schalter gibt
 ```
 
 `language`: `auto` (Systemsprache: Deutsch bei `de_*`, sonst Englisch), `de` oder `en`. Beim Umschalten im Tray-Menü startet die MosIsland kurz neu (ein laufender Timer geht dabei verloren).
+
+`monitor`: `"primary"` (Hauptmonitor, Standard), `"pointer"` (der Monitor, auf dem die Maus steht, wenn du die Insel per Hotkey oder Tray öffnest – eingeklappt bleibt sie dort, bis du sie woanders öffnest), eine Nummer von links (`0` = ganz links, `1` = der daneben …) oder der Anschlussname wie in `xrandr --listmonitors` (`"HDMI-1"`, `"DP-2"`, `"eDP-1"`). Ist der gewählte Monitor nicht angeschlossen, geht die Insel auf den Hauptmonitor und kehrt beim Einstecken zurück – die Einstellung bleibt. Im Tray-Menü unter „Monitor“ stehen alle angeschlossenen Monitore; gespeichert wird dort der Name, weil die Nummern sich beim Umstecken verschieben können.
 
 Screenshots: `screenshot_save` legt jede Aufnahme zusätzlich als PNG ab (sonst nur Zwischenablage), `screenshot_dir` ändert den Ordner (leer = `~/Bilder/LinuxMos` bzw. `~/Pictures/LinuxMos`), `screenshot_open_editor` öffnet den Editor direkt nach der Aufnahme. „Fertig“ im Editor überschreibt die Aufnahme mit der markierten Fassung. Alles auch im Tray-Menü unter „Screenshot“.
 
@@ -272,6 +276,7 @@ Weitere Dateien:
 - **Download-Prozent** gibt es nur, wenn der Browser seinen Fortschritt meldet (Chromium/Chrome tun das); Firefox-Downloads zeigen Größe und Tempo. Downloads in andere Ordner als `downloads_dir` sieht die Insel nicht.
 - **Dateien in der Command Bar** findet die Insel nur im Home-Ordner (bis 5 Ebenen, keine versteckten Ordner) und in der Liste zuletzt benutzter Dateien – für die ganze Platte bleibt die rofi-Suche (`Super+Space`, Modus „Dateien“). Neue Dateien tauchen spätestens 10 Minuten später auf.
 - **Kamera-App** erkennt die Insel nur bei Programmen des eigenen Benutzers; läuft die Kamera über PipeWire (z. B. Flatpak-Apps über das Portal), steht dort „PipeWire“ statt der App. Den Kamera-Punkt kann man nicht abschalten wie das Mikrofon – dafür gibt es keinen Systemschalter.
+- **Mehrere Monitore:** Ohne Hotkey wechselt die Insel im Modus `"pointer"` den Monitor nicht – Hovern öffnet sie nur dort, wo sie gerade sitzt. Sitzt sie auf einem Nebenmonitor zu hoch (unter der Top Bar), hilft `offset_y`.
 - **Screenshot-Bild in der Zwischenablage** hält ein kleiner `xclip`-Prozess im Hintergrund, bis du etwas anderes kopierst (so überlebt das Bild auch ein Beenden der Insel).
 
 Weitere Lösungen: [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.md#troubleshooting)
@@ -292,6 +297,7 @@ Weitere Lösungen: [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.md#tro
 - [x] Benachrichtigungen als Karte auf der Insel (`notifications_on_island`, Ausschlussliste)
 - [x] Mikrofon-/Kamera-Punkt mit Stumm-Button, VPN-Status, Download-Fortschritt (`privacy_indicator`, `vpn_status`, `downloads_progress`)
 - [x] Command Bar in der Insel (`Ctrl+Alt+Space`): Apps, Dateien, Rechner, Einheiten, Währungen, Websuche
+- [x] Mehrere Monitore: Hauptmonitor, fester Monitor oder der mit der Maus (`monitor`, Tray-Menü), folgt dem Ein- und Ausstecken
 
 ---
 

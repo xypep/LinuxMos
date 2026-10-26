@@ -389,6 +389,13 @@ EN = {
     "Lässt sich nicht öffnen": "Can't open it",
     "Kopiert · {text}": "Copied · {text}",
 
+    # Monitor
+    "Monitor": "Monitor",
+    "Hauptmonitor": "Primary monitor",
+    "Monitor mit der Maus (beim Öffnen)": "Monitor with the mouse (when opened)",
+    "{monitor} (Hauptmonitor)": "{monitor} (primary)",
+    "{monitor} (nicht angeschlossen)": "{monitor} (not connected)",
+
     # Command line
     "Wetter-Ort gesetzt: {city}": "Weather location set: {city}",
 }

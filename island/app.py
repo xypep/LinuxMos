@@ -18,6 +18,8 @@ island's header). "compact" gives way to "idle" while one shows.
 Hovering, clicking or a hotkey opens it into the tab view. The first tab is
 the command bar (Ctrl+Alt+Space): apps, files, calculator, units, currencies
 and web search in one field, built on first use.
+It sits on the primary monitor, a chosen one or the one with the mouse
+(config "monitor", see services/monitors.py) and moves on monitor hotplug.
 
 Idle cost: no polling. The clock ticks once a minute; everything else is
 D-Bus signals or X11 events (notifications: a D-Bus monitor that only wakes
@@ -52,7 +54,7 @@ from island import APP_ID, __version__, i18n  # noqa: E402
 from island.i18n import _, n_  # noqa: E402
 from island.pages import (ClipboardPage, ControlsPage, HomePage, LazyPage, NotePage, ShelfPage,  # noqa: E402
                           TodoPage, URI_TARGETS, WaterPage, WeatherPage)
-from island.services import art, ocr, screenshot, system  # noqa: E402
+from island.services import art, monitors, ocr, screenshot, system  # noqa: E402
 from island.services.clipboard import ClipboardHistory  # noqa: E402
 from island.services.downloads import Downloads, download_dir, human_size  # noqa: E402
 from island.services.idle import IdleWatcher  # noqa: E402
@@ -129,6 +131,8 @@ class IslandWindow(Gtk.Window):
         self._prev_window = None    # Wnck window to return focus and pastes to
         self._dragging_out = False
         self._open_id = self._close_id = self._position_id = 0
+        self._monitor = None        # the monitor the island sits on (pointer mode: the last one used)
+        self._place_id = 0
         self._shown_kind = None
         self._scroll_acc = 0.0
         self._current_tab = "home"
@@ -200,7 +204,7 @@ class IslandWindow(Gtk.Window):
         self._schedule_clock()
         self.connect("realize", self._on_realize)
         screen = self.get_screen()
-        screen.connect("monitors-changed", lambda *_: self._place())
+        screen.connect("monitors-changed", lambda *_: self._on_monitors_changed())
         screen.connect("size-changed", lambda *_: self._place())
         # The panel can move or change height later (or load after us at login):
         # follow it via its settings instead of polling the work area
@@ -265,18 +269,51 @@ class IslandWindow(Gtk.Window):
         self.anim.jump(self._collapsed_geometry())
         self._show_collapsed()
 
+    def _target_monitor(self, display):
+        """Config "monitor" -> GdkMonitor; anything not connected falls back to the primary one."""
+        choice = self.config.get("monitor", monitors.PRIMARY)
+        if choice == monitors.POINTER:
+            if self._monitor in monitors.all_monitors(display):
+                return self._monitor
+            return monitors.primary(display)
+        return monitors.find(display, choice) or monitors.primary(display)
+
     def _place(self):
         display = Gdk.Display.get_default()
-        monitor = display.get_primary_monitor() or display.get_monitor(0)
-        area = monitor.get_workarea()  # below the top bar
-        self.move(area.x + (area.width - WIN_W) // 2, area.y + int(self.config.get("offset_y", 6)))
+        monitor = self._target_monitor(display)
+        if monitor is None:
+            return  # no monitor at all (all switched off)
+        self._monitor = monitor
+        x, width, top = monitors.top_of(display, monitor, self._panel_settings)  # below the top bar
+        self.move(x + (width - WIN_W) // 2, top + int(self.config.get("offset_y", 6)))
 
     def _place_soon(self, delay_ms=600):
+        """Place again a little later (the panel and the work area settle after us); one pending at a time."""
+        if self._place_id:
+            GLib.source_remove(self._place_id)
+
         def place():
+            self._place_id = 0
             self._place()
             return GLib.SOURCE_REMOVE
 
-        GLib.timeout_add(delay_ms, place)
+        self._place_id = GLib.timeout_add(delay_ms, place)
+
+    def _on_monitors_changed(self):
+        # Plugged in, unplugged, rearranged: move at once, and again once Muffin has
+        # put the panels on the new layout (it updates the work areas after GDK's signal)
+        self._place()
+        self._place_soon(1500)
+        self.tray.refresh_monitors()
+
+    def follow_pointer(self):
+        """Pointer mode: move the folded island to the monitor under the mouse (hotkeys, tray)."""
+        if self.expanded or self.config.get("monitor") != monitors.POINTER:
+            return
+        monitor = monitors.at_pointer(Gdk.Display.get_default())
+        if monitor is not None and monitor != self._monitor:
+            self._monitor = monitor
+            self._place()
 
     @staticmethod
     def _on_draw(_widget, cr):
@@ -1621,6 +1658,8 @@ class IslandWindow(Gtk.Window):
             self._set_notification_cards(value)
         elif key in LIVE_SWITCHES:
             self._apply_live_switches()
+        elif key == "monitor":
+            self._place()
         elif key == "vpn_lookup" and value:
             self.vpn.refresh_info()
         elif key.startswith("command_bar_") and self.pages["search"].built:
@@ -1752,16 +1791,23 @@ class IslandApp(Gtk.Application):
         Gtk.Application.do_startup(self)
         # Actions are reachable via D-Bus, so hotkeys don't need a Python start-up:
         #   gdbus call ... --method org.gtk.Actions.Activate toggle [] {}
-        toggle = Gio.SimpleAction.new("toggle", None)
-        toggle.connect("activate", lambda *_: self.window and self.window.toggle(focus=True))
-        tab = Gio.SimpleAction.new("tab", GLib.VariantType("s"))
-        tab.connect("activate", lambda _a, param: self.window and self.window.open_tab(param.unpack()))
-        shot = Gio.SimpleAction.new("screenshot", GLib.VariantType("s"))
-        shot.connect("activate", lambda _a, param: self.window and self.window.screenshot(param.unpack()))
-        read_text = Gio.SimpleAction.new("ocr", None)
-        read_text.connect("activate", lambda *_: self.window and self.window.read_screen("text"))
-        read_qr = Gio.SimpleAction.new("qr", None)
-        read_qr.connect("activate", lambda *_: self.window and self.window.read_screen("qr"))
+        def hotkey(name, param_type, handler):
+            """Action that runs handler(window, param) – on the monitor under the mouse in pointer mode."""
+            action = Gio.SimpleAction.new(name, param_type and GLib.VariantType(param_type))
+
+            def activate(_action, param):
+                if self.window:
+                    self.window.follow_pointer()
+                    handler(self.window, param.unpack() if param is not None else None)
+
+            action.connect("activate", activate)
+            return action
+
+        toggle = hotkey("toggle", None, lambda win, _p: win.toggle(focus=True))
+        tab = hotkey("tab", "s", lambda win, name: win.open_tab(name))
+        shot = hotkey("screenshot", "s", lambda win, mode: win.screenshot(mode))
+        read_text = hotkey("ocr", None, lambda win, _p: win.read_screen("text"))
+        read_qr = hotkey("qr", None, lambda win, _p: win.read_screen("qr"))
         quit_action = Gio.SimpleAction.new("quit", None)
         quit_action.connect("activate", lambda *_: self.quit())
         for action in (toggle, tab, shot, read_text, read_qr, quit_action):
@@ -1773,6 +1819,7 @@ class IslandApp(Gtk.Application):
             self.window.show_all()
         else:
             # A second start (e.g. from the menu) toggles the running island
+            self.window.follow_pointer()
             self.window.toggle(focus=True)
 
     def do_shutdown(self):

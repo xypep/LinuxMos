@@ -8,7 +8,7 @@ from gi.repository import GLib, Gtk
 
 from island import __version__
 from island.i18n import LANGUAGES, _
-from island.services import finder, screenshot, system
+from island.services import finder, monitors, screenshot, system
 
 try:
     gi.require_version("XApp", "1.0")
@@ -33,13 +33,14 @@ class Tray:
         self.icon = None
         self._notify_menu = None
         self._notify_refresh_id = 0
+        self._monitor_menu = None
         if XApp is None:
             return
         self.icon = XApp.StatusIcon()
         self.icon.set_name("linuxmos-island")
         self.icon.set_icon_name("view-app-grid-symbolic")
         self.icon.set_tooltip_text("MosIsland")
-        self.icon.connect("activate", lambda *_: island.toggle())
+        self.icon.connect("activate", lambda *_: self._open(island.toggle))
         self.icon.set_secondary_menu(self._build_menu())
 
     def _build_menu(self):
@@ -57,7 +58,7 @@ class Tray:
             mi.connect("toggled", lambda w: callback(w.get_active()))
             menu.append(mi)
 
-        item(_("MosIsland öffnen"), lambda: self.island.expand())
+        item(_("MosIsland öffnen"), lambda: self._open(self.island.expand))
         menu.append(Gtk.SeparatorMenuItem())
         check(_("Mit Cinnamon starten"), AUTOSTART.exists(), self._set_autostart)
         check(_("Maskottchen"), cfg.get("mascot", True), lambda on: self.island.set_option("mascot", on))
@@ -70,6 +71,7 @@ class Tray:
         menu.append(self._read_menu(cfg))
         menu.append(self._notifications_menu())
         menu.append(self._live_menu(cfg))
+        menu.append(self._monitors_menu())
         menu.append(self._language_menu(cfg.get("language", "auto")))
         menu.append(Gtk.SeparatorMenuItem())
         item(_("Über MosIsland"), self._about)
@@ -77,10 +79,14 @@ class Tray:
         menu.show_all()
         return menu
 
+    def _open(self, action):
+        """Open/toggle from the tray – in pointer mode on the monitor the tray was clicked on."""
+        self.island.follow_pointer()
+        action()
+
     @staticmethod
-    def _radio_menu(label, choices, current, on_select):
-        """Submenu with one radio item per (value, label); on_select(value) for the newly chosen one."""
-        sub = Gtk.Menu()
+    def _radio_items(sub, choices, current, on_select):
+        """One radio item per (value, label) in sub; on_select(value) for the newly chosen one."""
         group = None
         for value, text in choices:
             mi = Gtk.RadioMenuItem.new_with_label_from_widget(group, text)
@@ -89,6 +95,12 @@ class Tray:
             # "toggled" also fires for the item that gets deselected
             mi.connect("toggled", lambda w, v=value: w.get_active() and on_select(v))
             sub.append(mi)
+
+    @classmethod
+    def _radio_menu(cls, label, choices, current, on_select):
+        """Submenu with one radio item per (value, label)."""
+        sub = Gtk.Menu()
+        cls._radio_items(sub, choices, current, on_select)
         parent = Gtk.MenuItem(label=label)
         parent.set_submenu(sub)
         return parent
@@ -175,6 +187,43 @@ class Tray:
         parent = Gtk.MenuItem(label=_("Live-Hinweise"))
         parent.set_submenu(sub)
         return parent
+
+    def _monitors_menu(self):
+        self._monitor_menu = Gtk.Menu()
+        self._fill_monitors_menu()
+        parent = Gtk.MenuItem(label=_("Monitor"))
+        parent.set_submenu(self._monitor_menu)
+        return parent
+
+    def refresh_monitors(self):
+        """Monitor plugged in or out: list the connected ones again."""
+        if self._monitor_menu is not None:
+            self._fill_monitors_menu()
+
+    def _fill_monitors_menu(self):
+        sub = self._monitor_menu
+        for child in sub.get_children():
+            sub.remove(child)
+        display = self.island.get_display()
+        current = self.island.config.get("monitor", monitors.PRIMARY)
+        if not isinstance(current, (str, int)):
+            current = monitors.PRIMARY  # broken value in config.json: the island uses the primary one
+        choices = [(monitors.PRIMARY, _("Hauptmonitor")),
+                   (monitors.POINTER, _("Monitor mit der Maus (beim Öffnen)"))]
+        connected = monitors.ordered(display)
+        for monitor in connected:
+            text = monitors.describe(monitor)
+            if monitor.is_primary():
+                text = _("{monitor} (Hauptmonitor)").format(monitor=text)
+            choices.append((monitors.key(display, monitor), text))
+        # A number from config.json picks the item of that monitor; a monitor that is unplugged stays listed
+        index = monitors.index_of(current)
+        if index is not None and 0 <= index < len(connected):
+            current = monitors.key(display, connected[index])
+        elif current not in dict(choices):
+            choices.append((current, _("{monitor} (nicht angeschlossen)").format(monitor=current)))
+        self._radio_items(sub, choices, current, lambda value: self.island.set_option("monitor", value))
+        sub.show_all()
 
     def _notifications_menu(self):
         self._notify_menu = Gtk.Menu()
