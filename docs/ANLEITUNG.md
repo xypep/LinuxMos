@@ -33,7 +33,7 @@ Die Linux-Mint-Version des Videos „Windows 27 Golden Gate“: Linux Mint sieht
 - **Animationen** – schnelle Minimize-Animation Richtung Dock
 - **Widgets** – große Desktop-Uhr und ein System-Widget (CPU/RAM/Disk/Akku, optional Wetter)
 - **Spotlight** – `Super+Space` öffnet die rofi-Suche (Apps, Befehle, Fenster, Dateien)
-- **MosIsland** *(optional, `--island`)* – Dynamic Island oben in der Mitte: Musik mit Synced Lyrics, Clipboard-Verlauf, Datei-Ablage, Aufgaben, Pomodoro, Wasser-Erinnerung, Wetter, Controls, Overlays, Screenshots mit Editor, Text & QR vom Bildschirm, Benachrichtigungen als Karte, Mikrofon-/Kamera-Punkt, VPN- und Download-Hinweise und ein Maskottchen → [Details](#mosisland-dynamic-island)
+- **MosIsland** *(optional, `--island`)* – Dynamic Island oben in der Mitte: Musik mit Synced Lyrics, Clipboard-Verlauf, Datei-Ablage, Aufgaben, Pomodoro, Wasser-Erinnerung, Wetter, Controls, Overlays, Screenshots mit Editor, Text & QR vom Bildschirm, Benachrichtigungen als Karte, Mikrofon-/Kamera-Punkt, VPN- und Download-Hinweise, Bildschirmaufnahme (MP4/GIF), KI-Chat und Diktat mit eigenem API-Key und ein Maskottchen (Augen, Katze, Roboter, Blob) → [Details](#mosisland-dynamic-island)
 - **Update** – `./update.sh` holt die neue Version und aktualisiert alles, ohne deine Einstellungen anzufassen
 - **Backup & Undo** – Timeshift-Snapshot (optional) und Sicherung aller geänderten Einstellungen
 
@@ -337,6 +337,28 @@ Im **Screenshot-Editor** macht der Button „Text“ (oder `O`) dasselbe mit der
 
 Andere Sprachen: Sprachpaket installieren und in `config.json` ergänzen, z. B. `sudo apt install tesseract-ocr-fra` und `"ocr_languages": "deu+eng+fra"` (mehr Sprachen = etwas langsamer). Ohne laufende Insel funktionieren beide Hotkeys auch, das Ergebnis kommt dann als Benachrichtigung.
 
+#### Bildschirmaufnahme
+
+`Ctrl+Alt+R` zieht einen Bereich auf und nimmt ihn auf, `Ctrl+Alt+Shift+R` nimmt den Monitor unter der Maus auf. **Dieselbe Taste beendet die Aufnahme** (oder ein Klick auf das rote Tray-Icon, oder Tray → „Bildschirmaufnahme“ → „Aufnahme beenden“). Das Ergebnis liegt in `~/Videos/LinuxMos`, die Insel zeigt eine Karte mit „Abspielen“ und „Im Ordner zeigen“.
+
+- **Format:** MP4 (H.264) oder GIF – Tray → „Bildschirmaufnahme“ → „Format“. Ein GIF entsteht aus einer kleinen Zwischenaufnahme (15 Bilder/s, höchstens 960 px breit, eigene Farbpalette) und wird nach der Umwandlung gelöscht. Dauert es länger, steht „GIF wird erstellt …“ auf der Insel.
+- **Ton:** standardmäßig keiner. „Systemton“ nimmt auf, was die Lautsprecher spielen, „Mikrofon“ das Standard-Mikrofon (nur MP4).
+- **Während der Aufnahme** ist die Insel unsichtbar (damit sie nicht im Video landet), und Benachrichtigungen erscheinen nicht als Karte (sie stehen danach im Applet).
+- **Sicherung:** nach `record_max_min` Minuten (Standard 30) endet die Aufnahme von selbst. Ein anderer Screenshot-, OCR- oder QR-Hotkey beendet sie ebenfalls, die Datei bleibt heil.
+- Gemacht von `ffmpeg` (`x11grab`, nur X11). Im Leerlauf läuft nichts; der Encoder startet erst mit der Aufnahme (`ultrafast`/`veryfast`, damit die CPU-Last klein bleibt).
+
+#### KI-Chat & Diktat
+
+Beides ist **aus**, bis du es im Tray-Menü unter „KI“ einschaltest. Es braucht einen Server, der die OpenAI-Schnittstelle spricht – OpenAI selbst, OpenRouter, Groq, oder lokal Ollama/LM Studio.
+
+1. Tray → „KI“ → „Verbindung & API-Key …“: Adresse (leer = OpenAI), Chat-Modell, Modell für Diktat und den **API-Key**. Der Key landet im GNOME-Schlüsselbund (`secret-tool`, Paket `libsecret-tools`), nie in `config.json`. Alternativ im Terminal: `linuxmos-island --set-key`.
+2. „Chat-Tab“ einschalten – ein Smiley-Tab erscheint, `Ctrl+Alt+A` öffnet ihn. Fragen mit `Enter`, die Antwort läuft live ein, ■ bricht ab, das Kopieren-Symbol neben der Antwort kopiert sie, „Neues Gespräch“ (Besen) leert alles. Das Gespräch bleibt nur im Arbeitsspeicher.
+3. „Diktat“ einschalten: `Ctrl+Alt+M` startet die Aufnahme (die Insel zeigt „Diktat · sprich jetzt“), nochmal drücken beendet sie. Der Text wird erkannt und ins Fenster getippt, in dem du warst (mit „Diktat direkt einfügen“ aus: Karte mit „Einfügen“). Ist der Chat-Tab offen, landet der Text in der Chat-Zeile, damit du ihn vor dem Senden lesen kannst. Die Aufnahme wird sofort nach dem Erkennen gelöscht.
+
+Lokaler Server (Ollama): Adresse `http://localhost:11434/v1`, Modell z. B. `llama3.2`, kein Key nötig – aber Ollama hat keine Spracherkennung, für das Diktat braucht es einen Server mit `/audio/transcriptions`.
+
+Was gesendet wird: nur die letzten `ai_history` Nachrichten und die Anweisung (`ai_system_prompt`), bzw. die Sprachaufnahme – an die Adresse aus `ai_base_url`. Der Key geht an `curl` über die Standardeingabe, steht also nicht in der Prozessliste.
+
 #### Benachrichtigungen
 
 Jede Benachrichtigung (Chat, Mail, Browser, Kalender, `notify-send` …) erscheint als **Karte** oben auf der Insel: App-Icon, Titel, Text (bis zu vier Zeilen) und – wenn die App eins mitschickt – ein Bild wie der Avatar des Absenders oder das Album-Cover. Daneben stehen der App-Name und, wenn inzwischen weitere kamen, ein Zähler: Die neueste Benachrichtigung ersetzt die angezeigte sofort, „+2“ heißt „zwei davor hast du verpasst“. Die Karte ist so hoch wie ihr Text, verschwindet nach ~7 Sekunden (oder so lange, wie die App es wünscht, 4–15 s) und bleibt, solange die Maus darauf liegt. Kritische Meldungen (z. B. Akku fast leer) bleiben, bis du sie schließt.
@@ -380,10 +402,12 @@ Das MosIsland-Icon liegt in der Top Bar neben der Uhr (Rechtsklick):
 | Schalter                          | Wirkung                                                         |
 |-----------------------------------|-----------------------------------------------------------------|
 | Mit Cinnamon starten              | Autostart an/aus                                                |
-| Maskottchen                       | Augen im Leerlauf an/aus                                        |
+| Maskottchen                       | Im Leerlauf an/aus und Figur: Augen, Katze, Roboter, Blob       |
 | Minimal-Notch                     | Eingeklappt nur ein dünner Strich, z. B. für Laptops mit dickem Rand oben oder damit Browser-Tabs frei bleiben |
 | Lautstärke & Helligkeit anzeigen  | MosIsland-Overlays statt Cinnamons eigenem OSD (aus = Cinnamon-OSD zurück) |
 | Zwischenablage automatisch leeren | Nicht angepinnte Einträge nach 15 min, 1 h oder 24 h löschen (Standard: nie) |
+| Bildschirmaufnahme                | Bereich/Bildschirm aufnehmen, beenden, Format (MP4/GIF), Ton (aus/System/Mikrofon), Ordner öffnen |
+| KI                                | Chat-Tab und Diktat an/aus, Diktat direkt einfügen, „Verbindung & API-Key …“, Key entfernen |
 | Suche                             | Suche öffnen, „Dateien durchsuchen“, „Währungen (fragt frankfurter.dev)“, „Websuche mit“ (Suchmaschine) |
 | Screenshot                        | Bereich/Bildschirm aufnehmen, „Im Ordner speichern“, „Editor sofort öffnen“, Ordner öffnen |
 | Text & QR                         | Text erkennen, QR-Code lesen, „Zeilenumbrüche behalten“, „Links aus QR-Codes sofort öffnen“ |
@@ -406,6 +430,8 @@ Ein Linksklick aufs Icon klappt die Insel auf.
 | Zwischenablage                | `Ctrl+Alt+V` → tippen zum Suchen → `Enter` fügt ein     |
 | Screenshot Bereich / Bildschirm | `Ctrl+Alt+S` / `Ctrl+Alt+Shift+S`                     |
 | Text erkennen / QR-Code lesen | `Ctrl+Alt+O` / `Ctrl+Alt+Q`                             |
+| Bildschirmaufnahme Bereich / Bildschirm | `Ctrl+Alt+R` / `Ctrl+Alt+Shift+R` (nochmal = beenden) |
+| KI-Chat / Diktat              | `Ctrl+Alt+A` / `Ctrl+Alt+M`                             |
 | Lautstärke                    | Mausrad auf der eingeklappten Pille                     |
 | Dateien ablegen               | Datei aus Nemo/Desktop auf die Pille ziehen             |
 | Spulen                        | Klick auf den Fortschrittsbalken oder eine Lyrics-Zeile |
@@ -433,6 +459,7 @@ Die meisten Schalter liegen im Tray-Menü bzw. im Wasser-Tab (⚙). Alles steht 
 | `monitor`            | `"primary"` | `primary`, `pointer` (Monitor mit der Maus beim Öffnen per Hotkey/Tray), Nummer von links (`0` = ganz links) oder Anschlussname wie `"HDMI-1"` (`xrandr --listmonitors`); nicht angeschlossen = Hauptmonitor |
 | `compact_when_idle`  | `false`   | Minimal-Notch                                                |
 | `mascot`             | `true`    | Maskottchen                                                  |
+| `mascot_style`       | `"eyes"`  | `eyes`, `cat`, `robot` oder `blob`                            |
 | `osd`                | `true`    | Lautstärke-/Helligkeits-Overlays                             |
 | `lyrics_in_pill`     | `false`   | Aktuelle Lyrics-Zeile in der eingeklappten Pille             |
 | `clipboard_limit`    | `50`      | Einträge im Verlauf (angepinnte zählen nicht)                 |
@@ -440,6 +467,21 @@ Die meisten Schalter liegen im Tray-Menü bzw. im Wasser-Tab (⚙). Alles steht 
 | `screenshot_save`    | `true`    | Screenshots zusätzlich als PNG ablegen (`false` = nur Zwischenablage) |
 | `screenshot_dir`     | `""`      | Ordner für Screenshots (leer = `~/Bilder/LinuxMos`)           |
 | `screenshot_open_editor` | `false` | Editor direkt nach der Aufnahme öffnen                      |
+| `record_format`      | `"mp4"`   | Bildschirmaufnahme als `mp4` oder `gif`                       |
+| `record_audio`       | `"off"`   | Ton der Aufnahme: `off`, `system` (Lautsprecher-Ausgabe) oder `mic` (nur MP4) |
+| `record_fps`         | `30`      | Bilder pro Sekunde (1–60; GIFs höchstens 15)                  |
+| `record_max_min`     | `30`      | Aufnahme nach so vielen Minuten selbst beenden (`0` = nie)    |
+| `record_dir`         | `""`      | Ordner für Aufnahmen (leer = `~/Videos/LinuxMos`)             |
+| `ai_chat`            | `false`   | KI-Chat-Tab (`Ctrl+Alt+A`)                                    |
+| `ai_voice`           | `false`   | Diktat (`Ctrl+Alt+M`)                                         |
+| `ai_voice_autopaste` | `true`    | Diktat ins vorige Fenster tippen (aus: Karte mit „Einfügen“)  |
+| `ai_base_url`        | `""`      | Adresse des OpenAI-kompatiblen Servers bis `/v1` (leer = OpenAI) |
+| `ai_model`           | `""`      | Chat-Modell (leer = `gpt-4o-mini`)                            |
+| `ai_stt_model`       | `""`      | Modell für Diktat (leer = `whisper-1`)                        |
+| `ai_system_prompt`   | `""`      | Anweisung an die KI (leer = kurze Standardanweisung)          |
+| `ai_history`         | `20`      | Wie viele Nachrichten pro Frage mitgeschickt werden          |
+| `ai_voice_language`  | `""`      | Sprachcode fürs Diktat, z. B. `de` (leer = erkennen lassen)   |
+| `ai_voice_max_s`     | `120`     | Längste Diktat-Aufnahme in Sekunden (1–600)                   |
 | `ocr_languages`      | `"deu+eng"` | tesseract-Sprachen für die Texterkennung, mit `+` verbunden |
 | `ocr_keep_linebreaks` | `false`  | Erkannten Text zeilengenau lassen (statt Absätze zusammenzufügen) |
 | `qr_open_links`      | `false`   | Links aus QR-Codes sofort öffnen statt „Öffnen“-Button       |
@@ -483,6 +525,8 @@ Möglich wird das, weil es keinen Polling-Loop gibt. Jede Quelle meldet sich von
 | Aufgaben, Wasser       | Ein einziger Timer bis zur nächsten fälligen Erinnerung        |
 | Screenshots            | Nur auf Hotkey; der Editor wird erst beim ersten Öffnen geladen |
 | Text & QR              | Nur auf Hotkey; tesseract/zbarimg laufen als eigener Prozess und beenden sich danach |
+| Bildschirmaufnahme     | Nur auf Hotkey; ffmpeg läuft als eigener Prozess und endet mit der Aufnahme (SIGINT) |
+| KI-Chat & Diktat       | Chat-Tab wird erst beim ersten Öffnen gebaut; je Frage ein kurzlebiger `curl`-Prozess, je Diktat ein `ffmpeg` bis zum Stopp. Maskottchen-Animation nur beim Blinzeln |
 | Suche (Command Bar)    | Wird erst beim ersten Öffnen gebaut; sucht nur beim Tippen. Die Dateiliste entsteht einmal in einem Thread und wird 3 min nach der letzten Suche verworfen |
 | Benachrichtigungen     | D-Bus-Monitor (`BecomeMonitor`) auf genau drei Nachrichtentypen – meldet sich nur, wenn eine Benachrichtigung kommt |
 | Mikrofon               | Dasselbe `pactl subscribe` wie die Lautstärke; Abfrage der Streams nur bei einem Ereignis |
@@ -682,7 +726,7 @@ Typische Ursache: Python aus pyenv/conda statt System-Python. Die Insel nutzt be
 
 ```bash
 sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-wnck-3.0 xdotool maim slop xclip \
-  tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng zbar-tools
+  tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng zbar-tools ffmpeg libsecret-tools
 ```
 
 </details>
@@ -747,6 +791,7 @@ island/                    MosIsland (Python + GTK3)
   services/                MPRIS, Lyrics, UPower, Overlays (Ton, Helligkeit, Tastatur, Netz, Bluetooth),
                            Leerlauf, Clipboard, Ablage, Aufgaben, Wasser, Wetter, Timer, System-Controls,
                            Screenshot (maim/slop/xclip), Text & QR (tesseract/zbarimg),
+                           Bildschirmaufnahme (ffmpeg), KI-Chat/Diktat/Schlüsselbund (curl, secret-tool),
                            Rechner/Einheiten/Währungen (calc.py), Apps/Dateien/Websuche (finder.py)
 ```
 
@@ -759,6 +804,7 @@ Gesichert wird nach `~/.local/share/linuxmos/backup/`, der Download-Cache liegt 
 - MosIsland ist inspiriert von [Island](https://github.com/exuupery/island) von exuupery und [Nusa](https://rama2555.github.io/nusa/) von Rama (beide Windows, Closed Source). Code und Grafiken sind eigenständig, es besteht keine Verbindung zu den Originalen.
 - Lyrics: [LRCLIB](https://lrclib.net)
 - Texterkennung: [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) (Apache-2.0), QR-Codes: [ZBar](https://github.com/mchehab/zbar) (LGPL-2.1)
+- Bildschirmaufnahme und Diktat: [FFmpeg](https://ffmpeg.org/) (LGPL/GPL); API-Key im Schlüsselbund: [libsecret](https://gitlab.gnome.org/GNOME/libsecret) (LGPL-2.1)
 - Wetterdaten: [MET Norway](https://www.met.no/en) (CC BY 4.0), Ortssuche: [OpenStreetMap](https://www.openstreetmap.org/copyright)-Mitwirkende (ODbL)
 
 LinuxMos selbst steht unter der [MIT-Lizenz](../LICENSE).

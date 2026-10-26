@@ -13,7 +13,7 @@ Abhaken, was klappt. Was nicht klappt: Nummer + was passiert ist notieren (unten
 cd ~/LinuxMos
 git fetch && git checkout claude/affectionate-feynman-573ubj && git pull
 ./update.sh
-linuxmos-island --version          # erwartet: MosIsland 1.10.0
+linuxmos-island --version          # erwartet: MosIsland 1.11.0
 ```
 
 - [ ] **V1** `update.sh` läuft ohne Fehler durch, die Insel startet neu
@@ -357,6 +357,66 @@ grep -c -E "libLLVM|libgallium" /proc/$(pgrep -x -n linuxmos-island)/maps    # e
 - [ ] **T4** Command Bar: `20 usd in eur` → Ergebnis mit Kurs
 - [ ] **T5** WLAN aus → Wetter-Tab „Aktualisieren“ → „Keine Verbindung“, keine Fehlermeldung, Insel läuft weiter
 - [ ] **T6** Über die Command Bar eine App mit 3D/Video starten (z. B. ein Spiel, Blender oder Celluloid) → läuft normal (sie erbt `GDK_GL` nicht)
+
+---
+
+## Paket 10 – Bildschirmaufnahme, KI-Chat, Diktat, Maskottchen
+
+Vorher: `./update.sh` (installiert `ffmpeg` und `libsecret-tools` nach, setzt die Hotkeys `Ctrl+Alt+R`, `Ctrl+Alt+Shift+R`, `Ctrl+Alt+A`, `Ctrl+Alt+M`; bestehende Tastenkürzel von dir bleiben).
+
+### U. Bildschirmaufnahme
+
+```bash
+ls ~/Videos/LinuxMos
+ffprobe -v error -show_entries stream=codec_name,width,height -of default=nw=1 ~/Videos/LinuxMos/Recording_*.mp4
+```
+
+- [ ] **U1** `Ctrl+Alt+Shift+R`: Insel verschwindet, Tray-Icon wird **rot**; nach ~5 s `Ctrl+Alt+Shift+R` nochmal → Karte „Aufnahme gespeichert“ mit „Abspielen“ und „Im Ordner zeigen“
+- [ ] **U2** Die MP4 spielt ab (Bild, Maus sichtbar), Insel und Tray-Hinweis sind **nicht** im Video; `ffprobe` zeigt `h264` in Monitorgröße
+- [ ] **U3** `Ctrl+Alt+R`, Bereich aufziehen → nur der Bereich wird aufgenommen; `Esc` bei der Auswahl bricht ab, die Insel kommt zurück
+- [ ] **U4** Ein Klick auf das rote Tray-Icon beendet die Aufnahme; Tray → „Bildschirmaufnahme“ → „Aufnahme beenden“ ebenso
+- [ ] **U5** Tray → „Format“ → GIF, kurze Aufnahme: Insel zeigt „GIF wird erstellt …“, danach Karte; die GIF öffnet sich im Browser und läuft; keine `.mp4` mehr in `~/.cache/linuxmos/island/recordings/`
+- [ ] **U6** Tray → „Ton (nur MP4)“ → „Systemton“, Musik laufen lassen, aufnehmen → die MP4 hat Ton; mit „Mikrofon“ ist die eigene Stimme drauf
+- [ ] **U7** Aufnahme läuft, `Ctrl+Alt+S` → Aufnahme endet sauber, die Datei spielt ab
+- [ ] **U8** `"record_max_min": 1` in `config.json`, Insel neu starten, aufnehmen und nichts tun → nach ~60 s endet die Aufnahme von selbst mit Karte
+- [ ] **U9** Während der Aufnahme `notify-send Test` → kein Popup im Video; danach im Benachrichtigungs-Applet
+- [ ] **U10** Idle-CPU nach einer Aufnahme: `linuxmos-perf 20` → `linuxmos-island` ≤ 0,2 %, kein `ffmpeg`-Prozess mehr (`pgrep ffmpeg`)
+
+### V. KI-Chat (mit eigenem Server)
+
+```bash
+linuxmos-island --set-key          # Key unsichtbar eintippen
+secret-tool lookup service linuxmos-island account ai-api-key | wc -c      # > 1
+grep -c "sk-" ~/.config/linuxmos/island/config.json                         # erwartet: 0
+```
+
+- [ ] **V1** Tray → „KI“ → „Chat-Tab“ einschalten: neuer Smiley-Tab erscheint; `Ctrl+Alt+A` öffnet ihn, Cursor steht in der Eingabezeile
+- [ ] **V2** „Verbindung & API-Key …“ (Zahnrad im Chat oder Tray): Adresse/Modell eintragen, Key tippen, „Speichern“ → „API-Key im Schlüsselbund gespeichert“; beim erneuten Öffnen steht „gespeichert“ im Key-Feld
+- [ ] **V3** Frage senden: Antwort läuft Wort für Wort ein, Kopieren-Symbol daneben kopiert sie; ■ bricht eine laufende Antwort ab
+- [ ] **V4** Während einer Antwort `ps aux | grep curl` → der Key steht **nicht** in der Befehlszeile
+- [ ] **V5** Falscher Key → rote Blase „API-Key abgelehnt (HTTP 401) …“, die Frage steht wieder in der Eingabezeile
+- [ ] **V6** Server aus/Adresse falsch → „Server nicht erreichbar …“
+- [ ] **V7** „Neues Gespräch“ leert den Verlauf; eine Folgefrage bezieht sich auf die vorige Antwort
+- [ ] **V8** Ollama lokal (`http://localhost:11434/v1`, kein Key) → Chat geht ohne Key
+- [ ] **V9** „Key entfernen“ (Tray) → `secret-tool lookup …` liefert nichts; Chat sagt „Kein API-Key gespeichert“
+- [ ] **V10** Chat-Tab ausschalten → Tab verschwindet, `Ctrl+Alt+A` zeigt „KI-Chat ist aus“
+- [ ] **V11** `linuxmos-perf`: RSS direkt nach dem Start und nach dem ersten Öffnen des Chat-Tabs: ______ MB / ______ MB (Erwartung: ~+1 MB)
+
+### W. Diktat
+
+- [ ] **W1** Tray → „KI“ → „Diktat“ einschalten; Cursor in ein Textfeld (z. B. gedit), `Ctrl+Alt+M` → Insel zeigt „Diktat · sprich jetzt“, **orangen Mikrofon-Punkt**
+- [ ] **W2** Satz sprechen, `Ctrl+Alt+M` nochmal → „Wird aufgeschrieben …“, dann steht der Text im Textfeld (Terminal: per `Ctrl+Shift+V`)
+- [ ] **W3** „Diktat direkt einfügen“ aus → statt Einfügen kommt eine Karte „Diktat · kopiert“ mit „Einfügen“ und „In Notiz“
+- [ ] **W4** Chat-Tab offen, Mikro-Button neben dem Senden-Knopf → der Text landet in der Eingabezeile, nicht im anderen Fenster
+- [ ] **W5** Zu kurz (< 0,5 s) → „Zu kurz, nichts aufgenommen“
+- [ ] **W6** Nach dem Diktat existiert `~/.cache/linuxmos/island/recordings/dictation.wav` nicht mehr
+- [ ] **W7** Server ohne `/audio/transcriptions` (z. B. Ollama) → Fehlermeldung mit HTTP 404, Insel läuft weiter
+
+### X. Maskottchen
+
+- [ ] **X1** Tray → „Maskottchen“ zeigt Anzeigen-Haken und die Figuren Augen, Katze, Roboter, Blob
+- [ ] **X2** Figur wählen, 5 min nichts tun (oder `"idle"` abwarten) → die gewählte Figur erscheint in der Pille, blinzelt, schläft mit „z z“ ein
+- [ ] **X3** Maus bewegen → Figur winkt (^ ^), danach Uhr; die Wahl bleibt nach einem Neustart erhalten
 
 ---
 

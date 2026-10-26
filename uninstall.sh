@@ -94,21 +94,36 @@ if (( PURGE )); then
          "${CACHE_DIR}" \
          "${STATE_DIR}/island" "${CONFIG_DIR}/linuxmos"
   ok "Gelöscht (inkl. MosIsland-Daten: Notiz, Clipboard-Verlauf, Ablage, App-Zähler der Suche)"
+  # API-Key des KI-Chats aus dem Schlüsselbund
+  if command -v secret-tool >/dev/null 2>&1; then
+    secret-tool clear service linuxmos-island account ai-api-key 2>/dev/null || true
+    ok "API-Key des KI-Chats aus dem Schlüsselbund entfernt"
+  fi
   echo
   echo "    Pakete bei Bedarf manuell entfernen:"
   echo "      sudo apt remove plank conky-std rofi fonts-inter"
   echo "      sudo apt remove maim slop xclip          # MosIsland-Screenshots"
   echo "      sudo apt remove tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng zbar-tools   # Text & QR"
+  echo "      sudo apt remove ffmpeg libsecret-tools    # Aufnahme, Diktat, KI-Chat-Schlüssel"
   # iso-codes (Ländernamen im VPN-Hinweis) bewusst nicht: viele Systempakete hängen davon ab.
   # Die Live-Hinweise (Mikro/Kamera, VPN, Downloads) hinterlassen keine eigenen Dateien.
   # Die Command Bar braucht keine Pakete; ihre Wechselkurse liegen in ~/.cache/linuxmos (oben gelöscht).
 fi
 
-# Screenshots gehören dem Nutzer: nie löschen, nur sagen, wo sie liegen
+# Screenshots und Aufnahmen gehören dem Nutzer: nie löschen, nur sagen, wo sie liegen
 SHOT_DIR="$(xdg-user-dir PICTURES 2>/dev/null || echo "$HOME/Pictures")/LinuxMos"
 if [[ -d "${SHOT_DIR}" ]]; then
   echo
   echo "    Deine Screenshots bleiben in ${SHOT_DIR}"
+fi
+
+# Aufnahmen auch nicht
+REC_DIR="$(xdg-user-dir VIDEOS 2>/dev/null || echo "$HOME/Videos")/LinuxMos"
+if [[ -d "${REC_DIR}" ]]; then
+  echo "    Deine Bildschirmaufnahmen bleiben in ${REC_DIR}"
+fi
+if (( ! PURGE )) && command -v secret-tool >/dev/null 2>&1 && secret-tool lookup service linuxmos-island account ai-api-key >/dev/null 2>&1; then
+  echo "    Dein KI-API-Key bleibt im Schlüsselbund – entfernen mit: ./uninstall.sh --purge"
 fi
 
 if (( ! PURGE )) && [[ -d "${STATE_DIR}/island" ]]; then

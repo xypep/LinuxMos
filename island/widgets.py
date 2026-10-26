@@ -5,6 +5,8 @@ import math
 import cairo
 from gi.repository import Gdk, GLib, Gtk, Pango
 
+from island import mascots
+
 
 class Pill(Gtk.Box):
     """The black island itself. Draws its rounded shape and clips its children to it."""
@@ -98,17 +100,17 @@ class Animator:
 
 
 class Eyes(Gtk.DrawingArea):
-    """The mascot: two eyes that blink now and then, doze off and say hello.
+    """The mascot: a pair of eyes (or another character, see mascots.py) that blinks now and
+    then, dozes off and says hello.
 
     It only animates while visible: a blink is ~180 ms of frames every few
     seconds, sleeping and greeting are static drawings.
     """
 
-    EYE_W, EYE_H, GAP = 9, 15, 13
-
-    def __init__(self):
+    def __init__(self, style=mascots.DEFAULT):
         super().__init__()
         self.set_size_request(60, 22)
+        self.figure = style
         self.mode = "awake"     # awake | sleep | hello
         self._blink = 0.0       # 0 = open, 1 = closed
         self._blink_id = 0
@@ -116,6 +118,11 @@ class Eyes(Gtk.DrawingArea):
         self._start = 0
         self.connect("map", lambda *_: self._schedule_blink())
         self.connect("unmap", lambda *_: self._stop())
+
+    def set_figure(self, figure):
+        if figure != self.figure:
+            self.figure = figure
+            self.queue_draw()
 
     def set_mode(self, mode):
         if mode != self.mode:
@@ -154,42 +161,8 @@ class Eyes(Gtk.DrawingArea):
         return GLib.SOURCE_REMOVE
 
     def do_draw(self, cr):
-        w, h = self.get_allocated_width(), self.get_allocated_height()
-        cr.set_source_rgba(0.96, 0.96, 0.97, 1)
-        cy = h / 2
-        for cx in (w / 2 - self.GAP / 2 - self.EYE_W / 2, w / 2 + self.GAP / 2 + self.EYE_W / 2):
-            if self.mode == "sleep":
-                # Closed eyes: a soft downward curve
-                cr.set_line_width(2)
-                cr.arc(cx, cy - 2, self.EYE_W / 2, math.pi * 0.15, math.pi * 0.85)
-                cr.stroke()
-            elif self.mode == "hello":
-                # Happy eyes: ^ ^
-                cr.set_line_width(2.4)
-                cr.move_to(cx - self.EYE_W / 2, cy + 3)
-                cr.line_to(cx, cy - 4)
-                cr.line_to(cx + self.EYE_W / 2, cy + 3)
-                cr.stroke()
-            else:
-                eh = max(2.0, self.EYE_H * (1 - self._blink))
-                r = min(self.EYE_W / 2, eh / 2)
-                x, y = cx - self.EYE_W / 2, cy - eh / 2
-                cr.new_sub_path()
-                cr.arc(x + self.EYE_W - r, y + r, r, -math.pi / 2, 0)
-                cr.arc(x + self.EYE_W - r, y + eh - r, r, 0, math.pi / 2)
-                cr.arc(x + r, y + eh - r, r, math.pi / 2, math.pi)
-                cr.arc(x + r, y + r, r, math.pi, 3 * math.pi / 2)
-                cr.close_path()
-                cr.fill()
-        if self.mode == "sleep":
-            cr.set_source_rgba(0.96, 0.96, 0.97, 0.6)
-            cr.select_font_face("Inter", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
-            cr.set_font_size(8)
-            cr.move_to(w - 9, 8)
-            cr.show_text("z")
-            cr.set_font_size(6)
-            cr.move_to(w - 4, 4)
-            cr.show_text("z")
+        mascots.draw(self.figure, cr, self.get_allocated_width(), self.get_allocated_height(),
+                     self.mode, self._blink)
         return False
 
 

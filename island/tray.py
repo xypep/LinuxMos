@@ -7,8 +7,9 @@ import gi
 from gi.repository import GLib, Gtk
 
 from island import __version__
+from island import mascots
 from island.i18n import LANGUAGES, _
-from island.services import finder, monitors, screenshot, system
+from island.services import finder, monitors, recorder, screenshot, system
 
 try:
     gi.require_version("XApp", "1.0")
@@ -20,6 +21,9 @@ AUTOSTART = Path.home() / ".config" / "autostart" / "linuxmos-island.desktop"
 
 # Clipboard auto-delete choices in the tray (minutes, 0 = off); other values via config.json.
 # Labels are German source strings, translated when the menu is built.
+# Tray icon: normal, and while a screen recording runs (a click on it stops the recording)
+ICON, RECORDING_ICON = "view-app-grid-symbolic", "media-record"
+
 AUTODELETE_CHOICES = [(0, "Nie"), (15, "Nach 15 Minuten"), (60, "Nach 1 Stunde"), (1440, "Nach 24 Stunden")]
 
 
@@ -34,13 +38,15 @@ class Tray:
         self._notify_menu = None
         self._notify_refresh_id = 0
         self._monitor_menu = None
+        self._record_stop = None
         if XApp is None:
             return
         self.icon = XApp.StatusIcon()
         self.icon.set_name("linuxmos-island")
-        self.icon.set_icon_name("view-app-grid-symbolic")
+        self.icon.set_icon_name(ICON)
         self.icon.set_tooltip_text("MosIsland")
-        self.icon.connect("activate", lambda *_: self._open(island.toggle))
+        self.icon.connect("activate", lambda *_: island.stop_recording() if island.recording
+                          else self._open(island.toggle))
         self.icon.set_secondary_menu(self._build_menu())
 
     def _build_menu(self):
@@ -61,7 +67,7 @@ class Tray:
         item(_("MosIsland öffnen"), lambda: self._open(self.island.expand))
         menu.append(Gtk.SeparatorMenuItem())
         check(_("Mit Cinnamon starten"), AUTOSTART.exists(), self._set_autostart)
-        check(_("Maskottchen"), cfg.get("mascot", True), lambda on: self.island.set_option("mascot", on))
+        menu.append(self._mascot_menu(cfg))
         check(_("Minimal-Notch"), cfg.get("compact_when_idle", False),
               lambda on: self.island.set_option("compact_when_idle", on))
         check(_("Lautstärke & Helligkeit anzeigen"), cfg.get("osd", True), self._set_osd)
@@ -69,6 +75,8 @@ class Tray:
         menu.append(self._search_menu(cfg))
         menu.append(self._screenshot_menu(cfg))
         menu.append(self._read_menu(cfg))
+        menu.append(self._record_menu(cfg))
+        menu.append(self._ai_menu(cfg))
         menu.append(self._notifications_menu())
         menu.append(self._live_menu(cfg))
         menu.append(self._monitors_menu())
@@ -113,6 +121,21 @@ class Tray:
         return self._radio_menu(_("Zwischenablage automatisch leeren"), choices, current,
                                 lambda minutes: self.island.set_option("clipboard_autodelete_min", minutes))
 
+    def _mascot_menu(self, cfg):
+        sub = Gtk.Menu()
+        show = Gtk.CheckMenuItem(label=_("Anzeigen, wenn ich weg bin"))
+        show.set_active(cfg.get("mascot", True))
+        show.connect("toggled", lambda w: self.island.set_option("mascot", w.get_active()))
+        sub.append(show)
+        sub.append(Gtk.SeparatorMenuItem())
+        current = cfg.get("mascot_style", mascots.DEFAULT)
+        self._radio_items(sub, [(key, _(name)) for key, name in mascots.STYLES.items()],
+                          current if current in mascots.STYLES else mascots.DEFAULT,
+                          lambda key: self.island.set_option("mascot_style", key))
+        parent = Gtk.MenuItem(label=_("Maskottchen"))
+        parent.set_submenu(sub)
+        return parent
+
     def _search_menu(self, cfg):
         sub = Gtk.Menu()
         open_item = Gtk.MenuItem(label=_("Suche öffnen  (Ctrl+Alt+Space)"))
@@ -155,6 +178,59 @@ class Tray:
         parent = Gtk.MenuItem(label="Screenshot")
         parent.set_submenu(sub)
         return parent
+
+    def _record_menu(self, cfg):
+        sub = Gtk.Menu()
+        for text, mode in ((_("Bereich aufnehmen  (Ctrl+Alt+R)"), "area"),
+                           (_("Bildschirm aufnehmen  (Ctrl+Alt+Shift+R)"), "screen")):
+            mi = Gtk.MenuItem(label=text)
+            mi.connect("activate", lambda _w, m=mode: self.island.record(m))
+            sub.append(mi)
+        self._record_stop = Gtk.MenuItem(label=_("Aufnahme beenden"))
+        self._record_stop.set_sensitive(self.island.recording)
+        self._record_stop.connect("activate", lambda *_: self.island.stop_recording())
+        sub.append(self._record_stop)
+        sub.append(Gtk.SeparatorMenuItem())
+        sub.append(self._radio_menu(_("Format"), [("mp4", "MP4"), ("gif", "GIF")], recorder.fmt(cfg),
+                                    lambda value: self.island.set_option("record_format", value)))
+        sub.append(self._radio_menu(_("Ton (nur MP4)"), [("off", _("Ohne Ton")), ("system", _("Systemton")),
+                                                         ("mic", _("Mikrofon"))],
+                                    cfg.get("record_audio", "off") if cfg.get("record_audio", "off") in recorder.AUDIO
+                                    else "off",
+                                    lambda value: self.island.set_option("record_audio", value)))
+        folder = Gtk.MenuItem(label=_("Ordner öffnen"))
+        folder.connect("activate", lambda *_: recorder.open_folder(self.island.config))
+        sub.append(folder)
+        parent = Gtk.MenuItem(label=_("Bildschirmaufnahme"))
+        parent.set_submenu(sub)
+        return parent
+
+    def _ai_menu(self, cfg):
+        sub = Gtk.Menu()
+        for text, key, default in ((_("Chat-Tab  (Ctrl+Alt+A)"), "ai_chat", False),
+                                   (_("Diktat  (Ctrl+Alt+M)"), "ai_voice", False),
+                                   (_("Diktat direkt einfügen"), "ai_voice_autopaste", True)):
+            mi = Gtk.CheckMenuItem(label=text)
+            mi.set_active(cfg.get(key, default))
+            mi.connect("toggled", lambda w, k=key: self.island.set_option(k, w.get_active()))
+            sub.append(mi)
+        sub.append(Gtk.SeparatorMenuItem())
+        for text, callback in ((_("Verbindung & API-Key …"), self.island.ai_settings),
+                               (_("API-Key entfernen"), self.island.remove_ai_key)):
+            mi = Gtk.MenuItem(label=text)
+            mi.connect("activate", lambda _w, cb=callback: cb())
+            sub.append(mi)
+        parent = Gtk.MenuItem(label=_("KI"))
+        parent.set_submenu(sub)
+        return parent
+
+    def set_recording(self, on):
+        """A screen recording starts or ends: red icon (a click stops it) and the stop item."""
+        if self._record_stop is not None:
+            self._record_stop.set_sensitive(on)
+        if self.icon is not None:
+            self.icon.set_icon_name(RECORDING_ICON if on else ICON)
+            self.icon.set_tooltip_text(_("MosIsland · Aufnahme läuft, ein Klick beendet sie") if on else "MosIsland")
 
     def _read_menu(self, cfg):
         sub = Gtk.Menu()

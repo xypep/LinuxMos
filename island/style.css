@@ -168,3 +168,9 @@
 
 #island tooltip,
 #island tooltip * { background: #1c1c1e; color: #f5f5f7; border-radius: 8px; }
+
+/* ---- chat ------------------------------------------------------------- */
+#island .chat-bubble { border-radius: 14px; padding: 7px 11px; }
+#island .chat-user { background: #0a84ff; color: #ffffff; }
+#island .chat-bot { background: rgba(255, 255, 255, 0.10); }
+#island .chat-bubble.chat-error { background: rgba(255, 69, 58, 0.22); }

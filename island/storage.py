@@ -30,14 +30,23 @@ DEFAULT_CONFIG = {
     "clipboard_limit": 50,
     # Drop unpinned clipboard entries after N minutes (0 = keep)
     "clipboard_autodelete_min": 0,
-    # Tray switches
+    # Tray switches; mascot_style: eyes | cat | robot | blob
     "mascot": True,
+    "mascot_style": "eyes",
     "osd": True,
     "lyrics_in_pill": False,
     # Screenshots: keep a copy in the folder ("" = ~/Pictures/LinuxMos), open the editor right away
     "screenshot_save": True,
     "screenshot_dir": "",
     "screenshot_open_editor": False,
+    # Screen recording (Ctrl+Alt+R area, Ctrl+Alt+Shift+R monitor; the hotkey again stops it):
+    # record_format mp4 | gif, record_audio off | system | mic (MP4 only), record_fps 1-60 (GIFs: at most 15),
+    # record_max_min stops a recording by itself (0 = never), record_dir "" = ~/Videos/LinuxMos
+    "record_format": "mp4",
+    "record_audio": "off",
+    "record_fps": 30,
+    "record_max_min": 30,
+    "record_dir": "",
     # Text from the screen (tesseract languages, joined with +) and QR codes
     "ocr_languages": "deu+eng",
     "ocr_keep_linebreaks": False,
@@ -55,6 +64,22 @@ DEFAULT_CONFIG = {
     "vpn_lookup": False,
     "downloads_progress": True,
     "downloads_dir": "",
+    # AI with an own API key (off by default; chat and dictation send text and audio to the server):
+    # ai_chat = the chat tab (Ctrl+Alt+A), ai_voice = dictation (Ctrl+Alt+M) with ai_voice_autopaste
+    # typing the text into the window you came from. Any OpenAI-compatible server works (ai_base_url,
+    # "" = OpenAI; Ollama: http://localhost:11434/v1); the key lives in the keyring, not here.
+    # ai_system_prompt "" = a short built-in one, ai_history = messages sent along with a question,
+    # ai_voice_language "" = detect (or an ISO code like "de"), ai_voice_max_s = longest dictation
+    "ai_chat": False,
+    "ai_voice": False,
+    "ai_voice_autopaste": True,
+    "ai_base_url": "",
+    "ai_model": "",
+    "ai_stt_model": "",
+    "ai_system_prompt": "",
+    "ai_history": 20,
+    "ai_voice_language": "",
+    "ai_voice_max_s": 120,
     # Command bar (Ctrl+Alt+Space): web search engine (duckduckgo | google | startpage | ecosia | bing |
     # brave, or a URL with %s for the query), file results from the home folder, currencies (ECB rates
     # via frankfurter.dev: a request to an outside service, only when a conversion is typed)

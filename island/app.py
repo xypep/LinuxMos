@@ -9,7 +9,7 @@ States of the pill (in priority order while folded):
   lyrics    the line being sung (if "lyrics in the pill" is on)
   media     music is playing
   compact   a thin line (minimal notch)
-  mascot    the user is away: the clock rests and a pair of eyes comes out
+  mascot    the user is away: the clock rests and the mascot comes out (eyes, cat, robot or blob)
   idle      clock, temperature, battery
 Live marks sit at the folded island's right end in every state but a card:
 an orange dot while a microphone records, a green one while a camera is on,
@@ -61,7 +61,7 @@ from island import APP_ID, __version__, i18n  # noqa: E402
 from island.i18n import _, n_  # noqa: E402
 from island.pages import (ClipboardPage, ControlsPage, HomePage, LazyPage, NotePage, ShelfPage,  # noqa: E402
                           TodoPage, URI_TARGETS, WaterPage, WeatherPage)
-from island.services import art, monitors, ocr, screenshot, system  # noqa: E402
+from island.services import art, monitors, ocr, recorder, screenshot, system  # noqa: E402
 from island.services.clipboard import ClipboardHistory  # noqa: E402
 from island.services.downloads import Downloads, download_dir, human_size  # noqa: E402
 from island.services.idle import IdleWatcher  # noqa: E402
@@ -119,6 +119,7 @@ TABS = [
     ("shelf", "folder-symbolic", "Ablage"),
     ("todo", "object-select-symbolic", "Aufgaben"),
     ("note", "document-edit-symbolic", "Notiz & Fokus"),
+    ("chat", "face-smile-symbolic", "KI-Chat  (Ctrl+Alt+A)"),
     ("water", "weather-showers-scattered-symbolic", "Wasser"),
     ("weather", "weather-few-clouds-symbolic", "Wetter"),
     ("controls", "emblem-system-symbolic", "Steuerung"),
@@ -151,6 +152,12 @@ class IslandWindow(Gtk.Window):
         self._pomodoro_count = 0
         self._shooting = False
         self._shot_proc = None
+        self._shot_stop = None      # ends the running capture: kill maim/slop, SIGINT ffmpeg (finishes the file)
+        self._shot_out = ""         # what slop printed (the chosen area)
+        self._capture_gen = 0
+        self._recording = False
+        self._dictation = None      # the ffmpeg recording the microphone (see voice())
+        self._transcribing = False
         self._card = None           # dict, see show_card()
         self._card_id = 0
         self._card_shown = None     # the card the widgets were built for
@@ -465,6 +472,8 @@ class IslandWindow(Gtk.Window):
             self.pages["clipboard"].page.focus_search()
         elif name == "search":
             self.pages["search"].page.focus_entry()
+        elif name == "chat" and self.expanded:
+            self.pages["chat"].page.focus_entry()
 
     # =========================================================================
     # Folded content
@@ -472,7 +481,7 @@ class IslandWindow(Gtk.Window):
     def _build_collapsed(self):
         self.c_left = Gtk.Box(spacing=6)
         self.c_center = label("", ("pill-text",), xalign=0.5)
-        self.eyes = Eyes()
+        self.eyes = Eyes(self.config.get("mascot_style", "eyes"))
         self.c_center_stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE,
                                         transition_duration=400, hhomogeneous=False)
         self.c_center_stack.add_named(self.c_center, "text")
@@ -719,6 +728,7 @@ class IslandWindow(Gtk.Window):
             "shelf": LazyPage(self, ShelfPage),
             "todo": LazyPage(self, TodoPage),
             "note": LazyPage(self, NotePage),
+            "chat": LazyPage(self, _chat_page),
             "water": LazyPage(self, WaterPage),
             "weather": LazyPage(self, WeatherPage),
             "controls": LazyPage(self, ControlsPage),
@@ -732,6 +742,10 @@ class IslandWindow(Gtk.Window):
             btn.add(icon(icon_name, 16))
             btn.set_tooltip_text(_(tooltip))
             css_class(btn, "tab")
+            if name == "chat":    # only there while the AI chat is switched on
+                btn.get_child().show()    # show_all() skips a no_show_all widget's children
+                btn.set_no_show_all(True)
+                btn.set_visible(self.config.get("ai_chat", False))
             btn.connect("clicked", lambda _b, n=name: self._on_tab_clicked(n))
             tabs.pack_start(btn, False, False, 0)
             self.tab_buttons[name] = btn
@@ -764,7 +778,7 @@ class IslandWindow(Gtk.Window):
             self.pages["search"].page.focus_entry()
 
     def select_tab(self, name):
-        if name not in self.pages:
+        if name not in self.pages or (name == "chat" and not self.config.get("ai_chat", False)):
             return
         self._current_tab = name
         self.body.set_visible_child_name(name)
@@ -1320,13 +1334,19 @@ class IslandWindow(Gtk.Window):
         """The hotkey again during the selection: give up and bring the island back. True if one ran."""
         if not self._shooting:
             return False
-        if self._shot_proc:
-            self._shot_proc.force_exit()
+        if self._shot_proc and self._shot_stop:
+            self._shot_stop()
         return True
 
-    def _capture(self, argv, on_done):
-        """Run maim (argv) with the island out of the picture, then on_done(ok)."""
+    def _capture(self, argv, on_done, stdout=False, record=False, chain=False):
+        """Run argv (maim, slop or ffmpeg) with the island out of the picture, then on_done(ok).
+
+        stdout: keep what it prints in self._shot_out (slop's area); record: ffmpeg, which ends on SIGINT
+        so its file is finished; chain: after a success on_done starts the next capture at once and the
+        island stays hidden in between (a recording after its area was chosen).
+        """
         self._shooting = True
+        self._capture_gen += 1
         self._drop_card()
         if self.expanded:
             self.collapse()
@@ -1336,30 +1356,58 @@ class IslandWindow(Gtk.Window):
         self.hide()
 
         def finish(ok):
-            self._shooting = False
-            self._shot_proc = None
-            self.show()
-            self._place()
+            self._shot_proc = self._shot_stop = None
+            if record:
+                self._set_recording(False)
+            if chain and ok:
+                gen = self._capture_gen
+                on_done(ok)
+                if gen == self._capture_gen:
+                    self._end_capture()   # nothing followed: bring the island back
+                return
+            self._end_capture()
             on_done(ok)
 
         def done(proc, result):
             try:
-                ok = proc.wait_check_finish(result)
+                if stdout:
+                    _ok, out, _err = proc.communicate_utf8_finish(result)
+                    self._shot_out = (out or "").strip()
+                    ok = proc.get_successful()
+                else:
+                    ok = proc.wait_check_finish(result)
             except GLib.Error:
                 ok = False  # cancelled (Esc, or killed above)
             finish(ok)
 
         def shoot():
             try:
-                self._shot_proc = Gio.Subprocess.new(argv, Gio.SubprocessFlags.STDOUT_SILENCE
-                                                     | Gio.SubprocessFlags.STDERR_SILENCE)
+                if record:
+                    proc = recorder.launcher().spawnv(argv)
+                    self._shot_stop = lambda: proc.send_signal(signal.SIGINT)
+                else:
+                    flags = Gio.SubprocessFlags.STDERR_SILENCE | (
+                        Gio.SubprocessFlags.STDOUT_PIPE if stdout else Gio.SubprocessFlags.STDOUT_SILENCE)
+                    proc = Gio.Subprocess.new(argv, flags)
+                    self._shot_stop = proc.force_exit
             except GLib.Error:
                 finish(False)
                 return GLib.SOURCE_REMOVE
-            self._shot_proc.wait_check_async(None, done)
+            self._shot_proc = proc
+            if record:
+                self._set_recording(True)
+            if stdout:
+                proc.communicate_utf8_async(None, None, done)
+            else:
+                proc.wait_check_async(None, done)
             return GLib.SOURCE_REMOVE
 
         GLib.timeout_add(SHOT_HIDE_MS, shoot)
+
+    def _end_capture(self):
+        self._shooting = False
+        self.show()
+        self._place()
 
     def _on_shot(self, ok, path):
         if not ok or not path.is_file():
@@ -1407,6 +1455,85 @@ class IslandWindow(Gtk.Window):
                 ocr.read_codes(path, self._on_codes, delete=True)
 
         self._capture(screenshot.capture_argv("area", None, path), captured)
+
+    # ---- screen recording --------------------------------------------------------------
+    @property
+    def recording(self):
+        return self._recording
+
+    def record(self, mode):
+        """Record an area or the monitor under the pointer; the same hotkey again stops and saves it.
+
+        The island stays out of the picture the whole time (hidden): the tray icon turns red and a click
+        on it stops the recording, and notifications wait in Cinnamon's applet instead of popping up in it.
+        """
+        if mode not in ("area", "screen"):
+            return
+        if self._recording:
+            self.stop_recording()
+            return
+        if self._cancel_capture():
+            return    # the area selection is open: the hotkey again gives up
+        missing = recorder.missing(mode)
+        if missing:
+            self.show_activity("dialog-warning-symbolic",
+                               _("Für Aufnahmen fehlt: {programs}").format(programs=", ".join(missing)), seconds=5)
+            return
+        if mode == "screen":
+            self._start_recording(recorder.usable(recorder.parse_geometry(screenshot.pointer_monitor_geometry())))
+        else:
+            self._capture(recorder.SELECT_ARGV, self._on_record_area, stdout=True, chain=True)
+
+    def stop_recording(self):
+        if self._recording and self._shot_proc and self._shot_stop:
+            self._shot_stop()
+
+    def _on_record_area(self, ok):
+        geometry = recorder.parse_geometry(self._shot_out) if ok else None
+        if geometry is None:
+            return    # the selection was cancelled
+        if recorder.usable(geometry) is None:
+            self._end_capture()
+            self.show_activity("dialog-warning-symbolic", _("Bereich zu klein"), seconds=3)
+            return
+        self._start_recording(recorder.usable(geometry))
+
+    def _start_recording(self, geometry):
+        path, final = recorder.new_paths(self.config)
+        self._capture(recorder.record_argv(self.config, geometry, path), lambda _ok: self._on_recorded(path, final),
+                      record=True)
+
+    def _set_recording(self, on):
+        self._recording = on
+        self.tray.set_recording(on)
+
+    def _on_recorded(self, path, final):
+        if not recorder.good(path):
+            path.unlink(missing_ok=True)
+            error = recorder.last_error()
+            self.show_activity("dialog-warning-symbolic", _("Aufnahme fehlgeschlagen") + (f": {error}" if error else ""),
+                               seconds=7)
+            return
+        if path == final:
+            self._recording_saved(final)
+            return
+        self.show_activity("camera-video-symbolic", _("GIF wird erstellt …"), seconds=600)
+        recorder.convert_to_gif(path, final, lambda ok: self._on_gif(ok, final))
+
+    def _on_gif(self, ok, final):
+        self._clear_activity()
+        if ok and recorder.good(final):
+            self._recording_saved(final)
+        else:
+            error = recorder.last_error()
+            self.show_activity("dialog-warning-symbolic", _("GIF-Erstellung fehlgeschlagen")
+                               + (f": {error}" if error else ""), seconds=7)
+
+    def _recording_saved(self, path):
+        self.show_card("camera-video-symbolic", _("Aufnahme gespeichert"), path.name,
+                       meta=human_size(path.stat().st_size),
+                       actions=[(_("Abspielen"), lambda: self._open_link(path.as_uri()), True),
+                                (_("Im Ordner zeigen"), lambda: self.reveal_file(path), False)])
 
     def _clear_activity(self):
         """Drop a running live activity (e.g. "recognising ...") without redrawing."""
@@ -1700,6 +1827,12 @@ class IslandWindow(Gtk.Window):
             self._apply_live_switches()
         elif key == "monitor":
             self._place()
+        elif key == "mascot_style":
+            self.eyes.set_figure(value)
+        elif key == "ai_chat":
+            self._apply_ai_tab()
+        elif key == "ai_voice" and (page := self._built("chat")):
+            page.refresh()
         elif key == "vpn_lookup" and value:
             self.vpn.refresh_info()
         elif key.startswith("command_bar_") and (page := self._built("search")):
@@ -1713,6 +1846,149 @@ class IslandWindow(Gtk.Window):
         self.config.save()
         if changed:
             self.get_application().restart()
+
+    # ---- AI: chat and dictation (own API key, see services/chat.py) ---------------------
+    def _apply_ai_tab(self):
+        on = self.config.get("ai_chat", False)
+        self.tab_buttons["chat"].set_visible(on)
+        if not on and self._current_tab == "chat":
+            self.select_tab("home")
+
+    def _ai_hint(self, text):
+        self.show_activity("dialog-information-symbolic", text, seconds=4)
+
+    def open_chat(self):
+        """Hotkey: the chat tab (closes the island if it already shows it)."""
+        if not self.config.get("ai_chat", False):
+            self._ai_hint(_("KI-Chat ist aus · Tray-Menü › KI"))
+            return
+        self.open_tab("chat")
+
+    def ai_settings(self):
+        from island import aidialog  # loaded on first use only
+        aidialog.show(self)
+
+    def apply_ai_settings(self, url, model, stt_model, key):
+        """The dialog's "Save": address and models into config.json, a typed key into the keyring."""
+        url = url.strip().rstrip("/")
+        if url and not url.startswith(("http://", "https://")):
+            self.show_activity("dialog-warning-symbolic", _("Adresse muss mit http:// oder https:// beginnen"),
+                               seconds=5)
+            url = ""
+        self.config.update(ai_base_url=url, ai_model=model.strip(), ai_stt_model=stt_model.strip())
+        self.config.save()
+        key = key.strip()
+        if key:
+            from island.services import keyring
+            keyring.store(key, self._on_key_saved)
+        else:
+            self.ai_changed()
+
+    def _on_key_saved(self, ok):
+        if ok:
+            self.show_activity("dialog-password-symbolic", _("API-Key im Schlüsselbund gespeichert"), seconds=3)
+        else:
+            self.show_activity("dialog-warning-symbolic", _("Key nicht gespeichert: Schlüsselbund nicht erreichbar "
+                                                           "(libsecret-tools?)"), seconds=7)
+        self.ai_changed()
+
+    def remove_ai_key(self):
+        from island.services import keyring
+        keyring.clear(lambda ok: (self.show_activity("dialog-password-symbolic", _("API-Key entfernt"), seconds=3)
+                                  if ok else self.show_activity("dialog-warning-symbolic",
+                                                                _("Key nicht entfernt"), seconds=4),
+                                  self.ai_changed()))
+
+    def ai_changed(self):
+        """Server, model or key changed: the chat page shows where its questions go."""
+        if page := self._built("chat"):
+            page.refresh()
+
+    def voice(self):
+        """Dictation: the first call records the microphone, the next one ends it and writes down what was said."""
+        if self._dictation is not None:
+            self._dictation.send_signal(signal.SIGINT)
+            return
+        if self._transcribing:
+            return
+        if not self.config.get("ai_voice", False):
+            self._ai_hint(_("Diktat ist aus · Tray-Menü › KI"))
+            return
+        from island.services import dictation
+        missing = dictation.missing()
+        if missing:
+            self.show_activity("dialog-warning-symbolic",
+                               _("Für das Diktat fehlt: {programs}").format(programs=", ".join(missing)), seconds=5)
+            return
+        self._remember_active_window()    # the window the text goes to
+        try:
+            proc = recorder.launcher(dictation.LOG).spawnv(dictation.record_argv(self.config))
+        except GLib.Error:
+            self.show_activity("dialog-warning-symbolic", _("Diktat lässt sich nicht starten"), seconds=5)
+            return
+        self._dictation = proc
+        self.show_activity("audio-input-microphone-symbolic", _("Diktat · sprich jetzt, Ctrl+Alt+M beendet"),
+                           sticky=True, on_click=self.voice)
+        proc.wait_check_async(None, self._on_dictation_recorded)
+
+    def _on_dictation_recorded(self, proc, result):
+        from island.services import dictation, keyring
+        try:
+            proc.wait_check_finish(result)
+        except GLib.Error:
+            pass    # ffmpeg exits non-zero after the SIGINT that ends it: the file decides
+        self._dictation = None
+        self._clear_activity()
+        try:
+            size = dictation.WAV.stat().st_size
+        except OSError:
+            size = 0
+        if size < dictation.MIN_BYTES:
+            dictation.WAV.unlink(missing_ok=True)
+            error = recorder.last_error(dictation.LOG) if not size else ""
+            self.show_activity("dialog-warning-symbolic", error or _("Zu kurz, nichts aufgenommen"), seconds=4)
+            return
+        self.show_activity("audio-input-microphone-symbolic", _("Wird aufgeschrieben …"), seconds=120)
+        self._transcribing = True
+        keyring.lookup(self._transcribe)
+
+    def _transcribe(self, key):
+        from island.services import chat, dictation
+        if not key and not chat.is_local(self.config):
+            self._transcribed("", ("nokey", 0, ""))
+            return
+        chat.transcribe(self.config, key, dictation.WAV, self._transcribed)
+
+    def _transcribed(self, text, error):
+        from island.services import chat, dictation
+        dictation.WAV.unlink(missing_ok=True)    # the recording is not kept
+        self._transcribing = False
+        self._clear_activity()
+        if error:
+            message = (_("Kein API-Key gespeichert · Tray-Menü › KI › Verbindung") if error[0] == "nokey"
+                       else chat.describe(error))
+            self.show_activity("dialog-warning-symbolic", message, seconds=7)
+        elif not text:
+            self.show_activity("audio-input-microphone-symbolic", _("Nichts verstanden"), seconds=3)
+        else:
+            self._deliver_dictation(text)
+
+    def _deliver_dictation(self, text):
+        """The chat's question field if the chat is open, else typed into the window the user came from."""
+        page = self._built("chat")
+        if self.expanded and self._current_tab == "chat" and page:
+            page.insert_text(text)
+            return
+        if not ocr.copy_text(text):
+            return
+        if self.config.get("ai_voice_autopaste", True) and self._prev_window is not None and system.has("xdotool"):
+            self.show_activity("audio-input-microphone-symbolic", _("Diktat eingefügt"), seconds=2)
+            self._paste_into_previous()
+            return
+        self.show_card("audio-input-microphone-symbolic", _("Diktat · kopiert"), text,
+                       meta=_("{n} Zeichen").format(n=len(text)),
+                       actions=[(_("Einfügen"), self._paste_into_previous, True),
+                                (_("In Notiz"), lambda: self._to_note(text), False)])
 
     # ---- lyrics ------------------------------------------------------------------
     def set_lyrics_view(self, active):
@@ -1816,6 +2092,11 @@ def _command_page(island):
     return CommandPage(island)
 
 
+def _chat_page(island):
+    from island.chatpage import ChatPage  # loaded on first use only
+    return ChatPage(island)
+
+
 class IslandApp(Gtk.Application):
     def __init__(self):
         super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.FLAGS_NONE)
@@ -1848,9 +2129,12 @@ class IslandApp(Gtk.Application):
         shot = hotkey("screenshot", "s", lambda win, mode: win.screenshot(mode))
         read_text = hotkey("ocr", None, lambda win, _p: win.read_screen("text"))
         read_qr = hotkey("qr", None, lambda win, _p: win.read_screen("qr"))
+        record = hotkey("record", "s", lambda win, mode: win.record(mode))
+        chat_tab = hotkey("chat", None, lambda win, _p: win.open_chat())
+        voice = hotkey("voice", None, lambda win, _p: win.voice())
         quit_action = Gio.SimpleAction.new("quit", None)
         quit_action.connect("activate", lambda *_: self.quit())
-        for action in (toggle, tab, shot, read_text, read_qr, quit_action):
+        for action in (toggle, tab, shot, read_text, read_qr, record, chat_tab, voice, quit_action):
             self.add_action(action)
 
     def do_activate(self):
@@ -1885,6 +2169,26 @@ def _trim_memory():
         pass
 
 
+def _set_key():
+    """linuxmos-island --set-key: put the AI API key into the keyring (typed invisibly, or piped in)."""
+    import getpass
+    from island.services import keyring
+    i18n.setup(Config.load().get("language", "auto"))
+    if not keyring.available():
+        print(_("secret-tool fehlt: sudo apt install libsecret-tools"), file=sys.stderr)
+        return 1
+    key = (getpass.getpass(_("API-Key (die Eingabe bleibt unsichtbar): ")) if sys.stdin.isatty()
+           else sys.stdin.readline()).strip()
+    if not key:
+        print(_("Kein Key eingegeben."), file=sys.stderr)
+        return 2
+    if not keyring.store_sync(key):
+        print(_("Der Schlüsselbund hat den Key nicht angenommen (läuft gnome-keyring?)."), file=sys.stderr)
+        return 1
+    print(_("API-Key im Schlüsselbund gespeichert."))
+    return 0
+
+
 def main(argv=None):
     argv = list(sys.argv if argv is None else argv)
     if "--version" in argv:
@@ -1901,6 +2205,9 @@ def main(argv=None):
         i18n.setup(cfg.get("language", "auto"))
         print(_("Wetter-Ort gesetzt: {city}").format(city=cfg["city"]))
         return 0
+
+    if "--set-key" in argv:
+        return _set_key()
 
     _set_process_name()
     app = IslandApp()

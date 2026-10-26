@@ -8,6 +8,11 @@
 #   linuxmos-island --shot MODE     Screenshot: area (Bereich) | screen (Monitor unter der Maus)
 #   linuxmos-island --ocr           Text aus einem Bereich erkennen -> Zwischenablage
 #   linuxmos-island --qr            QR-Code/Barcode aus einem Bereich lesen -> Zwischenablage
+#   linuxmos-island --record MODE  Bildschirmaufnahme: area (Bereich) | screen (Monitor unter der Maus);
+#                                   nochmal aufrufen beendet und speichert sie (MP4 oder GIF)
+#   linuxmos-island --chat         KI-Chat öffnen (Tab, braucht "ai_chat": true)
+#   linuxmos-island --voice        Diktat: Aufnahme starten, nochmal aufrufen = Text erkennen
+#   linuxmos-island --set-key      API-Key für den KI-Chat im Schlüsselbund speichern
 #   linuxmos-island --quit          beenden
 #   linuxmos-island --set-city ORT  Wetter-Ort festlegen
 set -euo pipefail
@@ -43,6 +48,19 @@ case "${1:-}" in
     action "${1#--}" "[]" && exit 0
     cd /
     PYTHONPATH="${APP_DIR}" exec "${PYTHON}" -m island.shot "${1#--}" ;;
+  --record)
+    [[ "${2:-}" =~ ^(area|screen)$ ]] || { echo "Usage: $(basename "$0") --record area|screen" >&2; exit 2; }
+    action record "[<'$2'>]" && exit 0
+    echo "MosIsland läuft nicht – Aufnahmen gehen nur mit laufender Insel." >&2
+    exit 1 ;;
+  --chat)
+    action chat "[]" && exit 0
+    echo "MosIsland läuft nicht." >&2
+    exit 1 ;;
+  --voice)
+    action voice "[]" && exit 0
+    echo "MosIsland läuft nicht – Diktat geht nur mit laufender Insel." >&2
+    exit 1 ;;
   --quit)
     action quit "[]" || true
     exit 0 ;;

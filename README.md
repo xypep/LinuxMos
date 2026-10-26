@@ -72,8 +72,10 @@ Macht Linux Mint Cinnamon zum leichtgewichtigen macOS-Look-alike – mit Dock, T
 - **Mikrofon & Kamera in Benutzung** – oranger Punkt, solange eine App aufnimmt, grüner bei aktiver Kamera (wie bei iOS), mit App-Namen; aufgeklappt sitzt oben ein Mikro-Button zum Stummschalten
 - **Download-Fortschritt** – kleiner Ring auf der Insel, solange Firefox oder Chromium/Chrome lädt (bei Chromium mit Prozent), „Download fertig“ mit Klick zur Datei
 - **Mehrere Monitore** – die Insel sitzt auf dem Hauptmonitor, einem festen Monitor oder dem, auf dem die Maus steht (wechselt beim Öffnen per Hotkey oder Tray); Ein- und Ausstecken verfolgt sie von selbst
-- **Maskottchen** – Augen im Leerlauf, die eindösen und winken, wenn du zurückkommst
-- **Tray-Menü** – Autostart, Maskottchen, Minimal-Notch, OSD, Zwischenablage automatisch leeren, Suche (Dateien, Währungen, Suchmaschine), Screenshot, Text & QR, Benachrichtigungen (an/aus, Nicht stören, Apps ausblenden), Live-Hinweise (Mikro & Kamera, VPN, Downloads), Monitor, Sprache, Beenden
+- **Bildschirmaufnahme** – `Ctrl+Alt+R` (Bereich) oder `Ctrl+Alt+Shift+R` (Bildschirm unter der Maus), dieselbe Taste beendet sie. MP4 (H.264, auf Wunsch mit Systemton oder Mikrofon) oder GIF, gespeichert in `~/Videos/LinuxMos`. Die Insel blendet sich aus dem Bild aus, das Tray-Icon wird rot (ein Klick beendet), danach eine Karte mit „Abspielen“ und „Im Ordner zeigen“. Eine vergessene Aufnahme stoppt nach 30 Minuten von selbst
+- **KI-Chat & Diktat** (optional, eigener API-Key, standardmäßig aus) – ein Chat-Tab (`Ctrl+Alt+A`), die Antwort läuft live ein. Funktioniert mit jedem OpenAI-kompatiblen Server: OpenAI, OpenRouter, Ollama, LM Studio … Der Key liegt im Schlüsselbund (libsecret), nicht in der Config. **Diktat** (`Ctrl+Alt+M`): sprechen, Taste nochmal drücken – der Text wird ins aktive Fenster getippt (oder landet in der Chat-Zeile)
+- **Maskottchen** – im Leerlauf Augen, Katze, Roboter oder Blob; sie dösen ein und winken, wenn du zurückkommst
+- **Tray-Menü** – Autostart, Maskottchen (Figur wählen), Minimal-Notch, OSD, Zwischenablage automatisch leeren, Suche (Dateien, Währungen, Suchmaschine), Screenshot, Text & QR, Bildschirmaufnahme (Format, Ton), KI (Chat, Diktat, Verbindung & API-Key), Benachrichtigungen (an/aus, Nicht stören, Apps ausblenden), Live-Hinweise (Mikro & Kamera, VPN, Downloads), Monitor, Sprache, Beenden
 - **Deutsch oder Englisch** – folgt automatisch der Systemsprache, umschaltbar im Tray-Menü (`Sprache / Language`)
 
 **Leichtgewichtig** – gemessen: Conky-Widgets ~0,03 % CPU, MosIsland ~0,1 % CPU (unter Cinnamon 6, Musik läuft) und ~60 MB RAM. Kein Blur-Compositor, keine Polling-Schleifen.
@@ -87,6 +89,8 @@ Macht Linux Mint Cinnamon zum leichtgewichtigen macOS-Look-alike – mit Dock, T
 
 Der größte Brocken (−49 MB) war Mesa: GTK lädt beim Start den OpenGL-Treiber samt LLVM, nur um ein Fenster-Format auszusuchen – die Insel zeichnet aber gar nicht mit OpenGL. Der Rest (−7 MB): Tabs werden erst beim ersten Öffnen gebaut, Wetter/Lyrics/Cover/Kurse kommen über `curl` statt über Pythons HTTPS-Stack, und freier Speicher geht nach dem Zuklappen zurück ans System. Auf echter Hardware hängt die Ersparnis vom Grafiktreiber ab – `linuxmos-perf` zeigt den RAM der Insel.
 
+Aufnahme, Chat und Diktat kosten im Leerlauf nichts: der Chat-Tab entsteht erst beim ersten Öffnen (gemessen 59 MB RSS nach dem Start, +0,7 MB danach, Leerlauf-CPU unverändert), ffmpeg und curl laufen nur, solange du aufnimmst bzw. fragst.
+
 ---
 
 ## Voraussetzungen
@@ -96,7 +100,7 @@ Der größte Brocken (−49 MB) war Mesa: GTK lädt beim Start den OpenGL-Treibe
 - Internetverbindung (apt-Pakete und WhiteSur-Themes von GitHub)
 - Optional: **Timeshift** eingerichtet (für den Snapshot vor der Installation)
 
-Alle Pakete installiert `install.sh` selbst, u. a. `plank`, `conky-std`, `rofi`, `fonts-inter`, `sassc`; mit `--island` zusätzlich `python3-gi`, `gir1.2-gtk-3.0`, `gir1.2-wnck-3.0`, `gir1.2-xapp-1.0`, `xdotool`, `pulseaudio-utils`, `iso-codes`.
+Alle Pakete installiert `install.sh` selbst, u. a. `plank`, `conky-std`, `rofi`, `fonts-inter`, `sassc`; mit `--island` zusätzlich `python3-gi`, `gir1.2-gtk-3.0`, `gir1.2-wnck-3.0`, `gir1.2-xapp-1.0`, `xdotool`, `pulseaudio-utils`, `iso-codes`, `ffmpeg` (Aufnahme, Diktat) und `libsecret-tools` (API-Key im Schlüsselbund).
 
 ---
 
@@ -160,6 +164,10 @@ linuxmos-island --tab todo   # MosIsland auf einem Tab öffnen
 linuxmos-island --shot area  # Screenshot: area (Bereich) | screen (Monitor unter der Maus)
 linuxmos-island --ocr        # Text aus einem Bereich erkennen
 linuxmos-island --qr         # QR-Code/Barcode aus einem Bereich lesen
+linuxmos-island --record area  # Bildschirmaufnahme: area | screen; nochmal aufrufen = beenden
+linuxmos-island --chat       # KI-Chat öffnen
+linuxmos-island --voice      # Diktat starten, nochmal aufrufen = Text erkennen
+linuxmos-island --set-key    # API-Key für den KI-Chat im Schlüsselbund speichern
 linuxmos-island --set-city "München"
 ```
 
@@ -176,6 +184,10 @@ linuxmos-island --set-city "München"
 | `Ctrl+Alt+Shift+S` | Screenshot vom Bildschirm unter der Maus                  |
 | `Ctrl+Alt+O`     | Text aus einem Bereich erkennen (OCR) → Zwischenablage      |
 | `Ctrl+Alt+Q`     | QR-Code/Barcode aus einem Bereich lesen → Zwischenablage    |
+| `Ctrl+Alt+R`     | Bildschirmaufnahme vom Bereich starten (nochmal = beenden und speichern) |
+| `Ctrl+Alt+Shift+R` | Bildschirmaufnahme vom Monitor unter der Maus             |
+| `Ctrl+Alt+A`     | KI-Chat öffnen (mit `ai_chat`)                              |
+| `Ctrl+Alt+M`     | Diktat: aufnehmen, nochmal drücken = Text erkennen und einfügen (mit `ai_voice`) |
 | Im Editor        | `A` Pfeil · `R` Rechteck · `M` Marker · `T` Text · `B` Verpixeln · `O` Text erkennen · `1`–`6` Farbe · `Ctrl+Z` · `Ctrl+C` · `Ctrl+S` = Fertig |
 | `Esc`            | MosIsland zuklappen                                         |
 | Mausrad auf der Pille | Lautstärke ±5 %                                        |
@@ -192,6 +204,12 @@ linuxmos-island --set-city "München"
 
 > [!IMPORTANT]
 > Netzwerkzugriffe: Wetter über api.met.no und nominatim.openstreetmap.org (MosIsland) bzw. wttr.in (Conky), Lyrics über lrclib.net – jeweils nur, wenn du die Funktion nutzt. Wechselkurse holt die Command Bar von api.frankfurter.dev (EZB-Kurse, ohne Konto) – nur, wenn du eine Währungsumrechnung tippst, höchstens alle 12 Stunden; abschaltbar mit `command_bar_currency`. Die Websuche öffnet deine Eingabe erst bei `Enter` in der gewählten Suchmaschine. Land und IP des VPN fragt die Insel bei ipinfo.io ab – nur mit `vpn_lookup` (standardmäßig aus), einmal pro VPN-Verbindung; ipinfo.io sieht dabei die Ausgangs-IP des VPN. Der Clipboard-Verlauf liegt unverschlüsselt in `~/.local/share/linuxmos/island/clipboard.json`; Kopien aus Passwort-Managern werden nur übersprungen, wenn diese sie als geheim markieren (KeePassXC & Co.).
+
+> [!IMPORTANT]
+> KI-Chat und Diktat sind aus, bis du sie im Tray-Menü unter „KI“ einschaltest. Danach schicken sie deine Frage bzw. deine Sprachaufnahme an den Server aus `ai_base_url` (ohne Eintrag: OpenAI) – nur, wenn du etwas abschickst. Das Gespräch bleibt im Arbeitsspeicher, die Diktat-Aufnahme (`~/.cache/linuxmos/island/recordings/dictation.wav`) wird gelöscht, sobald der Text da ist. Der API-Key liegt im Schlüsselbund (`secret-tool`), nie in `config.json`, und geht nur über die Standardeingabe an `curl`, steht also auch nicht in der Prozessliste. Ein lokaler Server (Ollama, LM Studio unter `localhost`) braucht keinen Key und schickt nichts ins Internet.
+
+> [!IMPORTANT]
+> Während einer Bildschirmaufnahme bleibt die Insel unsichtbar, damit sie nicht im Video landet, und Benachrichtigungen erscheinen nicht als Karte (sie stehen danach im Benachrichtigungs-Applet). Die Aufnahme zeichnet alles auf, was auf dem Bildschirm zu sehen ist – auch Passwörter, die du dort tippst.
 
 > [!IMPORTANT]
 > Solange die MosIsland Benachrichtigungen als Karte zeigt, schaltet sie Cinnamons eigene Banner ab (`org.cinnamon.desktop.notifications display-notifications`) – Benachrichtigungen landen dann ohne Popup im Benachrichtigungs-Applet, die Karte zeigt die Insel. Beim Beenden der Insel oder mit Tray → „Benachrichtigungen“ → „Auf der Insel anzeigen“ aus kommen Cinnamons Banner zurück. „Nicht stören“ (Steuerung-Tab, Tray) gilt dann für die Insel; kritische Meldungen (z. B. Akku fast leer) kommen trotzdem durch. Die Karten zeigen Nachrichteninhalte groß oben in der Mitte – bei Bildschirmfreigaben ggf. „Nicht stören“ einschalten.
@@ -213,6 +231,7 @@ MosIsland: `~/.config/linuxmos/island/config.json` – die meisten Schalter gibt
   "monitor": "primary",
   "compact_when_idle": false,
   "mascot": true,
+  "mascot_style": "eyes",
   "osd": true,
   "lyrics_in_pill": false,
   "clipboard_limit": 50,
@@ -231,6 +250,21 @@ MosIsland: `~/.config/linuxmos/island/config.json` – die meisten Schalter gibt
   "vpn_lookup": false,
   "downloads_progress": true,
   "downloads_dir": "",
+  "record_format": "mp4",
+  "record_audio": "off",
+  "record_fps": 30,
+  "record_max_min": 30,
+  "record_dir": "",
+  "ai_chat": false,
+  "ai_voice": false,
+  "ai_voice_autopaste": true,
+  "ai_base_url": "",
+  "ai_model": "",
+  "ai_stt_model": "",
+  "ai_system_prompt": "",
+  "ai_history": 20,
+  "ai_voice_language": "",
+  "ai_voice_max_s": 120,
   "command_bar_engine": "duckduckgo",
   "command_bar_files": true,
   "command_bar_currency": true,
@@ -256,6 +290,12 @@ Benachrichtigungen: `notifications_on_island` zeigt sie als Karte auf der Insel 
 Live-Hinweise: `privacy_indicator` zeigt den orangen (Mikrofon) und grünen (Kamera) Punkt; das Mikrofon kommt aus PipeWire/PulseAudio (`pactl subscribe`, Pegelanzeigen wie pavucontrol zählen nicht), die Kamera über inotify auf `/dev/video*`. `vpn_status` meldet VPN an/aus (NetworkManager-VPNs, WireGuard sowie tun/wg-Schnittstellen anderer VPN-Apps wie Mullvad), `vpn_lookup` holt dazu Land und IP von ipinfo.io (externe Anfrage, deshalb standardmäßig aus). `downloads_progress` beobachtet den Download-Ordner (`downloads_dir`, leer = XDG-Download-Ordner, z. B. `~/Downloads`) auf `.part` (Firefox) und `.crdownload` (Chromium/Chrome). Alles auch im Tray-Menü unter „Live-Hinweise“.
 
 Command Bar: `command_bar_engine` ist die Suchmaschine (`duckduckgo`, `google`, `startpage`, `ecosia`, `bing`, `brave` oder eine eigene URL mit `%s` für die Suche, z. B. `"https://de.wikipedia.org/w/index.php?search=%s"`). `command_bar_files` sucht Dateien: zuletzt benutzte und alles im Home-Ordner bis 5 Ebenen tief (ohne versteckte Ordner, höchstens 20 000 Einträge); die Liste entsteht beim ersten Tippen in einem Thread und wird 3 Minuten nach der letzten Suche wieder verworfen. `command_bar_currency` rechnet Währungen mit den EZB-Kursen um (siehe Netzwerkzugriffe oben). Apps, die du über die Command Bar startest, rücken nach oben (Zähler in `~/.local/share/linuxmos/island/command.json`). Alles auch im Tray-Menü unter „Suche“.
+
+Maskottchen: `mascot_style` ist `eyes` (Augen, Standard), `cat`, `robot` oder `blob`; `mascot` schaltet es ganz ab. Beides im Tray-Menü unter „Maskottchen“.
+
+Bildschirmaufnahme: `record_format` ist `mp4` oder `gif` (GIFs haben höchstens 15 Bilder pro Sekunde, 960 px Breite und keinen Ton), `record_audio` `off`, `system` (was die Lautsprecher spielen) oder `mic` (nur MP4), `record_fps` 1–60, `record_max_min` beendet eine Aufnahme nach so vielen Minuten (`0` = nie), `record_dir` ändert den Ordner (leer = `~/Videos/LinuxMos`). Das Bild kommt von ffmpeg (`x11grab`) und braucht X11. Format und Ton auch im Tray-Menü unter „Bildschirmaufnahme“.
+
+KI: `ai_chat` zeigt den Chat-Tab, `ai_voice` schaltet das Diktat frei, `ai_voice_autopaste` tippt das Diktat ins vorige Fenster (sonst Karte mit „Einfügen“). `ai_base_url` ist die Adresse des Servers bis `/v1` (leer = `https://api.openai.com/v1`, Ollama: `http://localhost:11434/v1`), `ai_model` das Chat-Modell (leer = `gpt-4o-mini`), `ai_stt_model` das Modell für Diktat (leer = `whisper-1`; der Server braucht `/audio/transcriptions`). `ai_system_prompt` ersetzt die kurze Standardanweisung, `ai_history` ist die Zahl der Nachrichten, die mitgeschickt werden, `ai_voice_language` ein Sprachcode wie `de` (leer = erkennen lassen), `ai_voice_max_s` die längste Diktat-Aufnahme. Adresse, Modelle und Key setzt du im Tray-Menü unter „KI“ → „Verbindung & API-Key …“, oder den Key mit `linuxmos-island --set-key`.
 
 Weitere Dateien:
 
@@ -286,6 +326,8 @@ Weitere Dateien:
 - **Dateien in der Command Bar** findet die Insel nur im Home-Ordner (bis 5 Ebenen, keine versteckten Ordner) und in der Liste zuletzt benutzter Dateien – für die ganze Platte bleibt die rofi-Suche (`Super+Space`, Modus „Dateien“). Neue Dateien tauchen spätestens 10 Minuten später auf.
 - **Kamera-App** erkennt die Insel nur bei Programmen des eigenen Benutzers; läuft die Kamera über PipeWire (z. B. Flatpak-Apps über das Portal), steht dort „PipeWire“ statt der App. Den Kamera-Punkt kann man nicht abschalten wie das Mikrofon – dafür gibt es keinen Systemschalter.
 - **Mehrere Monitore:** Ohne Hotkey wechselt die Insel im Modus `"pointer"` den Monitor nicht – Hovern öffnet sie nur dort, wo sie gerade sitzt. Sitzt sie auf einem Nebenmonitor zu hoch (unter der Top Bar), hilft `offset_y`.
+- **Bildschirmaufnahme** gibt es nur unter X11. „Systemton“ nimmt den Standard-Ausgang von PulseAudio/PipeWire auf (`@DEFAULT_MONITOR@`); wechselst du während der Aufnahme das Gerät, bleibt der Ton beim alten. Ein anderer Screenshot-, OCR- oder QR-Hotkey während einer Aufnahme beendet sie (und speichert sie). Lange GIFs werden groß – dafür MP4 nehmen.
+- **KI-Chat:** Antworten erscheinen als reiner Text (kein Markdown). Das Diktat braucht einen Server mit `/audio/transcriptions` (OpenAI, Groq, LocalAI, faster-whisper-server …); Ollama hat das nicht. Ist der Schlüsselbund gesperrt, fragt GNOME beim ersten Zugriff nach dem Passwort. Der Chat zeigt keine Bilder und merkt sich nichts über einen Neustart hinaus.
 - **Screenshot-Bild in der Zwischenablage** hält ein kleiner `xclip`-Prozess im Hintergrund, bis du etwas anderes kopierst (so überlebt das Bild auch ein Beenden der Insel).
 
 Weitere Lösungen: [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.md#troubleshooting)
@@ -308,6 +350,9 @@ Weitere Lösungen: [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.md#tro
 - [x] Command Bar in der Insel (`Ctrl+Alt+Space`): Apps, Dateien, Rechner, Einheiten, Währungen, Websuche
 - [x] Mehrere Monitore: Hauptmonitor, fester Monitor oder der mit der Maus (`monitor`, Tray-Menü), folgt dem Ein- und Ausstecken
 - [x] Weniger RAM: 116 → 60 MB (ohne OpenGL-Test, Tabs erst bei Bedarf, HTTP über `curl`, Cover verkleinert im Cache)
+- [x] Bildschirmaufnahme als MP4 oder GIF (`Ctrl+Alt+R`, `Ctrl+Alt+Shift+R`)
+- [x] KI-Chat und Diktat mit eigenem API-Key im Schlüsselbund (`ai_chat`, `ai_voice`, `Ctrl+Alt+A`, `Ctrl+Alt+M`)
+- [x] Weitere Maskottchen: Katze, Roboter, Blob (`mascot_style`)
 
 ---
 
@@ -328,6 +373,8 @@ Die WhiteSur-Themes (GPL-3.0) sind nicht Teil dieses Repos, sie werden bei der I
 - [Inter](https://rsms.me/inter/) – Schrift
 - [PyGObject / GTK 3](https://pygobject.gnome.org/) – MosIsland-Oberfläche
 - [maim / slop](https://github.com/naelstrof/maim) – Screenshots und Bereichsauswahl
+- [FFmpeg](https://ffmpeg.org/) (LGPL/GPL) – Bildschirmaufnahme und Diktat
+- [libsecret](https://gitlab.gnome.org/GNOME/libsecret) (LGPL-2.1) – API-Key im Schlüsselbund
 - [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) (Apache-2.0) – Texterkennung
 - [ZBar](https://github.com/mchehab/zbar) (LGPL-2.1) – QR-Codes und Barcodes
 - [MET Norway](https://www.met.no/en) (CC BY 4.0), [OpenStreetMap](https://www.openstreetmap.org/copyright) (ODbL), [LRCLIB](https://lrclib.net) – Wetter, Ortssuche, Lyrics

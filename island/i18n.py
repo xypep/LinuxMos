@@ -397,6 +397,104 @@ EN = {
     "{monitor} (Hauptmonitor)": "{monitor} (primary)",
     "{monitor} (nicht angeschlossen)": "{monitor} (not connected)",
 
+    # Mascots
+    "Anzeigen, wenn ich weg bin": "Show while I am away",
+    "Augen": "Eyes",
+    "Katze": "Cat",
+    "Roboter": "Robot",
+    "Blob": "Blob",
+
+    # Screen recording
+    "Bildschirmaufnahme": "Screen recording",
+    "Bereich aufnehmen  (Ctrl+Alt+R)": "Record area  (Ctrl+Alt+R)",
+    "Bildschirm aufnehmen  (Ctrl+Alt+Shift+R)": "Record screen  (Ctrl+Alt+Shift+R)",
+    "Aufnahme beenden": "Stop recording",
+    "Format": "Format",
+    "Ton (nur MP4)": "Sound (MP4 only)",
+    "Ohne Ton": "No sound",
+    "Systemton": "System sound",
+    "Mikrofon": "Microphone",
+    "MosIsland · Aufnahme läuft, ein Klick beendet sie": "MosIsland · recording, a click stops it",
+    "Für Aufnahmen fehlt: {programs}": "Recording needs: {programs}",
+    "Bereich zu klein": "Area too small",
+    "Aufnahme fehlgeschlagen": "Recording failed",
+    "GIF wird erstellt …": "Making the GIF …",
+    "GIF-Erstellung fehlgeschlagen": "Could not make the GIF",
+    "Aufnahme gespeichert": "Recording saved",
+    "Abspielen": "Play",
+    "Im Ordner zeigen": "Show in folder",
+
+    # AI chat and dictation
+    "KI": "AI",
+    "KI-Chat  (Ctrl+Alt+A)": "AI chat  (Ctrl+Alt+A)",
+    "Chat-Tab  (Ctrl+Alt+A)": "Chat tab  (Ctrl+Alt+A)",
+    "Diktat  (Ctrl+Alt+M)": "Dictation  (Ctrl+Alt+M)",
+    "Diktat direkt einfügen": "Paste dictation right away",
+    "Verbindung & API-Key …": "Connection & API key …",
+    "API-Key entfernen": "Remove API key",
+    "KI-Verbindung": "AI connection",
+    "Abbrechen": "Cancel",
+    "Speichern": "Save",
+    "Adresse": "Address",
+    "OpenAI-kompatibler Server, z. B. http://localhost:11434/v1 für Ollama":
+        "OpenAI-compatible server, e.g. http://localhost:11434/v1 for Ollama",
+    "Chat-Modell": "Chat model",
+    "Modell für Diktat": "Model for dictation",
+    "API-Key": "API key",
+    "Der Key liegt im Schlüsselbund, nicht in config.json. Fragen und Diktate gehen an die Adresse "
+    "oben. Leer lassen = der gespeicherte Key bleibt. Ein lokaler Server braucht keinen Key.":
+        "The key lives in the keyring, not in config.json. Questions and dictations go to the address "
+        "above. Leave empty = the stored key stays. A local server needs no key.",
+    "Key entfernen": "Remove key",
+    "gespeichert (zum Ändern neuen Key eintippen)": "stored (type a new key to change it)",
+    "KI-Chat ist aus · Tray-Menü › KI": "AI chat is off · tray menu › AI",
+    "Diktat ist aus · Tray-Menü › KI": "Dictation is off · tray menu › AI",
+    "Adresse muss mit http:// oder https:// beginnen": "The address must start with http:// or https://",
+    "API-Key im Schlüsselbund gespeichert": "API key saved in the keyring",
+    "Key nicht gespeichert: Schlüsselbund nicht erreichbar (libsecret-tools?)":
+        "Key not saved: keyring not reachable (libsecret-tools?)",
+    "API-Key entfernt": "API key removed",
+    "Key nicht entfernt": "Key not removed",
+    "Für das Diktat fehlt: {programs}": "Dictation needs: {programs}",
+    "Diktat lässt sich nicht starten": "Can't start the dictation",
+    "Diktat · sprich jetzt, Ctrl+Alt+M beendet": "Dictation · speak now, Ctrl+Alt+M ends it",
+    "Zu kurz, nichts aufgenommen": "Too short, nothing recorded",
+    "Wird aufgeschrieben …": "Writing it down …",
+    "Kein API-Key gespeichert · Tray-Menü › KI › Verbindung": "No API key stored · tray menu › AI › Connection",
+    "Nichts verstanden": "Nothing understood",
+    "Diktat eingefügt": "Dictation pasted",
+    "Diktat · kopiert": "Dictation · copied",
+    "Einfügen": "Paste",
+    "Neues Gespräch": "New conversation",
+    "Frag etwas. Der Chat spricht mit dem Server aus den Einstellungen (Zahnrad), das Gespräch bleibt nur "
+    "im Arbeitsspeicher.":
+        "Ask something. The chat talks to the server from the settings (gear); the conversation only "
+        "stays in memory.",
+    "Frag etwas …  (↵ sendet)": "Ask something …  (↵ sends)",
+    "Kein API-Key gespeichert. Zahnrad oben rechts: „Verbindung & API-Key …“":
+        "No API key stored. Gear at the top right: “Connection & API key …”",
+    "Noch kein API-Key – Zahnrad oben rechts": "No API key yet – gear at the top right",
+    "Stopp": "Stop",
+    "Senden": "Send",
+    "Antwort kopieren": "Copy answer",
+    "Du bist ein hilfreicher Assistent auf einem Linux-Desktop. Antworte knapp und in der Sprache des Nutzers.":
+        "You are a helpful assistant on a Linux desktop. Keep answers short and reply in the user's language.",
+    "Server nicht erreichbar (Adresse und Verbindung prüfen)": "Server not reachable (check address and connection)",
+    "Keine Antwort vom Server (Zeitüberschreitung)": "No answer from the server (timeout)",
+    "Leere Antwort": "Empty answer",
+    "API-Key abgelehnt (HTTP {status})": "API key rejected (HTTP {status})",
+    "Adresse oder Modell nicht gefunden (HTTP {status})": "Address or model not found (HTTP {status})",
+    "Zu viele Anfragen oder Guthaben aufgebraucht (HTTP {status})":
+        "Too many requests or credit used up (HTTP {status})",
+    "Server meldet einen Fehler (HTTP {status})": "The server reports an error (HTTP {status})",
+    "Anfrage fehlgeschlagen": "Request failed",
+
     # Command line
     "Wetter-Ort gesetzt: {city}": "Weather location set: {city}",
+    "secret-tool fehlt: sudo apt install libsecret-tools": "secret-tool is missing: sudo apt install libsecret-tools",
+    "API-Key (die Eingabe bleibt unsichtbar): ": "API key (the input stays invisible): ",
+    "Kein Key eingegeben.": "No key entered.",
+    "Der Schlüsselbund hat den Key nicht angenommen (läuft gnome-keyring?).":
+        "The keyring did not take the key (is gnome-keyring running?).",
+    "API-Key im Schlüsselbund gespeichert.": "API key saved in the keyring.",
 }

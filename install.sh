@@ -54,6 +54,9 @@ ISLAND_PACKAGES=(
   maim slop xclip
   # Text (Ctrl+Alt+O) und QR-Codes (Ctrl+Alt+Q) vom Bildschirm
   tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng zbar-tools
+  # Bildschirmaufnahme (Ctrl+Alt+R) und Diktat (Ctrl+Alt+M): ffmpeg;
+  # API-Key des KI-Chats im Schlüsselbund: libsecret-tools (secret-tool)
+  ffmpeg libsecret-tools
   # (Wetter, Lyrics, Cover und Kurse holt die Insel über curl aus den Basis-Paketen)
   # Ländernamen für den VPN-Hinweis (auf Mint meist schon da)
   iso-codes
@@ -573,9 +576,17 @@ EOF
     "${BIN_DIR}/linuxmos-island --ocr" "<Primary><Alt>o"
   python3 "${TWEAKS}" add-keybinding "MosIsland QR-Code lesen (LinuxMos)" \
     "${BIN_DIR}/linuxmos-island --qr" "<Primary><Alt>q"
+  python3 "${TWEAKS}" add-keybinding "MosIsland Aufnahme Bereich (LinuxMos)" \
+    "${BIN_DIR}/linuxmos-island --record area" "<Primary><Alt>r"
+  python3 "${TWEAKS}" add-keybinding "MosIsland Aufnahme Bildschirm (LinuxMos)" \
+    "${BIN_DIR}/linuxmos-island --record screen" "<Primary><Alt><Shift>r"
+  python3 "${TWEAKS}" add-keybinding "MosIsland KI-Chat (LinuxMos)" \
+    "${BIN_DIR}/linuxmos-island --chat" "<Primary><Alt>a"
+  python3 "${TWEAKS}" add-keybinding "MosIsland Diktat (LinuxMos)" \
+    "${BIN_DIR}/linuxmos-island --voice" "<Primary><Alt>m"
 
   setsid "${BIN_DIR}/linuxmos-island" >/dev/null 2>&1 < /dev/null &
-  ok "MosIsland läuft (Ctrl+Alt+I öffnen, Ctrl+Alt+Space Suche, Ctrl+Alt+V Zwischenablage, Ctrl+Alt+S Screenshot, Ctrl+Alt+O Text, Tray-Icon für Einstellungen)"
+  ok "MosIsland läuft (Ctrl+Alt+I öffnen, Ctrl+Alt+Space Suche, Ctrl+Alt+V Zwischenablage, Ctrl+Alt+S Screenshot, Ctrl+Alt+O Text, Ctrl+Alt+R Aufnahme, Ctrl+Alt+A KI-Chat, Ctrl+Alt+M Diktat, Tray-Icon für Einstellungen)"
 }
 
 install_tools() {
@@ -602,7 +613,7 @@ summary() {
     Dock:        Plank (${PLANK_THEME}), Zoom $( [[ "${EFFECTS}" == minimal ]] && echo aus || echo an )
     Widgets:     $( (( DO_WIDGETS )) && echo "Conky (Uhr + System${WEATHER_CITY:+ + Wetter})" || echo "–" )
     Spotlight:   $( (( DO_SPOTLIGHT )) && echo "Super+Space" || echo "–" )
-    MosIsland:   $( (( DO_ISLAND )) && echo "oben mittig · Ctrl+Alt+I · Ctrl+Alt+Space · Ctrl+Alt+V · Ctrl+Alt+S · Ctrl+Alt+O" || echo "– (mit --island)" )
+    MosIsland:   $( (( DO_ISLAND )) && echo "oben mittig · Ctrl+Alt+I · Ctrl+Alt+Space · Ctrl+Alt+V · Ctrl+Alt+S · Ctrl+Alt+O · Ctrl+Alt+R" || echo "– (mit --island)" )
 
     Tipps:
       • Einmal ab- und wieder anmelden, damit wirklich alle Apps das Theme nutzen.

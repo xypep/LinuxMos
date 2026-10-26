@@ -16,7 +16,7 @@ import json
 
 from gi.repository import Gio, GLib
 
-USER_AGENT = "LinuxMos-Island/1.10 (+https://github.com/xypep/LinuxMos)"
+USER_AGENT = "LinuxMos-Island/1.11 (+https://github.com/xypep/LinuxMos)"
 MAX_BYTES = 8 * 1024 * 1024
 # curl appends the status code to the body: always three digits, "000" without an answer
 _STATUS = "%{http_code}"
