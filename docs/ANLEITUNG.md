@@ -33,7 +33,7 @@ Die Linux-Mint-Version des Videos „Windows 27 Golden Gate“: Linux Mint sieht
 - **Animationen** – schnelle Minimize-Animation Richtung Dock
 - **Widgets** – große Desktop-Uhr und ein System-Widget (CPU/RAM/Disk/Akku, optional Wetter)
 - **Spotlight** – `Super+Space` öffnet die rofi-Suche (Apps, Befehle, Fenster, Dateien)
-- **MosIsland** *(optional, `--island`)* – Dynamic Island oben in der Mitte: Musik mit Synced Lyrics, Clipboard-Verlauf, Datei-Ablage, Aufgaben, Pomodoro, Wasser-Erinnerung, Wetter, Controls, Overlays und ein Maskottchen → [Details](#mosisland-dynamic-island)
+- **MosIsland** *(optional, `--island`)* – Dynamic Island oben in der Mitte: Musik mit Synced Lyrics, Clipboard-Verlauf, Datei-Ablage, Aufgaben, Pomodoro, Wasser-Erinnerung, Wetter, Controls, Overlays, Screenshots mit Editor, Text & QR vom Bildschirm, Benachrichtigungen als Karte und ein Maskottchen → [Details](#mosisland-dynamic-island)
 - **Update** – `./update.sh` holt die neue Version und aktualisiert alles, ohne deine Einstellungen anzufassen
 - **Backup & Undo** – Timeshift-Snapshot (optional) und Sicherung aller geänderten Einstellungen
 
@@ -245,7 +245,7 @@ Eingeklappt zeigt sie immer das Wichtigste (Priorität von oben nach unten):
 
 | Zustand          | Inhalt                                                        |
 |------------------|---------------------------------------------------------------|
-| Karte            | Größer als die Pille, mit Text und Buttons: **erkannter Text** (`Ctrl+Alt+O`), **QR-Code** (`Ctrl+Alt+Q`) |
+| Karte            | Größer als die Pille, mit Text und Buttons: **Benachrichtigungen**, **erkannter Text** (`Ctrl+Alt+O`), **QR-Code** (`Ctrl+Alt+Q`) |
 | Live-Aktivität   | **Lautstärke** & **Helligkeit** (ersetzt Cinnamons OSD), **Feststelltaste**, **Tastatur-Sprache**, **Ladegerät eingesteckt**, **WLAN weg / wieder da**, **Kopfhörer verbunden (mit Akku)**, Datei abgelegt, Regen in etwa 1 Std., Aufgabe fällig, Wasser-Erinnerung, Timer/Pomodoro |
 | Timer            | Countdown live in der Pille (Timer, Fokus oder Pause)          |
 | Lyrics           | Die Zeile, die gerade gesungen wird (optional)                 |
@@ -307,6 +307,24 @@ Im **Screenshot-Editor** macht der Button „Text“ (oder `O`) dasselbe mit der
 
 Andere Sprachen: Sprachpaket installieren und in `config.json` ergänzen, z. B. `sudo apt install tesseract-ocr-fra` und `"ocr_languages": "deu+eng+fra"` (mehr Sprachen = etwas langsamer). Ohne laufende Insel funktionieren beide Hotkeys auch, das Ergebnis kommt dann als Benachrichtigung.
 
+#### Benachrichtigungen
+
+Jede Benachrichtigung (Chat, Mail, Browser, Kalender, `notify-send` …) erscheint als **Karte** oben auf der Insel: App-Icon, Titel, Text (bis zu vier Zeilen) und – wenn die App eins mitschickt – ein Bild wie der Avatar des Absenders oder das Album-Cover. Daneben stehen der App-Name und, wenn inzwischen weitere kamen, ein Zähler: Die neueste Benachrichtigung ersetzt die angezeigte sofort, „+2“ heißt „zwei davor hast du verpasst“. Die Karte ist so hoch wie ihr Text, verschwindet nach ~7 Sekunden (oder so lange, wie die App es wünscht, 4–15 s) und bleibt, solange die Maus darauf liegt. Kritische Meldungen (z. B. Akku fast leer) bleiben, bis du sie schließt.
+
+<img src="img/island-notifications.png" alt="Benachrichtigungen als Karte: Chat-Nachricht mit Avatar und Zähler, Mail" width="50%">
+
+| Klick auf …    | Wirkung                                                          |
+|----------------|------------------------------------------------------------------|
+| die Karte      | Holt die App nach vorne (das Fenster des Absenders, auch auf einer anderen Arbeitsfläche); läuft sie nicht, wird sie gestartet |
+| 🔕             | Benachrichtigungen dieser App nicht mehr auf der Insel zeigen (rückgängig im Tray-Menü) |
+| ✕              | Karte schließen                                                  |
+
+**Wie das funktioniert:** Cinnamon bleibt der Benachrichtigungs-Dienst (`org.freedesktop.Notifications`) – die Insel ersetzt ihn nicht, sondern liest per D-Bus-Monitor nur mit. Damit nichts doppelt erscheint, schaltet sie Cinnamons eigene Banner ab, solange die Karten an sind; Cinnamon legt die Benachrichtigungen dann still im **Benachrichtigungs-Applet** ab. Dort bleibt der Verlauf, und dort sind auch die Buttons der Benachrichtigungen („Antworten“ …), die nur Cinnamon auslösen kann. Beendest du die Insel oder schaltest die Karten aus, kommen Cinnamons Banner zurück.
+
+**Nicht stören** (Steuerung-Tab oder Tray) gilt dann für die Insel: keine Karten, nur kritische Meldungen kommen durch, alles andere landet im Applet. War Cinnamons „Nicht stören“ beim ersten Start schon an, übernimmt die Insel das. Schaltest du in Cinnamons Einstellungen die Benachrichtigungen wieder ein, versteht die Insel das als „Nicht stören aus“.
+
+Ausblenden lassen sich Apps per 🔕 auf der Karte, im Tray-Menü unter „Benachrichtigungen“ (dort stehen die zuletzt gesehenen Apps zum Abhaken) oder in `config.json` (`notifications_exclude`). Eigene Meldungen der Insel (Timer, Erinnerungen) zeigt sie weiter als Live-Aktivität, nicht als Karte.
+
 ### Tray-Menü
 
 Das MosIsland-Icon liegt in der Top Bar neben der Uhr (Rechtsklick):
@@ -320,6 +338,7 @@ Das MosIsland-Icon liegt in der Top Bar neben der Uhr (Rechtsklick):
 | Zwischenablage automatisch leeren | Nicht angepinnte Einträge nach 15 min, 1 h oder 24 h löschen (Standard: nie) |
 | Screenshot                        | Bereich/Bildschirm aufnehmen, „Im Ordner speichern“, „Editor sofort öffnen“, Ordner öffnen |
 | Text & QR                         | Text erkennen, QR-Code lesen, „Zeilenumbrüche behalten“, „Links aus QR-Codes sofort öffnen“ |
+| Benachrichtigungen                | „Auf der Insel anzeigen“ (aus = Cinnamons Banner zurück), „Nicht stören“, zuletzt gesehene Apps zum Ausblenden |
 | Sprache / Language                | Automatisch (Systemsprache), Deutsch oder English – die Insel startet dabei kurz neu |
 | Über MosIsland · Beenden          |                                                                 |
 
@@ -371,6 +390,9 @@ Die meisten Schalter liegen im Tray-Menü bzw. im Wasser-Tab (⚙). Alles steht 
 | `ocr_languages`      | `"deu+eng"` | tesseract-Sprachen für die Texterkennung, mit `+` verbunden |
 | `ocr_keep_linebreaks` | `false`  | Erkannten Text zeilengenau lassen (statt Absätze zusammenzufügen) |
 | `qr_open_links`      | `false`   | Links aus QR-Codes sofort öffnen statt „Öffnen“-Button       |
+| `notifications_on_island` | `true` | Benachrichtigungen als Karte auf der Insel (Cinnamons Banner sind solange aus) |
+| `notifications_dnd`  | `false`   | „Nicht stören“ der Insel (nur kritische Meldungen als Karte)  |
+| `notifications_exclude` | `[]`   | Apps, die nie als Karte erscheinen: Namen wie auf der Karte oder Desktop-IDs, z. B. `["Spotify", "org.telegram.desktop"]` |
 | `water_portion_ml` / `water_goal_ml` | `250` / `2000` | Portion und Tagesziel                     |
 | `water_start` / `water_end` | `09:00` / `21:00` | Aktive Stunden für Erinnerungen                     |
 | `water_interval_min` | `60`      | Erinnerung frühestens so lange nach dem letzten Schluck       |
@@ -400,6 +422,7 @@ Möglich wird das, weil es keinen Polling-Loop gibt. Jede Quelle meldet sich von
 | Aufgaben, Wasser       | Ein einziger Timer bis zur nächsten fälligen Erinnerung        |
 | Screenshots            | Nur auf Hotkey; der Editor wird erst beim ersten Öffnen geladen |
 | Text & QR              | Nur auf Hotkey; tesseract/zbarimg laufen als eigener Prozess und beenden sich danach |
+| Benachrichtigungen     | D-Bus-Monitor (`BecomeMonitor`) auf genau drei Nachrichtentypen – meldet sich nur, wenn eine Benachrichtigung kommt |
 | Uhr                    | Einmal pro Minute                                              |
 
 Gezeichnet wird nur, während sich etwas bewegt: beim Auf- und Zuklappen (~240 ms) oder beim Blinzeln des Maskottchens (~180 ms alle paar Sekunden).
@@ -408,7 +431,7 @@ Gezeichnet wird nur, während sich etwas bewegt: beim Auf- und Zuklappen (~240 m
 
 ### Was nicht dabei ist
 
-KI-Chat, Texterkennung (OCR), Bildschirmaufnahme (Video), die „Ferrofluid“-Animation und 25 Charaktere (bewusst weggelassen, weil sie dauerhaft CPU kosten), Spiegeln fremder Benachrichtigungen. Die Command Bar übernimmt in LinuxMos die [Spotlight-Suche](#9-spotlight--raycast). Läuft nur unter X11, dem Standard bei Linux Mint Cinnamon.
+KI-Chat, Bildschirmaufnahme (Video), die „Ferrofluid“-Animation und 25 Charaktere (bewusst weggelassen, weil sie dauerhaft CPU kosten), Antworten direkt aus der Benachrichtigungs-Karte. Die Command Bar übernimmt in LinuxMos die [Spotlight-Suche](#9-spotlight--raycast). Läuft nur unter X11, dem Standard bei Linux Mint Cinnamon.
 
 ---
 
@@ -531,6 +554,21 @@ Wenn sie unsichtbar bleiben: In der jeweiligen `.conf` den Wert `own_window_type
 <summary><b>Das alte Panel unten ist noch da / das Dock fehlt</b></summary>
 
 `Ctrl+Alt+Esc` lädt Cinnamon neu. Das Dock startest du manuell mit `plank &`.
+
+</details>
+
+<details>
+<summary><b>Keine Benachrichtigungs-Popups mehr</b></summary>
+
+Läuft die MosIsland mit Karten, sind Cinnamons Banner absichtlich aus – die Benachrichtigungen kommen als Karte oben auf der Insel. Siehst du gar nichts: Ist „Nicht stören“ an (Steuerung-Tab)? Ist die App im Tray unter „Benachrichtigungen“ abgehakt? Läuft gerade ein Vollbild-Video?
+
+Ist die Insel abgestürzt, bleiben die Banner aus, bis sie wieder läuft. Sofort zurückholen:
+
+```bash
+gsettings set org.cinnamon.desktop.notifications display-notifications true
+```
+
+Ganz ohne Karten: Tray → „Benachrichtigungen“ → „Auf der Insel anzeigen“ aus.
 
 </details>
 

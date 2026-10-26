@@ -39,6 +39,11 @@ DEFAULT_CONFIG = {
     "ocr_languages": "deu+eng",
     "ocr_keep_linebreaks": False,
     "qr_open_links": False,
+    # Notifications as cards on the island (Cinnamon's banners are off meanwhile, its applet keeps
+    # the history); "do not disturb" of the island; apps (names or desktop entries) to leave out
+    "notifications_on_island": True,
+    "notifications_dnd": False,
+    "notifications_exclude": [],
     # Water reminder
     "water_goal_ml": 2000,
     "water_portion_ml": 250,

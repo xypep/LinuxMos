@@ -42,6 +42,12 @@ rm -f "${CONFIG_DIR}/autostart/linuxmos-plank.desktop" \
       "${BIN_DIR}/linuxmos-island"
 rm -rf "${STATE_DIR}/island-app"
 rm -f "${STATE_DIR}/install.conf"
+# Die MosIsland schaltet Cinnamons Benachrichtigungs-Banner ab, solange sie die Karten zeigt,
+# und beim Beenden wieder an. Ist sie vorher abgestürzt, hier nachholen.
+if grep -qs '"banners_hidden": true' "${STATE_DIR}/island/notifications.json"; then
+  gsettings set org.cinnamon.desktop.notifications display-notifications true 2>/dev/null || true
+  sed -i 's/"banners_hidden": true/"banners_hidden": false/' "${STATE_DIR}/island/notifications.json"
+fi
 # Die MosIsland-Einstellungen (Wetter-Ort) bleiben, nur Widget- und Spotlight-Configs gehen
 rm -rf "${CONFIG_DIR}/linuxmos/conky" "${CONFIG_DIR}/linuxmos/rofi"
 ok "Gestoppt und Autostart entfernt"

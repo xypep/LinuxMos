@@ -903,7 +903,7 @@ class ControlsPage(Page):
             "wifi": self._toggle(grid, "network-wireless-symbolic", _("WLAN"), lambda on: system.wifi_set(on, self._later)),
             "bluetooth": self._toggle(grid, "bluetooth-active-symbolic", "Bluetooth",
                                       lambda on: system.bluetooth_set(on, self._later)),
-            "dnd": self._toggle(grid, "notifications-disabled-symbolic", _("Nicht stören"), system.dnd_set),
+            "dnd": self._toggle(grid, "notifications-disabled-symbolic", _("Nicht stören"), island.dnd_set),
             "dark": self._toggle(grid, "weather-clear-night-symbolic", "Dark Mode", system.dark_set),
             "mic": self._toggle(grid, "microphone-sensitivity-muted-symbolic", _("Mikro aus"),
                                 lambda on: system.mic_mute_set(on, self._later)),
@@ -996,7 +996,7 @@ class ControlsPage(Page):
         system.wifi_get(lambda v: self._set_toggle("wifi", v))
         system.bluetooth_get(lambda v: self._set_toggle("bluetooth", v))
         system.mic_muted_get(lambda v: self._set_toggle("mic", v))
-        self._set_toggle("dnd", system.dnd_get())
+        self._set_toggle("dnd", self.island.dnd_get())
         self._set_toggle("dark", system.dark_get())
         system.volume_get(lambda v: self._set_scale(self.volume, v))
 

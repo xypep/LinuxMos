@@ -331,6 +331,14 @@ EN = {
     "Text erkennen und kopieren (O)": "Recognise and copy text (O)",
     "Text kopiert ({n} Zeichen)": "Text copied ({n} characters)",
 
+    # Notifications
+    "Benachrichtigungen": "Notifications",
+    "Auf der Insel anzeigen": "Show on the island",
+    "Auf der Insel ausblenden:": "Hide on the island:",
+    "Noch keine Benachrichtigungen": "No notifications yet",
+    "Benachrichtigungen von {app} ausblenden": "Hide notifications from {app}",
+    "{app} ausgeblendet · Tray → Benachrichtigungen": "{app} hidden · tray → Notifications",
+
     # Command line
     "Wetter-Ort gesetzt: {city}": "Weather location set: {city}",
 }

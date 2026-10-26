@@ -1,7 +1,8 @@
 """The island window and application.
 
 States of the pill (in priority order while folded):
-  card      a bigger live event with text and buttons (recognised text, QR code)
+  card      a bigger live event with text and buttons (notification, recognised
+            text, QR code)
   activity  short live event (volume, brightness, Caps Lock, layout, charging,
             network, headphones, timer/Pomodoro, to-do due, water, rain, ...)
   timer     a running countdown (timer or Pomodoro)
@@ -13,7 +14,8 @@ States of the pill (in priority order while folded):
 Hovering, clicking or a hotkey opens it into the tab view.
 
 Idle cost: no polling. The clock ticks once a minute; everything else is
-D-Bus signals or X11 events. Animations run on the frame clock only while
+D-Bus signals or X11 events (notifications: a D-Bus monitor that only wakes
+up when one is sent). Animations run on the frame clock only while
 the island changes size.
 """
 
@@ -50,6 +52,7 @@ from island.services.idle import IdleWatcher  # noqa: E402
 from island.services.indicators import Indicators, volume_icon  # noqa: E402
 from island.services.lyrics import LyricsFetcher, line_index  # noqa: E402
 from island.services.mpris import MprisWatcher  # noqa: E402
+from island.services.notifications import URGENCY_CRITICAL, Notifications, desktop_info  # noqa: E402
 from island.services.power import Battery  # noqa: E402
 from island.services.shelf import Shelf  # noqa: E402
 from island.services.timer import Timer, format_seconds  # noqa: E402
@@ -65,6 +68,8 @@ COLLAPSED_H = 34
 COLLAPSED_W = {"idle": 196, "mascot": 196, "media": 320, "lyrics": 440, "timer": 220, "activity": 340}
 COMPACT_W, COMPACT_H = 110, 8
 CARD_W, CARD_H, CARD_R = 460, 150, 26
+# Cards without buttons shrink to their text: header + margins, body lines (or the 40 px picture)
+CARD_MIN_H, CARD_CHROME_H, CARD_IMAGE_H = 76, 56, 40
 WIN_W, WIN_H = EXPANDED_W, EXPANDED_H
 
 HOVER_OPEN_MS = 160
@@ -74,6 +79,11 @@ SHOT_HIDE_MS = 200
 # A card stays this long, longer while the pointer is on it, and a little after it leaves
 CARD_MS = 9000
 CARD_LEAVE_MS = 3000
+# Notification cards: this long unless the app asks for a time (clamped); critical ones stay
+NOTIFY_MS = 7000
+NOTIFY_MIN_MS, NOTIFY_MAX_MS = 4000, 15000
+# Cinnamon's switch for its own banners; the island turns it off while it shows the cards
+BANNERS = ("org.cinnamon.desktop.notifications", "display-notifications")
 
 # Tooltips are German source strings, translated when the tab bar is built
 TABS = [
@@ -112,7 +122,7 @@ class IslandWindow(Gtk.Window):
         self._pomodoro_count = 0
         self._shooting = False
         self._shot_proc = None
-        self._card = None           # dict(icon, title, body, meta, actions)
+        self._card = None           # dict, see show_card()
         self._card_id = 0
         self._card_shown = None     # the card the widgets were built for
         # Lyrics: fetched lazily, advanced by one timeout per line (no polling)
@@ -154,8 +164,14 @@ class IslandWindow(Gtk.Window):
         self.battery = Battery(self._on_battery)
         self.indicators = Indicators(self._on_indicator)
         self.idle = IdleWatcher(self._on_idle)
+        self.notifications = Notifications(self._on_notification, self._on_notification_closed)
+        self._banner_settings = system.settings(BANNERS[0])
+        if self._banner_settings:
+            self._banner_settings.connect(f"changed::{BANNERS[1]}", self._on_banners_changed)
         self.tray = Tray(self)
         self.anim = Animator(self, self._apply_geometry)
+        if self.config.get("notifications_on_island", True):
+            self._set_notification_cards(True)
 
         self._schedule_clock()
         self.connect("realize", self._on_realize)
@@ -283,7 +299,7 @@ class IslandWindow(Gtk.Window):
         if kind == "compact":
             return (COMPACT_W, COMPACT_H, COMPACT_H / 2)
         if kind == "card":
-            return (CARD_W, CARD_H, CARD_R)
+            return (CARD_W, self._card["height"], CARD_R)
         return (COLLAPSED_W[kind], COLLAPSED_H, COLLAPSED_H / 2)
 
     def _show_collapsed(self):
@@ -461,14 +477,41 @@ class IslandWindow(Gtk.Window):
         self.card_box.set_size_request(CARD_W - 30, CARD_H - 26)
         return self.card_box
 
-    def show_card(self, icon_name, title, body, meta="", actions=()):
+    def show_card(self, icon_name, title, body, meta="", actions=(), image=None, on_click=None, tools=(),
+                  ms=CARD_MS, **extra):
         """Show a card in place of the folded pill.
 
-        actions: (label, callback, primary) buttons; a click runs the callback and closes the card.
+        icon_name: icon name or Gio.Icon; image: a picture beside the text (GdkPixbuf);
+        actions: (label, callback, primary) buttons, tools: (icon, tooltip, callback) small
+        buttons in the header – a click on either runs the callback and closes the card;
+        on_click: a click on the text does the same; ms: how long it stays (None = until closed);
+        extra: kept in the card dict (e.g. the notification it shows).
         """
-        self._card = {"icon": icon_name, "title": title, "body": body, "meta": meta, "actions": list(actions)}
-        self._start_card_timer(CARD_MS)
+        self._card = {"icon": icon_name, "title": title, "body": body, "meta": meta, "actions": list(actions),
+                      "image": image, "on_click": on_click, "tools": list(tools), "ms": ms, **extra}
+        self._card["lines"], self._card["height"] = self._card_size(self._card)
+        if ms is None:
+            self._stop_card_timer()
+        else:
+            self._start_card_timer(ms)
         self.refresh_collapsed()
+
+    def _card_size(self, card):
+        """(body lines, card height): measured with Pango, so short cards don't show an empty box."""
+        lines = 3 if card["actions"] else 4
+        if card["actions"]:
+            return lines, CARD_H
+        layout = self.create_pango_layout(card["body"] or " ")
+        font = self.get_pango_context().get_font_description().copy()
+        font.set_size(10 * Pango.SCALE)  # .card-body in style.css
+        layout.set_font_description(font)
+        layout.set_width((CARD_W - 30 - (CARD_IMAGE_H + 10 if card["image"] is not None else 0)) * Pango.SCALE)
+        layout.set_wrap(Pango.WrapMode.WORD_CHAR)
+        count = layout.get_line_count()
+        line_h = layout.get_pixel_extents()[1].height / count
+        lines = min(lines, count)
+        body_h = max(lines * line_h, CARD_IMAGE_H if card["image"] is not None else 0)
+        return lines, int(min(CARD_H, max(CARD_MIN_H, CARD_CHROME_H + body_h)))
 
     def dismiss_card(self):
         if self._drop_card():
@@ -476,16 +519,18 @@ class IslandWindow(Gtk.Window):
 
     def _drop_card(self):
         """Forget the card without redrawing; True if there was one."""
-        if self._card_id:
-            GLib.source_remove(self._card_id)
-            self._card_id = 0
+        self._stop_card_timer()
         had, self._card, self._card_shown = self._card is not None, None, None
         return had
 
     def _start_card_timer(self, ms):
+        self._stop_card_timer()
+        self._card_id = GLib.timeout_add(ms, self._on_card_timeout)
+
+    def _stop_card_timer(self):
         if self._card_id:
             GLib.source_remove(self._card_id)
-        self._card_id = GLib.timeout_add(ms, self._on_card_timeout)
+            self._card_id = 0
 
     def _on_card_timeout(self):
         if self._pointer_inside() and not self.expanded:
@@ -500,24 +545,41 @@ class IslandWindow(Gtk.Window):
             return  # already built (e.g. an activity arrived meanwhile)
         self._card_shown = card
         clear(self.card_box)
+        # Margins come on top of the size request -> subtract them
+        self.card_box.set_size_request(CARD_W - 30, card["height"] - 26)
         # Small max widths keep the labels' natural size below the card's, so the pill never grows
         head = Gtk.Box(spacing=8)
-        head.pack_start(icon(card["icon"], 16), False, False, 0)
+        head.pack_start(self._card_icon(card["icon"]), False, False, 0)
         head.pack_start(label(card["title"], ("title",), max_chars=20), True, True, 0)
         if card["meta"]:
-            head.pack_start(label(card["meta"], ("dim", "small"), ellipsize=False), False, False, 0)
+            head.pack_start(label(card["meta"], ("dim", "small"), max_chars=22), False, False, 0)
+        for icon_name, tooltip, callback in card["tools"]:
+            head.pack_start(button(icon_name, tooltip=tooltip, css=("mini",), size=14,
+                                   on_click=lambda c=callback: self._card_action(c)), False, False, 0)
         head.pack_start(button("window-close-symbolic", tooltip=_("Schließen"), css=("mini",), size=14,
                                on_click=self.dismiss_card), False, False, 0)
-        self.card_box.pack_start(head, False, False, 0)
 
         body = label(card["body"], ("card-body",), max_chars=30)
         body.set_line_wrap(True)
         body.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
-        body.set_lines(3)
+        body.set_lines(card["lines"])
         body.set_yalign(0.0)
         if len(card["body"]) > 120:
             body.set_tooltip_text(card["body"][:1000])
-        self.card_box.pack_start(body, True, True, 0)
+        content = body
+        if card["image"] is not None:
+            content = Gtk.Box(spacing=10)
+            picture = rounded_image(card["image"], 40, 9, self.get_scale_factor())
+            picture.set_valign(Gtk.Align.START)
+            content.pack_start(picture, False, False, 0)
+            content.pack_start(body, True, True, 0)
+        main = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        main.pack_start(head, False, False, 0)
+        main.pack_start(content, True, True, 0)
+        if card["on_click"]:
+            # The header's buttons keep their own clicks (they have their own input windows)
+            main = self._clickable(main, lambda: self._card_action(card["on_click"]))
+        self.card_box.pack_start(main, True, True, 0)
 
         if card["actions"]:
             row = Gtk.Box(spacing=6, halign=Gtk.Align.END)
@@ -526,6 +588,25 @@ class IslandWindow(Gtk.Window):
                                       on_click=lambda c=callback: self._card_action(c)), False, False, 0)
             self.card_box.pack_end(row, False, False, 0)
         self.card_box.show_all()
+
+    @staticmethod
+    def _card_icon(spec):
+        if isinstance(spec, Gio.Icon):
+            img = Gtk.Image.new_from_gicon(spec, Gtk.IconSize.MENU)
+            img.set_pixel_size(16)
+            return img
+        return icon(spec, 16)
+
+    @staticmethod
+    def _clickable(child, on_click):
+        """Wrap a widget so a click on it (not on its buttons) runs on_click; hand cursor on hover."""
+        box = Gtk.EventBox(visible_window=False)
+        box.add(child)
+        box.connect("button-release-event",
+                    lambda _w, event: event.button == Gdk.BUTTON_PRIMARY and (on_click() or True))
+        box.connect("realize", lambda w: w.get_window().set_cursor(
+            Gdk.Cursor.new_from_name(w.get_display(), "pointer")))
+        return box
 
     def _card_action(self, callback):
         self.dismiss_card()
@@ -693,7 +774,7 @@ class IslandWindow(Gtk.Window):
         if self._open_id:
             GLib.source_remove(self._open_id)
             self._open_id = 0
-        if self._card and not self.expanded:
+        if self._card and not self.expanded and self._card["ms"] is not None:
             self._start_card_timer(CARD_LEAVE_MS)
         self._schedule_close()
         return False
@@ -1146,6 +1227,189 @@ class IslandWindow(Gtk.Window):
 
         system.run(argv, done)
 
+    # ---- notifications: Cinnamon stays the server, the island listens in ------------------
+    def _on_notification(self, n):
+        name = n.name
+        if name == "MosIsland":
+            return  # the island shows its own events as live activities already
+        if self.notifications.remember(name):
+            self.tray.refresh_notifications()
+        if self._shooting or self._notification_hidden(n):
+            return
+        critical = n.urgency == URGENCY_CRITICAL
+        if self.config.get("notifications_dnd", False) and not critical:
+            return  # "do not disturb": only Cinnamon's applet gets it
+        card = self._card
+        shown = card.get("notification") if card else None
+        if card and shown is None:
+            return  # a card the user asked for (text, QR) stays; the applet keeps the notification
+        if shown is None:
+            extra = 0
+        elif n.replaces and n.replaces == shown.id:
+            extra = card["extra"]  # the same notification, updated (e.g. a download's progress)
+        else:
+            extra = card["extra"] + 1  # newest wins, the counter says how many came before
+        if n.body:
+            title, body, meta = n.summary or name, n.body, [name] if n.summary else []
+        else:
+            title, body, meta = name or n.summary, n.summary if name else "", []
+        if extra:
+            meta.append(f"+{extra}")
+        if critical:
+            ms = None
+        elif n.timeout > 0:
+            ms = min(max(n.timeout, NOTIFY_MIN_MS), NOTIFY_MAX_MS)
+        else:
+            ms = NOTIFY_MS
+        tools = [("notifications-disabled-symbolic", _("Benachrichtigungen von {app} ausblenden").format(app=name),
+                  lambda: self._hide_app(name))] if name else []
+        self.show_card(self._notification_icon(n), title, body, meta=" · ".join(meta), image=n.image,
+                       on_click=lambda: self._open_notification(n), tools=tools, ms=ms,
+                       notification=n, extra=extra)
+
+    def _on_notification_closed(self, notification_id):
+        """The app withdrew it (e.g. the message was read elsewhere)."""
+        shown = self._card.get("notification") if self._card else None
+        if shown is not None and shown.id == notification_id:
+            self.dismiss_card()
+
+    def _notification_hidden(self, n):
+        hidden = {h.lower() for h in self.config.get("notifications_exclude") or [] if isinstance(h, str)}
+        return bool(hidden & {x.lower() for x in (n.name, n.app, n.entry) if x})
+
+    @staticmethod
+    def _notification_icon(n):
+        theme = Gtk.IconTheme.get_default()
+        if n.icon and not n.icon.startswith(("/", "file://")) and theme.has_icon(n.icon):
+            return n.icon
+        info = desktop_info(n.entry) or desktop_info(n.app.lower())
+        if info and info.get_icon():
+            return info.get_icon()
+        if n.app and theme.has_icon(n.app.lower()):
+            return n.app.lower()
+        return "preferences-system-notifications-symbolic" \
+            if theme.has_icon("preferences-system-notifications-symbolic") else "dialog-information-symbolic"
+
+    def _open_notification(self, n):
+        """Bring the sending app to the front.
+
+        The app's own click action can't be triggered: only Cinnamon, the server, may send ActionInvoked.
+        """
+        window = self._find_app_window(n)
+        if window is not None:
+            now = self._server_time()
+            workspace = window.get_workspace()
+            if workspace is not None and workspace != self._wnck.get_active_workspace():
+                workspace.activate(now)
+            window.activate(now)
+            return
+        info = desktop_info(n.entry) or desktop_info(n.app.lower())
+        if info:
+            try:
+                info.launch([], Gdk.Display.get_default().get_app_launch_context())
+            except GLib.Error:
+                pass
+
+    def _find_app_window(self, n):
+        if not self._wnck:
+            return None
+        windows = [w for w in reversed(self._wnck.get_windows_stacked())
+                   if w.get_window_type() == Wnck.WindowType.NORMAL]
+        if n.pid:
+            for window in windows:
+                if window.get_pid() == n.pid:
+                    return window
+        # desktop-entry "org.telegram.desktop" vs. WM_CLASS "telegram-desktop": try the last part too
+        names = {x.lower() for x in (n.entry, n.app) if x}
+        names |= {x.rsplit(".", 1)[-1] for x in names}
+        for window in windows:
+            classes = {(window.get_class_group_name() or "").lower(), (window.get_class_instance_name() or "").lower()}
+            if classes & names:
+                return window
+        return None
+
+    def _hide_app(self, name):
+        self.set_app_hidden(name, True)
+        self.show_activity("notifications-disabled-symbolic",
+                           _("{app} ausgeblendet · Tray → Benachrichtigungen").format(app=name), seconds=4)
+
+    def notification_apps(self):
+        """[(name, hidden)] for the tray: apps seen recently, then hidden ones not seen lately."""
+        hidden = [h for h in self.config.get("notifications_exclude") or [] if isinstance(h, str)]
+        names = {}
+        for name in self.notifications.apps + hidden:
+            names.setdefault(name.lower(), name)
+        lower_hidden = {h.lower() for h in hidden}
+        return [(name, key in lower_hidden) for key, name in names.items()]
+
+    def set_app_hidden(self, name, hidden):
+        keep = [h for h in self.config.get("notifications_exclude") or []
+                if isinstance(h, str) and h.lower() != name.lower()]
+        self.set_option("notifications_exclude", keep + [name] if hidden else keep)
+        self.tray.refresh_notifications()
+
+    def dnd_get(self):
+        if self.config.get("notifications_on_island", True):
+            return self.config.get("notifications_dnd", False)
+        return system.dnd_get()
+
+    def dnd_set(self, enabled):
+        """Do not disturb: the island's own while it shows the cards, else Cinnamon's."""
+        if self.config.get("notifications_on_island", True):
+            self.config["notifications_dnd"] = bool(enabled)
+            self.config.save()
+            shown = self._card.get("notification") if self._card else None
+            if enabled and shown is not None and shown.urgency != URGENCY_CRITICAL:
+                self.dismiss_card()
+        else:
+            system.dnd_set(enabled)
+        self.tray.refresh_notifications()
+
+    def _set_notification_cards(self, on):
+        if on:
+            self._hide_banners()
+            self.notifications.start()
+        else:
+            self.notifications.stop()
+            self.restore_banners()
+            if self._card and self._card.get("notification") is not None:
+                self._drop_card()
+        self.tray.refresh_notifications()
+
+    def _hide_banners(self):
+        """Cards on: Cinnamon files notifications straight into its applet, without banners."""
+        settings = self._banner_settings
+        if settings is None:
+            return
+        if not settings.get_boolean(BANNERS[1]) and not self.notifications.banners_hidden:
+            # Cinnamon's "do not disturb" was on: the island's takes over
+            self.config["notifications_dnd"] = True
+            self.config.save()
+        self.notifications.set_banners_hidden(True)  # on disk first: after a crash we still know it was us
+        settings.set_boolean(BANNERS[1], False)
+
+    def restore_banners(self):
+        """Cards off or island quits: Cinnamon's banners come back ("do not disturb" carries over)."""
+        settings = self._banner_settings
+        if settings is None or not self.notifications.banners_hidden:
+            return
+        self.notifications.set_banners_hidden(False)  # first, so _on_banners_changed lets the write be
+        settings.set_boolean(BANNERS[1], not self.config.get("notifications_dnd", False))
+        Gio.Settings.sync()
+
+    def _on_banners_changed(self, settings, key):
+        if self.notifications.banners_hidden and settings.get_boolean(key):
+            # Switched on elsewhere (Cinnamon's settings) = "do not disturb" off; the island keeps showing them
+            self.config["notifications_dnd"] = False
+            self.config.save()
+            settings.set_boolean(key, False)
+        self.tray.refresh_notifications()
+
+    def shutdown(self):
+        self.pages["note"].flush()
+        self.notifications.stop()
+        self.restore_banners()
+
     # ---- options (tray, checkboxes) ----------------------------------------------
     def set_option(self, key, value):
         self.config[key] = value
@@ -1154,6 +1418,8 @@ class IslandWindow(Gtk.Window):
             self._update_lyrics_track()
         elif key == "clipboard_autodelete_min":
             self.clipboard.set_autodelete(value)
+        elif key == "notifications_on_island":
+            self._set_notification_cards(value)
         self.refresh_collapsed()
 
     def set_language(self, choice):
@@ -1301,7 +1567,7 @@ class IslandApp(Gtk.Application):
 
     def do_shutdown(self):
         if self.window:
-            self.window.pages["note"].flush()
+            self.window.shutdown()
         Gtk.Application.do_shutdown(self)
 
 

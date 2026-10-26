@@ -4,7 +4,7 @@ import shutil
 from pathlib import Path
 
 import gi
-from gi.repository import Gtk
+from gi.repository import GLib, Gtk
 
 from island import __version__
 from island.i18n import LANGUAGES, _
@@ -31,6 +31,8 @@ class Tray:
     def __init__(self, island):
         self.island = island
         self.icon = None
+        self._notify_menu = None
+        self._notify_refresh_id = 0
         if XApp is None:
             return
         self.icon = XApp.StatusIcon()
@@ -65,6 +67,7 @@ class Tray:
         menu.append(self._autodelete_menu(cfg.get("clipboard_autodelete_min", 0)))
         menu.append(self._screenshot_menu(cfg))
         menu.append(self._read_menu(cfg))
+        menu.append(self._notifications_menu())
         menu.append(self._language_menu(cfg.get("language", "auto")))
         menu.append(Gtk.SeparatorMenuItem())
         item(_("Über MosIsland"), self._about)
@@ -134,6 +137,53 @@ class Tray:
         parent = Gtk.MenuItem(label=_("Text & QR"))
         parent.set_submenu(sub)
         return parent
+
+    def _notifications_menu(self):
+        self._notify_menu = Gtk.Menu()
+        self._fill_notifications_menu()
+        parent = Gtk.MenuItem(label=_("Benachrichtigungen"))
+        parent.set_submenu(self._notify_menu)
+        return parent
+
+    def refresh_notifications(self):
+        """Rebuild the notifications submenu (new app seen, switch changed) – once, after the current event."""
+        if self._notify_menu is None or self._notify_refresh_id:
+            return
+
+        def refresh():
+            self._notify_refresh_id = 0
+            self._fill_notifications_menu()
+            return GLib.SOURCE_REMOVE
+
+        self._notify_refresh_id = GLib.idle_add(refresh)
+
+    def _fill_notifications_menu(self):
+        sub = self._notify_menu
+        for child in sub.get_children():
+            sub.remove(child)
+        island, on = self.island, self.island.config.get("notifications_on_island", True)
+
+        def check(text, active, callback, sensitive=True):
+            mi = Gtk.CheckMenuItem(label=text)
+            mi.set_active(active)
+            mi.set_sensitive(sensitive)
+            mi.connect("toggled", lambda w: callback(w.get_active()))
+            sub.append(mi)
+
+        check(_("Auf der Insel anzeigen"), on, lambda v: island.set_option("notifications_on_island", v))
+        check(_("Nicht stören"), bool(island.dnd_get()), island.dnd_set)
+        sub.append(Gtk.SeparatorMenuItem())
+        header = Gtk.MenuItem(label=_("Auf der Insel ausblenden:"))
+        header.set_sensitive(False)
+        sub.append(header)
+        apps = island.notification_apps()
+        for name, hidden in apps:
+            check(name, hidden, lambda v, n=name: island.set_app_hidden(n, v), sensitive=on)
+        if not apps:
+            empty = Gtk.MenuItem(label=_("Noch keine Benachrichtigungen"))
+            empty.set_sensitive(False)
+            sub.append(empty)
+        sub.show_all()
 
     def _language_menu(self, current):
         # Bilingual on purpose: whoever ends up in the wrong language still finds the way back
