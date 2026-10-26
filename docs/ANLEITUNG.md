@@ -275,7 +275,9 @@ Manche Hinweise sind klickbar: Ein Klick auf die Wasser-Erinnerung trägt eine P
 
 `Ctrl+Alt+S` nimmt einen Bereich auf (ziehen, oder ein Fenster anklicken), `Ctrl+Alt+Shift+S` den ganzen Monitor, auf dem die Maus steht. Die Insel blendet sich dafür kurz aus. Das Bild liegt sofort in der Zwischenablage (und im Clipboard-Verlauf) und als PNG in `~/Bilder/LinuxMos`. Die Insel meldet „Screenshot kopiert · Klick = bearbeiten“.
 
-Der Klick öffnet den **Markup-Editor**:
+Der Klick öffnet den **Markup-Editor** – schwarz und abgerundet wie die Insel, unten eine schwebende Pille mit Werkzeugen, Farben, Rückgängig, Kopieren und „Fertig“. Verschieben: an einer freien Stelle (Rand, Dateiname) ziehen.
+
+<img src="img/island-editor.png" alt="Markup-Editor" width="70%">
 
 | Werkzeug   | Taste | Wirkung                                                         |
 |------------|-------|-----------------------------------------------------------------|
@@ -285,7 +287,7 @@ Der Klick öffnet den **Markup-Editor**:
 | Text       | `T`   | Klicken, tippen, `Enter`                                        |
 | Verpixeln  | `B`   | Rahmen über Passwörter, Namen, Adressen ziehen – grobe Blöcke statt Weichzeichner, damit sich nichts zurückrechnen lässt |
 
-`1`–`6` wählt die Farbe, `Ctrl+Z` macht rückgängig, `Ctrl+C` kopiert die markierte Fassung, `Ctrl+S` speichert sie (überschreibt die Aufnahme) und kopiert sie ebenfalls. `Esc` schließt den Editor (fragt, wenn es ungespeicherte Markierungen gibt).
+`1`–`6` wählt die Farbe, `Ctrl+Z` macht rückgängig, `Ctrl+C` kopiert die markierte Fassung, `Ctrl+S` bzw. „Fertig“ speichert sie (überschreibt die Aufnahme), kopiert sie ebenfalls und schließt. `Esc` oder ✕ schließt den Editor; gibt es ungespeicherte Markierungen, wird ✕ rot („Verwerfen?“) und erst der zweite Druck verwirft – wie bei Neustart/Aus in der Insel.
 
 Abbrechen während der Auswahl: `Esc` oder denselben Hotkey nochmal drücken. Läuft die Insel nicht, funktionieren die Hotkeys trotzdem: dann übernimmt ein kurzlebiger Prozess, der Hinweis kommt als Benachrichtigung mit „Bearbeiten“-Knopf.
 

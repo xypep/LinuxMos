@@ -62,7 +62,7 @@ Turns Linux Mint Cinnamon into a lightweight macOS look-alike – dock, top bar,
 - **Shelf** – drop files on the island and drag them out again later
 - **To-dos** with reminders, a **note**, **Pomodoro** and timers, a **water reminder** with daily goal and chart
 - **Weather** (MET Norway, no API key) with rain warning
-- **Screenshots** – an area (`Ctrl+Alt+S`) or the monitor under the pointer (`Ctrl+Alt+Shift+S`), straight to the clipboard and `~/Pictures/LinuxMos`; the island hides itself for the shot. Clicking the notice opens the **markup editor**: arrow, rectangle, highlighter, text and pixelate for private data
+- **Screenshots** – an area (`Ctrl+Alt+S`) or the monitor under the pointer (`Ctrl+Alt+Shift+S`), straight to the clipboard and `~/Pictures/LinuxMos`; the island hides itself for the shot. Clicking the notice opens the **markup editor** in the island's look (black, floating tool pill): arrow, rectangle, highlighter, text and pixelate for private data
 - **Controls** – Wi-Fi, Bluetooth, Do Not Disturb, dark mode, mic, volume, brightness, screenshot, lock, suspend, restart, power off
 - **Live activities** – volume, brightness, Caps Lock, keyboard layout, charging, Wi-Fi lost, headphones connected
 - **Mascot** – a pair of eyes while you are away; they doze off and wave when you come back
@@ -155,7 +155,7 @@ linuxmos-island --set-city "Munich"
 | `Ctrl+Alt+V`     | Clipboard history (type to search, `Enter` pastes)          |
 | `Ctrl+Alt+S`     | Screenshot of an area (`Esc` or the hotkey again cancels)   |
 | `Ctrl+Alt+Shift+S` | Screenshot of the monitor under the pointer               |
-| In the editor    | `A` arrow · `R` rectangle · `M` highlighter · `T` text · `B` pixelate · `1`–`6` color · `Ctrl+Z` · `Ctrl+C` · `Ctrl+S` |
+| In the editor    | `A` arrow · `R` rectangle · `M` highlighter · `T` text · `B` pixelate · `1`–`6` color · `Ctrl+Z` · `Ctrl+C` · `Ctrl+S` = Done |
 | `Esc`            | Collapse MosIsland                                          |
 | Mouse wheel on the pill | Volume ±5 %                                          |
 
@@ -206,7 +206,7 @@ MosIsland: `~/.config/linuxmos/island/config.json` – most switches are also in
 
 `language`: `auto` (system language: German for `de_*`, English otherwise), `de` or `en`. Switching it in the tray menu restarts MosIsland briefly (a running timer is lost).
 
-Screenshots: `screenshot_save` also keeps every shot as a PNG (otherwise clipboard only), `screenshot_dir` changes the folder (empty = `~/Pictures/LinuxMos`, localised like `~/Bilder/LinuxMos`), `screenshot_open_editor` opens the editor right after the shot. "Save" in the editor overwrites the shot with the marked-up version. All of it is also in the tray menu under "Screenshot".
+Screenshots: `screenshot_save` also keeps every shot as a PNG (otherwise clipboard only), `screenshot_dir` changes the folder (empty = `~/Pictures/LinuxMos`, localised like `~/Bilder/LinuxMos`), `screenshot_open_editor` opens the editor right after the shot. "Done" in the editor overwrites the shot with the marked-up version. All of it is also in the tray menu under "Screenshot".
 
 Other files:
 
