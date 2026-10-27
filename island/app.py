@@ -189,6 +189,8 @@ class IslandWindow(Gtk.Window):
         self._config_reload_id = 0
         self._config_card = None         # the "config invalid" card, while it is up
         self._trim_id = 0
+        self.clip = None                 # ClipTransfer, only while sending or receiving clips is switched on
+        self._clip_flush_id = 0
         # Lyrics: fetched lazily, advanced by one timeout per line (no polling)
         self._lyrics_view = False
         self._lyrics_key = None
@@ -267,6 +269,7 @@ class IslandWindow(Gtk.Window):
         self._schedule_trim(TRIM_START_MS)
         self._watch_config()
         self.stretch.apply()
+        self._apply_clip()
         if self.config.error:
             GLib.idle_add(self._config_invalid_card, self.config.error, False)
         if self.debug.get("stretch_now"):
@@ -490,6 +493,7 @@ class IslandWindow(Gtk.Window):
         self._release_focus()
         self.anim.to(self._collapsed_geometry(), on_done=lambda: None if self.expanded else self._show_collapsed())
         self._schedule_trim()
+        self._clip_flush_soon()
 
     def _schedule_trim(self, delay_ms=TRIM_MS):
         """Give freed memory back once things settle (one pending at a time, never while open)."""
@@ -680,6 +684,7 @@ class IslandWindow(Gtk.Window):
     def dismiss_card(self):
         if self._drop_card():
             self.refresh_collapsed()
+            self._clip_flush_soon()
 
     def _drop_card(self):
         """Forget the card without redrawing; True if there was one."""
@@ -716,7 +721,8 @@ class IslandWindow(Gtk.Window):
         # Small max widths keep the labels' natural size below the card's, so the pill never grows
         head = Gtk.Box(spacing=8)
         head.pack_start(self._card_icon(card["icon"]), False, False, 0)
-        head.pack_start(label(card["title"], ("title",), max_chars=28 if card.get("big") else 20), True, True, 0)
+        head.pack_start(label(card["title"], ("title",),
+                              max_chars=28 if card.get("big") else card.get("title_chars", 20)), True, True, 0)
         if card["meta"]:
             head.pack_start(label(card["meta"], ("dim", "small"), max_chars=22), False, False, 0)
         for icon_name, tooltip, callback in card["tools"]:
@@ -1491,6 +1497,7 @@ class IslandWindow(Gtk.Window):
         self._shooting = False
         self.show()
         self._place()
+        self._clip_flush_soon()
 
     def _on_shot(self, ok, path):
         if not ok or not path.is_file():
@@ -1893,6 +1900,8 @@ class IslandWindow(Gtk.Window):
     def shutdown(self):
         if note := self._built("note"):
             note.flush()
+        if self.clip:
+            self.clip.stop()
         self.notifications.stop()
         self.restore_banners()
 
@@ -1919,6 +1928,8 @@ class IslandWindow(Gtk.Window):
             self.eyes.set_figure(value)
         elif key.startswith("stretch_"):
             self.stretch.apply()
+        elif key.startswith("clip_"):
+            self._apply_clip()
         elif key == "clipboard_limit":
             self.clipboard.limit = self.config.integer("clipboard_limit", 1, 1000)
         elif key.startswith("water_"):
@@ -2015,6 +2026,79 @@ class IslandWindow(Gtk.Window):
                        actions=[("Datei öffnen", self._open_config_file, True)], ms=25000)
         self._config_card = self._card
         return GLib.SOURCE_REMOVE
+
+    # ---- clip transfer (text, images, files between PCs over SSH; manual, see services/clipxfer.py) --------
+    def _apply_clip(self):
+        """Create or drop the transfer service to match clip_send_enabled / clip_receive_enabled.
+
+        Both off: the module is not even imported, no file monitor exists ("off means off").
+        """
+        wanted = self.config.flag("clip_send_enabled") or self.config.flag("clip_receive_enabled")
+        if not wanted:
+            if self.clip:
+                self.clip.stop()
+                self.clip = None
+            log.info("clip: disabled, no monitors")
+        else:
+            if self.clip is None:
+                from island.services.clipxfer import ClipTransfer     # loaded on demand only
+                self.clip = ClipTransfer(self)
+                self.clip.on_status = self._on_clip_status
+            self.clip.apply()
+        if page := self._built("clipboard"):
+            page.mark_dirty()
+            page.update_transfer()
+        if page := self._built("shelf"):
+            page.rebuild()
+
+    def _on_clip_status(self):
+        for name in ("clipboard", "shelf"):
+            if page := self._built(name):
+                page.update_transfer()
+
+    def clip_can_send(self):
+        return self.clip is not None and self.clip.send_enabled
+
+    def clip_send_clipboard(self):
+        """Hotkey: send the clipboard to the default peer (never without this explicit call)."""
+        if self.clip is None or not self.clip.send_enabled:
+            self.show_activity("dialog-information-symbolic",
+                               "Clip-Senden ist aus · Tray → Clip-Transfer → Clip-Senden", seconds=5)
+            return
+        self.clip.send_clipboard()
+
+    def clip_card_blocker(self):
+        """Why a clip card has to wait: a capture hides the island, the opened island shows the entry anyway,
+        a fullscreen window is in front, another card is up. None if it can show now."""
+        if self._shooting:
+            return "capture"
+        if self.expanded:
+            return "open"
+        window = self.wnck.get_active_window() if self.wnck else None
+        if window is not None and window.is_fullscreen():
+            return "fullscreen"
+        if self._card is not None and not self._card.get("clip"):
+            return "card"
+        return None
+
+    def _clip_flush_soon(self):
+        """Something may have been waiting for the island to be free again: look shortly after."""
+        if self.clip is None or not self.clip.waiting or self._clip_flush_id:
+            return
+
+        def flush():
+            self._clip_flush_id = 0
+            if self.clip:
+                self.clip.flush()
+            return GLib.SOURCE_REMOVE
+
+        self._clip_flush_id = GLib.timeout_add(500, flush)
+
+    def copy_received(self, item):
+        """A click on a received entry: onto the clipboard, nothing is typed anywhere."""
+        if self.clipboard.copy(item):
+            self.collapse()
+            self.show_activity("edit-copy-symbolic", "Kopiert")
 
     # ---- stretch reminder: what the view and the tray ask of the window --------------------------------------
     def current_card(self):
@@ -2361,9 +2445,11 @@ class IslandApp(Gtk.Application):
         chat_tab = hotkey("chat", None, lambda win, _p: win.open_chat())
         voice = hotkey("voice", None, lambda win, _p: win.voice())
         stretch_now = hotkey("stretch-now", None, lambda win, _p: win.stretch.trigger_now())
+        clip_send = hotkey("clip-send", None, lambda win, _p: win.clip_send_clipboard())
         quit_action = Gio.SimpleAction.new("quit", None)
         quit_action.connect("activate", lambda *_: self.quit())
-        for action in (toggle, tab, shot, read_text, read_qr, record, chat_tab, voice, stretch_now, quit_action):
+        for action in (toggle, tab, shot, read_text, read_qr, record, chat_tab, voice, stretch_now, clip_send,
+                       quit_action):
             self.add_action(action)
 
     def do_activate(self):

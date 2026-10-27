@@ -8,7 +8,7 @@
 
 Macht Linux Mint Cinnamon zum leichtgewichtigen macOS-Look-alike – mit Dock, Top Bar, Widgets, Spotlight und optional einer Dynamic Island – ohne dass der Desktop im Leerlauf CPU frisst.
 
-![MosIsland](https://img.shields.io/badge/MosIsland-1.12.0-blue)
+![MosIsland](https://img.shields.io/badge/MosIsland-1.13.0-blue)
 ![Platform](https://img.shields.io/badge/platform-Linux%20Mint%2022%20Cinnamon-87CF3E)
 ![Display server](https://img.shields.io/badge/display-X11-lightgrey)
 
@@ -33,6 +33,7 @@ Macht Linux Mint Cinnamon zum leichtgewichtigen macOS-Look-alike – mit Dock, T
 - [Wichtige Hinweise](#wichtige-hinweise)
 - [Konfiguration](#konfiguration)
 - [Dehn-Erinnerung](#dehn-erinnerung)
+- [Clip-Transfer](#clip-transfer)
 - [Tests](#tests)
 - [Bekannte Probleme](#bekannte-probleme)
 - [Roadmap](#roadmap)
@@ -62,6 +63,7 @@ Macht Linux Mint Cinnamon zum leichtgewichtigen macOS-Look-alike – mit Dock, T
 - **Synced Lyrics** (LRCLIB) – Zeile leuchtet mit, Klick springt hin, optional in der Pille
 - **Zwischenablage** – Verlauf mit Suche und Pins, ein Klick fügt direkt ins aktive Fenster ein, optional automatisch leeren nach X Minuten (Pins bleiben)
 - **Ablage** – Dateien auf die Insel ziehen und später wieder herausziehen
+- **Clip-Transfer** (optional, standardmäßig aus) – Text, Bilder und Dateien per SSH an einen anderen PC schicken (Linux oder Windows): Knopf am Eintrag der Zwischenablage/Ablage, `Ctrl+Alt+Shift+T` oder `linuxmos-clip send`. **Nur auf deinen Handgriff**, kein Watcher; Empfangenes landet im Eingang, im Verlauf (markiert „empfangen“) bzw. in der Ablage und wird **nie automatisch kopiert** – erst ein Klick auf die Karte tut es. Nur SSH-Schlüssel, der Schlüssel darf per `restrict,command=…` nichts außer Clips abliefern → [Details](#clip-transfer)
 - **Aufgaben** mit Erinnerung, **Notiz**, **Pomodoro** und Timer, **Wasser-Erinnerung** mit Tagesziel und Diagramm
 - **Wetter** (MET Norway, ohne API-Key) mit Regenwarnung
 - **Screenshots** – Bereich (`Ctrl+Alt+S`) oder Bildschirm unter der Maus (`Ctrl+Alt+Shift+S`), sofort in der Zwischenablage und in `~/Bilder/LinuxMos`; die Insel blendet sich dafür aus. Klick auf den Hinweis öffnet den **Markup-Editor** im Look der Insel (schwarz, schwebende Werkzeug-Pille): Pfeil, Rechteck, Marker, Text und Verpixeln für private Daten
@@ -80,7 +82,7 @@ Macht Linux Mint Cinnamon zum leichtgewichtigen macOS-Look-alike – mit Dock, T
 - **Augen-Modus** – im Leerlauf wächst die Pille, die Figur wird 1,5- bis 3-mal so groß (`eye_mode_scale`), Temperatur und Akku verschwinden; Hover, Klick oder Eingabe bringen alles in ca. 250 ms zurück. Warnungen, Musik, Timer und die Dehn-Karte gehen vor. Setzt eingeschaltetes Maskottchen voraus (`mascot`), sonst bewirkt er nichts
 - **Dehn-Erinnerung** – nach 45 Minuten *aktiver* Zeit am Rechner (Eingabe in der letzten Minute) zeigt die Insel eine Karte mit einer Übung und einem weichen Doppelton. „Start“ lässt einen Countdown mit Ring in der Pille laufen, **„Erledigt“ zählt nur, wenn du in der Zeit wirklich nicht getippt hast.** Eine echte Pause (5 min ohne Eingabe) ersetzt das Dehnen, bei Vollbild und während eines Fokus-Timers wartet die Karte. Später, Heute aus, Aus, Statistik pro Tag, eigene Übungen → [Details](#dehn-erinnerung)
 - **Einstellungs-Zahnrad** – das Zahnrad oben rechts in der aufgeklappten Insel öffnet `config.json` im Editor, alle Optionen stehen dann drin. Änderungen gelten sofort (inotify, kostet nichts); ein Tippfehler lässt die alten Werte aktiv und meldet die Fehlerstelle auf einer Karte
-- **Tray-Menü** – Autostart, Maskottchen (Figur wählen, Augen-Modus), Dehnen (Erinnerung, Heute aus, Jetzt dehnen, Übungen), Minimal-Notch, OSD, Zwischenablage automatisch leeren, Suche (Dateien, Währungen, Suchmaschine), Screenshot, Text & QR, Bildschirmaufnahme (Format, Ton), KI (Chat, Diktat, Verbindung & API-Key), Benachrichtigungen (an/aus, Nicht stören, Apps ausblenden), Live-Hinweise (Mikro & Kamera, VPN, Downloads), Monitor, Sprache, Einstellungen öffnen, Beenden
+- **Tray-Menü** – Autostart, Maskottchen (Figur wählen, Augen-Modus), Dehnen (Erinnerung, Heute aus, Jetzt dehnen, Übungen), Minimal-Notch, OSD, Zwischenablage automatisch leeren, Clip-Transfer (Senden, Empfang), Suche (Dateien, Währungen, Suchmaschine), Screenshot, Text & QR, Bildschirmaufnahme (Format, Ton), KI (Chat, Diktat, Verbindung & API-Key), Benachrichtigungen (an/aus, Nicht stören, Apps ausblenden), Live-Hinweise (Mikro & Kamera, VPN, Downloads), Monitor, Sprache, Einstellungen öffnen, Beenden
 - **Deutsch oder Englisch** – folgt automatisch der Systemsprache, umschaltbar im Tray-Menü (`Sprache / Language`)
 
 **Leichtgewichtig** – gemessen: Conky-Widgets ~0,03 % CPU, MosIsland ~0,1 % CPU (unter Cinnamon 6, Musik läuft) und ~60 MB RAM. Kein Blur-Compositor, keine Polling-Schleifen.
@@ -107,6 +109,20 @@ Aufnahme, Chat und Diktat kosten im Leerlauf nichts: der Chat-Tab entsteht erst 
 | nachher, Augen-Modus aus (normales Maskottchen)        | 58,7 MB | 0,9 %      |
 
 Das Paket kostet etwa 0,6 MB RAM. Die CPU-Werte sind in dieser Umgebung (Software-Rendering, schon vorher 0,5 %) höher als auf echter Hardware (0,1–0,2 %); entscheidend ist der Vergleich: Der Tick der Erinnerung ist nicht messbar (über 120 s mit Tick alle 5 s, also zwölfmal häufiger als im Betrieb: 760 ms CPU, ohne Erinnerung 763 ms). Die Augen kosten groß so viel wie klein – das Blinzeln gab es schon vorher.
+
+**Paket „Clip-Transfer“ (1.13.0)** – gemessen wie oben (Xvfb mit echtem Muffin, `linuxmos-perf 60`, 12 s nach dem Start, frisches Profil), jede Zeile ein eigener Start:
+
+| MosIsland                                                          | RSS     | PSS     | CPU (60 s) |
+|--------------------------------------------------------------------|---------|---------|------------|
+| vorher (1.12.0)                                                    | 59,9 MB | 42,4 MB | 0,2 % (13 Ticks) |
+| nachher, Transfer aus (Standard): **nichts geladen, kein Monitor** | 60,1 MB | 42,5 MB | 0,2 % (13 Ticks) |
+| nachher, nur Empfang an (ein inotify-Monitor)                      | 60,4 MB | 42,7 MB | 0,2 % (13 Ticks) |
+| nachher, nur Senden an                                             | 60,5 MB | 42,8 MB | 0,2 % (14 Ticks) |
+| nachher, beides an                                                 | 60,4 MB | 42,8 MB | 0,2 % (13 Ticks) |
+| nachher, beides an, Text + Bild empfangen, Zwischenablage-Tab geöffnet | 61,3 MB | 43,5 MB | 0,2 % (13 Ticks) |
+| zum Vergleich: vorher (1.12.0) mit einmal geöffnetem Zwischenablage-Tab | 60,6 MB | 42,9 MB | 0,2 % (12 Ticks) |
+
+„Ticks“ sind CPU-Zeit in Hundertstelsekunden während der 60 s (13 Ticks = 0,13 s). Das Paket kostet im Leerlauf 0,2 bis 0,6 MB RAM (mit empfangenen Inhalten und geöffnetem Tab 0,7 MB mehr als vorher), die CPU-Last ändert sich nicht messbar. Aus heißt aus: Sind Senden und Empfang aus, wird das Modul nicht einmal importiert (im Log steht `clip: disabled, no monitors`). Ein erster Entwurf kostete 4 MB, weil `dataclasses`, `secrets` (→ OpenSSL) und `subprocess` im Speicher blieben; der Kern nimmt jetzt nur noch Standardmodule, die die Insel schon geladen hat. Kein Daemon, kein Polling, keine dauerhafte SSH-Verbindung: Pro Clip startet ein `ssh`-Prozess, der danach endet.
 
 ---
 
@@ -186,6 +202,10 @@ linuxmos-island --chat       # KI-Chat öffnen
 linuxmos-island --voice      # Diktat starten, nochmal aufrufen = Text erkennen
 linuxmos-island --set-key    # API-Key für den KI-Chat im Schlüsselbund speichern
 linuxmos-island --set-city "München"
+linuxmos-island --clip-send  # Zwischenablage an den Standard-Peer senden (Clip-Transfer, nur auf Aufruf)
+linuxmos-clip setup          # Clip-Transfer einrichten: Schlüssel, Peer, Fingerabdruck bestätigen
+linuxmos-clip doctor         # Clip-Transfer prüfen (ssh, Schlüssel, Peer, sshd, Eingang)
+echo hallo | linuxmos-clip send --peer Laptop   # Text/Datei von der Kommandozeile senden
 linuxmos-island --stretch-now   # sofort eine Dehn-Karte zeigen (auch bei laufender Insel)
 linuxmos-island --stretch-test  # Test: Intervall 1 Minute, Leerlauf-Schwellen in Sekunden (nur beim Start)
 linuxmos-island --force-idle    # Test: Maskottchen/Augen-Modus ohne Warten, Hover beendet es (nur beim Start)
@@ -209,6 +229,7 @@ LINUXMOS_LOG=debug linuxmos-island   # Log mit jeder Messung (Standard: info)
 | `Ctrl+Alt+Shift+R` | Bildschirmaufnahme vom Monitor unter der Maus             |
 | `Ctrl+Alt+A`     | KI-Chat öffnen (mit `ai_chat`)                              |
 | `Ctrl+Alt+M`     | Diktat: aufnehmen, nochmal drücken = Text erkennen und einfügen (mit `ai_voice`) |
+| `Ctrl+Alt+Shift+T` | Zwischenablage an den Standard-Peer senden (mit „Clip-Senden“; `Ctrl+Alt+T` ist in Cinnamon das Terminal) |
 | Im Editor        | `A` Pfeil · `R` Rechteck · `M` Marker · `T` Text · `B` Verpixeln · `O` Text erkennen · `1`–`6` Farbe · `Ctrl+Z` · `Ctrl+C` · `Ctrl+S` = Fertig |
 | `Esc`            | MosIsland zuklappen                                         |
 | Mausrad auf der Pille | Lautstärke ±5 %                                        |
@@ -225,6 +246,9 @@ LINUXMOS_LOG=debug linuxmos-island   # Log mit jeder Messung (Standard: info)
 
 > [!IMPORTANT]
 > Netzwerkzugriffe: Wetter über api.met.no und nominatim.openstreetmap.org (MosIsland) bzw. wttr.in (Conky), Lyrics über lrclib.net – jeweils nur, wenn du die Funktion nutzt. Wechselkurse holt die Command Bar von api.frankfurter.dev (EZB-Kurse, ohne Konto) – nur, wenn du eine Währungsumrechnung tippst, höchstens alle 12 Stunden; abschaltbar mit `command_bar_currency`. Die Websuche öffnet deine Eingabe erst bei `Enter` in der gewählten Suchmaschine. Land und IP des VPN fragt die Insel bei ipinfo.io ab – nur mit `vpn_lookup` (standardmäßig aus), einmal pro VPN-Verbindung; ipinfo.io sieht dabei die Ausgangs-IP des VPN. Der Clipboard-Verlauf liegt unverschlüsselt in `~/.local/share/linuxmos/island/clipboard.json`; Kopien aus Passwort-Managern werden nur übersprungen, wenn diese sie als geheim markieren (KeePassXC & Co.).
+
+> [!IMPORTANT]
+> Der Clip-Transfer ist aus, bis du „Clip-Senden“ und/oder „Clip-Empfang“ im Tray-Menü einschaltest. Gesendet wird nur auf deinen Handgriff (Knopf, `Ctrl+Alt+Shift+T`, `linuxmos-clip send`), nie automatisch, und nur per SSH (Schlüssel, `StrictHostKeyChecking=yes`) an Peers, die du mit `linuxmos-clip setup` eingerichtet und deren Fingerabdruck du bestätigt hast. Der Empfänger braucht einen laufenden SSH-Server (Port 22, `openssh-server` wird nicht automatisch installiert). **Verlauf, Eingang (`~/.local/share/linuxmos/island/clip-inbox/`) und empfangene Dateien (`~/Downloads/LinuxMos/`) liegen unverschlüsselt auf der Platte**, wie der Zwischenablage-Verlauf; als privat markierte Kopien (KeePassXC) werden weder gespeichert noch gesendet. Empfangenes landet nie von selbst in der Zwischenablage und wird nie geöffnet. [Sicherheit im Detail](docs/CLIP.md#sicherheit)
 
 > [!IMPORTANT]
 > KI-Chat und Diktat sind aus, bis du sie im Tray-Menü unter „KI“ einschaltest. Danach schicken sie deine Frage bzw. deine Sprachaufnahme an den Server aus `ai_base_url` (ohne Eintrag: OpenAI) – nur, wenn du etwas abschickst. Das Gespräch bleibt im Arbeitsspeicher, die Diktat-Aufnahme (`~/.cache/linuxmos/island/recordings/dictation.wav`) wird gelöscht, sobald der Text da ist. Der API-Key liegt im Schlüsselbund (`secret-tool`), nie in `config.json`, und geht nur über die Standardeingabe an `curl`, steht also auch nicht in der Prozessliste. Ein lokaler Server (Ollama, LM Studio unter `localhost`) braucht keinen Key und schickt nichts ins Internet.
@@ -257,6 +281,15 @@ MosIsland: `~/.config/linuxmos/island/config.json` – die meisten Schalter gibt
   "lyrics_in_pill": false,
   "clipboard_limit": 50,
   "clipboard_autodelete_min": 0,
+  "clip_send_enabled": false,
+  "clip_receive_enabled": false,
+  "clip_max_text_kb": 1024,
+  "clip_max_image_mb": 20,
+  "clip_max_file_mb": 100,
+  "clip_inbox_keep_days": 7,
+  "clip_inbox_quota_mb": 500,
+  "clip_default_peer": "",
+  "clip_peers": [],
   "screenshot_save": true,
   "screenshot_dir": "",
   "screenshot_open_editor": false,
@@ -318,6 +351,8 @@ Am bequemsten über das **Zahnrad** oben rechts in der aufgeklappten Insel (oder
 
 `monitor`: `"primary"` (Hauptmonitor, Standard), `"pointer"` (der Monitor, auf dem die Maus steht, wenn du die Insel per Hotkey oder Tray öffnest – eingeklappt bleibt sie dort, bis du sie woanders öffnest), eine Nummer von links (`0` = ganz links, `1` = der daneben …) oder der Anschlussname wie in `xrandr --listmonitors` (`"HDMI-1"`, `"DP-2"`, `"eDP-1"`). Ist der gewählte Monitor nicht angeschlossen, geht die Insel auf den Hauptmonitor und kehrt beim Einstecken zurück – die Einstellung bleibt. Im Tray-Menü unter „Monitor“ stehen alle angeschlossenen Monitore; gespeichert wird dort der Name, weil die Nummern sich beim Umstecken verschieben können.
 
+Clip-Transfer: `clip_send_enabled` und `clip_receive_enabled` schalten Senden und Empfang getrennt (beide aus; auch im Tray-Menü unter „Clip-Transfer“). `clip_max_text_kb`, `clip_max_image_mb`, `clip_max_file_mb` sind die Limits, die der **Empfänger beim Lesen** erzwingt; `clip_inbox_keep_days` und `clip_inbox_quota_mb` räumen den Eingang auf (beim Start und beim Eintreffen, ohne Timer) bzw. lehnen zu viel ab. `clip_peers` trägt `linuxmos-clip setup` ein, ein Eintrag sieht so aus: `{"name": "Windows-PC", "host": "192.168.0.50", "user": "alec", "port": 22, "key": "~/.ssh/linuxmos_clip_ed25519", "os": "windows"}`; `clip_default_peer` ist das Ziel von Hotkey und `linuxmos-clip send` ohne `--peer`. Alle Einzelheiten: [docs/CLIP.md](docs/CLIP.md), [docs/CONFIG.md](docs/CONFIG.md#clip-transfer).
+
 Screenshots: `screenshot_save` legt jede Aufnahme zusätzlich als PNG ab (sonst nur Zwischenablage), `screenshot_dir` ändert den Ordner (leer = `~/Bilder/LinuxMos` bzw. `~/Pictures/LinuxMos`), `screenshot_open_editor` öffnet den Editor direkt nach der Aufnahme. „Fertig“ im Editor überschreibt die Aufnahme mit der markierten Fassung. Alles auch im Tray-Menü unter „Screenshot“.
 
 Text & QR: `ocr_languages` sind tesseract-Sprachen, mit `+` verbunden (weitere per `sudo apt install tesseract-ocr-fra` usw., Liste: `tesseract --list-langs`). Standardmäßig werden die Zeilen eines Absatzes zusammengefügt und Trennstriche am Zeilenende entfernt; `ocr_keep_linebreaks` behält den Text zeilengenau. `qr_open_links` öffnet Links aus QR-Codes sofort im Browser statt nur einen „Öffnen“-Button zu zeigen. Beide Schalter auch im Tray-Menü unter „Text & QR“. Die Erkennung läuft komplett lokal, das Bild wird danach gelöscht.
@@ -346,6 +381,9 @@ Weitere Dateien:
 | `~/.config/linuxmos/rofi/spotlight.rasi`      | Aussehen der Spotlight-Suche                   |
 | `~/.local/share/linuxmos/install.conf`        | Gewählte Install-Optionen (nutzt `update.sh`)  |
 | `~/.local/share/linuxmos/island/`             | MosIsland-Daten: Notiz, Aufgaben, Wasser-Log, Verlauf, Ablage, Dehn-Statistik (`stretch.json`, 30 Tage) |
+| `~/.local/share/linuxmos/island/clip-inbox/`  | Clip-Eingang (Rechte 700): empfangener Text und Bilder samt Eintrag; Aufräumen nach `clip_inbox_keep_days` |
+| `~/Downloads/LinuxMos/`                       | Per Clip-Transfer empfangene Dateien (bleiben immer, auch nach `uninstall.sh`) |
+| `~/.ssh/linuxmos_clip_ed25519`                | Schlüssel des Clip-Transfers, nur dafür gedacht (`linuxmos-clip setup`; `uninstall.sh --purge` löscht ihn) |
 | `~/.config/linuxmos/island/stretch_exercises.json` | Deine Dehn-Übungen (Name, Anweisung, Sekunden, `long`) – beim ersten Mal mit der Standardliste angelegt |
 | `~/.cache/linuxmos/island/stretch-*.wav`      | Die beiden Töne der Dehn-Erinnerung, beim ersten Gebrauch selbst erzeugt (`uninstall.sh` löscht sie) |
 
@@ -379,9 +417,28 @@ Nichts davon verlässt den Rechner: Es gibt keine Netzabfragen, und die Insel sp
 
 ---
 
+## Clip-Transfer
+
+Text, Bilder und Dateien per SSH zwischen PCs – Linux ↔ Linux im Container getestet, Windows als Doku (ungetestet). Einrichtung Schritt für Schritt: **[docs/CLIP.md](docs/CLIP.md)**, Windows: [docs/CLIP-WINDOWS.md](docs/CLIP-WINDOWS.md), Schlüssel: [docs/CONFIG.md](docs/CONFIG.md#clip-transfer).
+
+**Nur manuell**
+- **Senden** nur auf ausdrückliche Handlung: Knopf „An PC senden“ (Papierflieger) an Einträgen der Zwischenablage und Dateien der Ablage, `Ctrl+Alt+Shift+T` (sendet die **aktuelle** Zwischenablage an den Standard-Peer; Text, Bild oder eine in Nemo kopierte Datei), `linuxmos-island --clip-send` oder `linuxmos-clip send`. Kein Watcher, kein `owner-change`, nichts automatisch – geprüft: Zwischenablage mehrfach ändern → kein `ssh`-Prozess, kein Eintrag beim Empfänger. Mehrere Peers: eine kleine Auswahl-Zeile, sonst direkt der Standard-Peer.
+- **Empfangen** ist passiv: Der Clip landet im Eingangsordner, im Zwischenablage-Verlauf (Text, Bild, markiert „empfangen“) bzw. in der Ablage und in `~/Downloads/LinuxMos/` (Dateien) und zeigt eine Karte „Vom Windows-PC empfangen: Text (123 Zeichen)“. **Nichts wird automatisch in die Zwischenablage geschrieben**; ein Klick auf Karte oder Eintrag kopiert (und tippt nichts ins Fenster). Läuft Vollbild (oder ist die Insel offen, eine Aufnahme aktiv, eine andere Karte zu sehen), wartet die Karte und erscheint danach; ist die Insel nicht gestartet, wartet der Eintrag bis zum Start.
+- Als privat markierte Kopien (Passwort-Manager) werden nie gesendet. Ergebnis immer als Karte: „Gesendet an …“ oder der Grund (nicht erreichbar, Schlüssel abgelehnt, Host-Schlüssel unbekannt, zu groß …), nie ein Dialogfenster.
+
+**Sicherheit**
+- Transport: ein einziger `ssh`-Aufruf pro Clip, Daten auf stdin und gestreamt (nie komplett im Speicher), `BatchMode=yes`, `StrictHostKeyChecking=yes`, `ControlMaster=no`, `IdentitiesOnly=yes`, `ConnectTimeout=5`; asynchron (`Gio.Subprocess`), die Oberfläche hängt nie.
+- `linuxmos-clip setup` erzeugt `~/.ssh/linuxmos_clip_ed25519` (ed25519, Rechte 600), zeigt beim ersten Mal den **Fingerabdruck** des Empfängers und verlangt eine bewusste Bestätigung (kein stilles `accept-new`) und gibt die Zeile für `authorized_keys` aus: `restrict,command="~/.local/bin/linuxmos-clip receive-ssh" ssh-ed25519 AAAA…`. Damit kann der Schlüssel **nichts anderes als Clips abliefern**.
+- `receive-ssh` prüft `SSH_ORIGINAL_COMMAND` gegen eine strenge Regex (nur `receive --type text|image|file` und optional `--name` mit `[A-Za-z0-9._ -]{1,120}`) und führt nie etwas über eine Shell aus. Der Empfänger erzwingt die Limits (Text 1 MB, Bild 20 MB, Datei 100 MB) **beim Lesen von stdin** und räumt beim Abbruch auf; geschrieben wird atomar (Temp-Datei, dann `rename`, der Eintrag zuletzt). Dateinamen werden bereinigt (kein Pfad, kein `..`, kein Punkt am Anfang, keine Steuerzeichen, Länge begrenzt, Kollisionen nummeriert, nie überschrieben, Symlinks weder verfolgt noch angelegt).
+- Kein Netzwerk-Port der Insel. Verlauf und Eingang sind Klartext (siehe „Wichtige Hinweise“).
+
+`linuxmos-clip`: `setup`, `doctor`, `send`, `receive`, `receive-ssh`, `apply [ID]` (per `xclip`, nur optional), `list`, `clean`, `--selftest`.
+
+---
+
 ## Tests
 
-Im Container getestet, ohne echte Hardware: Xvfb mit echtem **Muffin** (Leerlaufzeit, Fenster, Vollbild) und privatem D-Bus, die Regeln der Erinnerung zusätzlich mit einer künstlichen Uhr (`python3 -m unittest discover -s tests -t .`, 45 Tests, brauchen nur Python). Was damit nicht geht (Ohren, echter Bildschirm, deine Standard-Programme), steht in [TEST.md](TEST.md) unter „Paket 11“.
+Im Container getestet, ohne echte Hardware: Xvfb mit echtem **Muffin** (Leerlaufzeit, Fenster, Vollbild) und privatem D-Bus, die Regeln der Erinnerung zusätzlich mit einer künstlichen Uhr (`python3 -m unittest discover -s tests -t .`, 84 Tests, brauchen nur Python; der Loopback-Test des Clip-Transfers startet einen eigenen `sshd` auf 127.0.0.1 und wird übersprungen, wo `sshd` fehlt). Was damit nicht geht (Ohren, echter Bildschirm, deine Standard-Programme, zwei echte PCs, Windows), steht in [TEST.md](TEST.md) unter „Paket 11“ und „Paket 12“.
 
 Hilfen zum Ausprobieren: `linuxmos-island --stretch-now` (Karte sofort), `--stretch-test` (Intervall 1 Minute; Takt 5 s, Pause nach 20 s, Überspringen nach 40 s, „Später“ 10 s/6 s, Wiederkommen nach 15 s), `--force-idle` (Augen-Modus ohne Warten).
 
@@ -400,6 +457,26 @@ Hilfen zum Ausprobieren: `linuxmos-island --stretch-now` (Karte sofort), `--stre
 | Zahnrad | ✅ Datei wird mit allen Schlüsseln befüllt (eigene Werte und unbekannte Schlüssel bleiben), `xdg-open` wird gerufen, geänderter Wert gilt ohne Neustart, kaputtes JSON → Karte mit „Zeile 4, Spalte 1“ und alte Werte bleiben, in die kaputte Datei wird nicht geschrieben, repariert → Karte weg. Welches Programm sich bei dir öffnet, hängt vom System ab (TEST.md) |
 | `update.sh` auf bestehende Installation | ⚠️ das Script selbst lässt sich im Container nicht laufen (apt, kein root). Getestet: Eine von 1.11.0 geschriebene `config.json` bleibt mit allen Nutzerwerten, die neuen Schlüssel gelten mit Standardwerten, der installierte Ordner (`island-app`) startet. Das Script musste nicht geändert werden |
 | `uninstall.sh` | ✅ ohne `--purge` ist das WAV-Paar weg, Statistik und Übungsdatei bleiben; mit `--purge` ist alles weg |
+
+**Clip-Transfer (Paket 12)** – im Container mit einem echten `sshd` (zwei Benutzer, 127.0.0.1) und Xvfb mit Muffin; die Bildschirmfotos der Karten wurden angesehen:
+
+| Test | Ergebnis |
+|---|---|
+| `--selftest` und Rundlauf über `ssh` auf 127.0.0.1 | ✅ `--selftest` (16 Prüfungen, ohne SSH); Text (mit Umlauten), Bild und Datei (3 MB, byte-identisch) über einen echten `sshd`, mit der Zeile `restrict,command="~/.local/bin/linuxmos-clip receive-ssh" …` im installierten Layout (`island-app`) |
+| Limits | ✅ zu großer Text, zu großes Bild und zu große Datei werden **beim Empfänger beim Lesen** abgebrochen (auch mit einem Strom ohne Ende getestet: Abbruch kurz nach dem Limit), danach liegt nichts Halbes im Eingang oder in `Downloads/LinuxMos`; ebenso nach `SIGHUP` (so beendet `sshd` einen abgebrochenen Aufruf) und bei einer abgerissenen Verbindung; Quota und Aufräumen alter Einträge als Unit-Tests |
+| Sicherheit: Dateinamen | ✅ `../x`, `../../.ssh/authorized_keys`, `.hidden`, Steuer- und Bidi-Zeichen, 500 Zeichen, `C:\dir\x.txt`: nur der letzte Teil, ohne Punkt am Anfang, gekürzt; Kollisionen `name (1).ext`; ein Symlink am Zielnamen wird nicht verfolgt |
+| Sicherheit: `receive-ssh`, der beschränkte Schlüssel | ✅ `ls`, `id`, `receive --type file; id`, `… --name '$(id)'`, `/bin/sh`, kein Befehl: abgelehnt (Exit 5), nichts ausgeführt. Mit dem Schlüssel kein Terminal (`PTY allocation request failed`), keine Port-Weiterleitung (`administratively prohibited`), kein `sftp`/`scp`. Beim Schreiben der Regex fand ein Test, dass `$` einen abschließenden Zeilenumbruch durchlässt – jetzt überall `fullmatch` |
+| Host-Schlüssel | ✅ `setup` verlangt die Bestätigung (falscher `--fingerprint` bricht ab, nichts gespeichert); unbekannter Host-Schlüssel beim Senden wird abgelehnt, `known_hosts` bleibt unverändert |
+| Senden und Empfang aus | ✅ Log `clip: disabled, no monitors`, Modul nicht importiert; `linuxmos-perf` siehe Tabelle oben: CPU unverändert (0,2 %, 13 Ticks), +0,2 MB RSS |
+| Empfang bei nicht laufender Insel | ✅ Einträge, die ankamen, während die Insel aus war, werden beim Start zugestellt (Log `3 new in the inbox`; zwei Texte → Karte „2 Einträge empfangen“, beide im Verlauf, Datei in der Ablage) |
+| Empfang bei Vollbild | ✅ echtes Vollbildfenster unter Muffin: Log `card waits (fullscreen)`, die Karte erscheint beim Verlassen |
+| Peer nicht erreichbar, Schlüssel falsch, Host-Schlüssel unbekannt, Schlüsseldatei fehlt oder zu offen | ✅ jeweils eine verständliche Karte; die Insel bleibt flüssig (Hotkey-Aufruf 30 ms, während der Versuch 5 s auf einen toten Peer wartet; die Insel lässt sich dabei öffnen) |
+| Kein automatisches Senden oder Einfügen | ✅ Zwischenablage sechsmal geändert (Text, Dateiliste, Bild) → kein `ssh`-Prozess, kein Log-Eintrag zum Senden, beim Empfänger nichts Neues; empfangener Text steht nach dem Eintreffen im Verlauf, die Zwischenablage bleibt unverändert, bis die Karte angeklickt wird |
+| Als privat markierte Kopie | ⚠️ ein Programm, das die Zwischenablage wie KeePassXC bietet (Text **und** `x-kde-passwordManagerHint`), simuliert: Hotkey → Karte „Als privat markiert“, nichts gesendet, nicht im Verlauf. Mit dem echten KeePassXC nicht probiert (TEST.md) |
+| Knöpfe, Auswahl, Hotkey-Aktion | ✅ Knopf an Zeilen des Verlaufs, bei zwei Peers die Auswahl-Zeile, Hotkey-Aktion mit Text, Bild (kein Rest im Cache) und einer Datei-URL. Die Tastenkombination `Ctrl+Alt+Shift+T` selbst und ein möglicher Konflikt in Cinnamon konnten ohne Cinnamon nicht geprüft werden (TEST.md) |
+| `update.sh` auf bestehender Installation | ⚠️ das echte Script lief als gewöhnlicher Benutzer mit Attrappen für `apt`, `gsettings` und `dconf` (`--pulled --no-themes`; ohne Git und Themes): `config.json` byte-identisch, neue Schlüssel mit Standardwerten, `linuxmos-clip` und die neuen Module installiert, der Hotkey eingetragen, `linuxmos-clip --selftest` läuft aus `island-app`. `git pull` und Themes nicht |
+| `uninstall.sh` | ✅ ohne `--purge` ist `linuxmos-clip` weg, Eingang, Peers, Schlüssel und empfangene Dateien bleiben; mit `--purge` sind Eingang, Peers und `~/.ssh/linuxmos_clip_*` weg (andere Schlüssel nicht), empfangene Dateien bleiben |
+| Windows (Senden nach Linux, Empfang unter Windows, AutoHotkey, PowerShell-Script) | ❌ **nicht getestet** (kein Windows verfügbar): [docs/CLIP-WINDOWS.md](docs/CLIP-WINDOWS.md), Scripts in `docs/windows/` |
 
 ---
 
@@ -426,6 +503,7 @@ Hilfen zum Ausprobieren: `linuxmos-island --stretch-now` (Karte sofort), `--stre
 - **Dehn-Erinnerung:** Vollbild erkennt die Insel am Fenster-Status des Fensterverwalters (`_NET_WM_STATE_FULLSCREEN`); Spiele, die ihn nicht setzen, bleiben unerkannt. Die Zählung ist an Eingabe gekoppelt: Wer nur ein Video schaut (ohne Maus und Tastatur), zählt nicht als aktiv. Ob der Ton gut klingt, lässt sich nur mit eigenen Ohren prüfen (`stretch_volume`). Läuft kein PulseAudio/PipeWire oder fehlt `paplay`, bleibt die Erinnerung still (steht im Log).
 - **Augen-Modus:** Läuft sonst nichts in der Pille, ersetzt er die normale Maskottchen-Pille; Mikrofon-/Kamerapunkte und Download-Ring bleiben daneben sichtbar. Ohne Maskottchen (`mascot: false`) bewirkt er nichts.
 - **Zahnrad:** Die Datei öffnet sich im Standardprogramm für `.json` (`xdg-open`). Ist das bei dir der Browser, per `xdg-mime default xed.desktop application/json` ändern. Ein Neustart ist nur für `language` nötig; offene, schon gebaute Tabs zeigen geänderte Werte erst beim nächsten Öffnen der Insel.
+- **Clip-Transfer:** Die **Windows-Seite ist ungetestet** (Best Effort); die Windows-Island gibt es noch nicht und soll später (V2.1) einen eigenen Sender und Empfänger bekommen. Der Empfänger braucht einen laufenden SSH-Server (nicht automatisch installiert). Der Zwangsbefehl in `authorized_keys` nutzt `~/.local/bin/linuxmos-clip`, weil sshd ihn ohne dein `PATH` startet. Der Absender eines Clips ist nur die Adresse, von der er kam (`ip` im Peer-Eintrag, damit die Karte den Namen nennt). Der Verlauf kürzt Texte auf 20 000 Zeichen (der Hotkey sendet die volle Zwischenablage). Der Hotkey sendet eine einzelne Datei, mehrere nur einzeln aus der Ablage; Ordner werden nicht gesendet. Die Texte des Clip-Transfers gibt es nur auf Deutsch.
 - **Screenshot-Bild in der Zwischenablage** hält ein kleiner `xclip`-Prozess im Hintergrund, bis du etwas anderes kopierst (so überlebt das Bild auch ein Beenden der Insel).
 
 Weitere Lösungen: [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.md#troubleshooting)
@@ -455,6 +533,9 @@ Weitere Lösungen: [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.md#tro
 - [x] Augen-Modus: große Figur im Leerlauf (`eye_mode`, `eye_mode_scale`)
 - [x] Einstellungs-Zahnrad mit Neuladen ohne Neustart und [docs/CONFIG.md](docs/CONFIG.md)
 - [ ] Dehn-Erinnerung und Augen-Modus auf echtem Mint prüfen (Ton, Sperrbildschirm, echtes Vollbild)
+- [x] Clip-Transfer: Text, Bilder, Dateien per SSH, nur manuell (`clip_*`, `Ctrl+Alt+Shift+T`, `linuxmos-clip`), siehe [docs/CLIP.md](docs/CLIP.md)
+- [ ] Clip-Transfer auf zwei echten PCs und mit Windows prüfen ([TEST.md](TEST.md) Paket 12, [docs/CLIP-WINDOWS.md](docs/CLIP-WINDOWS.md))
+- [ ] Windows-Island (V2.1) mit eigenem Clip-Sender und -Empfänger
 
 ---
 

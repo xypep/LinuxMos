@@ -8,7 +8,7 @@
 
 Turns Linux Mint Cinnamon into a lightweight macOS look-alike – dock, top bar, widgets, Spotlight and an optional Dynamic Island – without the desktop eating CPU while idle.
 
-![MosIsland](https://img.shields.io/badge/MosIsland-1.12.0-blue)
+![MosIsland](https://img.shields.io/badge/MosIsland-1.13.0-blue)
 ![Platform](https://img.shields.io/badge/platform-Linux%20Mint%2022%20Cinnamon-87CF3E)
 ![Display server](https://img.shields.io/badge/display-X11-lightgrey)
 
@@ -33,6 +33,7 @@ Turns Linux Mint Cinnamon into a lightweight macOS look-alike – dock, top bar,
 - [Important notes](#important-notes)
 - [Configuration](#configuration)
 - [Stretch reminder](#stretch-reminder)
+- [Clip transfer](#clip-transfer)
 - [Tests](#tests)
 - [Known issues](#known-issues)
 - [Roadmap](#roadmap)
@@ -62,6 +63,7 @@ Turns Linux Mint Cinnamon into a lightweight macOS look-alike – dock, top bar,
 - **Synced lyrics** (LRCLIB) – the current line lights up, click a line to jump there, optionally shown in the pill
 - **Clipboard** – history with search and pins; one click pastes straight into the active window; optionally cleared after X minutes (pins stay)
 - **Shelf** – drop files on the island and drag them out again later
+- **Clip transfer** (optional, off by default) – send text, images and files to another PC over SSH (Linux or Windows): a button on a clipboard entry or shelf file, `Ctrl+Alt+Shift+T` or `linuxmos-clip send`. **Only when you ask for it**, no watcher; what arrives goes to the inbox, the history (marked "empfangen", received) or the shelf and is **never copied automatically** – only a click on the card does that. SSH keys only; with `restrict,command=…` the key can do nothing but deliver clips → [details](#clip-transfer)
 - **To-dos** with reminders, a **note**, **Pomodoro** and timers, a **water reminder** with daily goal and chart
 - **Weather** (MET Norway, no API key) with rain warning
 - **Screenshots** – an area (`Ctrl+Alt+S`) or the monitor under the pointer (`Ctrl+Alt+Shift+S`), straight to the clipboard and `~/Pictures/LinuxMos`; the island hides itself for the shot. Clicking the notice opens the **markup editor** in the island's look (black, floating tool pill): arrow, rectangle, highlighter, text and pixelate for private data
@@ -80,7 +82,7 @@ Turns Linux Mint Cinnamon into a lightweight macOS look-alike – dock, top bar,
 - **Big-eyes mode** – while you are away the pill grows and the character gets 1.5 to 3 times as big (`eye_mode_scale`), temperature and battery go; hover, click or any input brings everything back within about 250 ms. Warnings, music, timers and the stretch card come first. Needs the mascot switched on (`mascot`), otherwise it does nothing
 - **Stretch reminder** – after 45 minutes of *active* time at the computer (input within the last minute) the island shows a card with an exercise and a soft two-note chime. "Start" runs a countdown with a ring in the pill, and **"Done" only counts if you really did not type during it.** A real break (5 minutes without input) replaces the stretching, and the card waits during fullscreen and while a focus timer runs. Later, Today off, Off, daily statistics, your own exercises → [details](#stretch-reminder)
 - **Settings gear** – the gear at the top right of the opened island opens `config.json` in your editor, with every option in it. Changes apply at once (inotify, costs nothing); a typo keeps the old values active and a card names the place in the file
-- **Tray menu** – autostart, mascot (pick the character, big-eyes mode), stretch (reminder, today off, stretch now, exercises), minimal notch, OSD, clipboard auto-clear, search (files, currencies, search engine), screenshot, text & QR, screen recording (format, sound), AI (chat, dictation, connection & API key), notifications (on/off, do not disturb, hide apps), live hints (mic & camera, VPN, downloads), monitor, language, open settings, quit
+- **Tray menu** – autostart, mascot (pick the character, big-eyes mode), stretch (reminder, today off, stretch now, exercises), minimal notch, OSD, clipboard auto-clear, clip transfer (send, receive), search (files, currencies, search engine), screenshot, text & QR, screen recording (format, sound), AI (chat, dictation, connection & API key), notifications (on/off, do not disturb, hide apps), live hints (mic & camera, VPN, downloads), monitor, language, open settings, quit
 - **English or German** – follows the system language automatically, switchable in the tray menu (`Sprache / Language`)
 
 **Lightweight** – measured: Conky widgets ~0.03 % CPU, MosIsland ~0.1 % CPU (Cinnamon 6, music playing) and ~60 MB RAM. No blur compositor, no polling loops.
@@ -107,6 +109,20 @@ Recording, chat and dictation cost nothing while idle: the chat tab is built the
 | after, big-eyes mode off (normal mascot)               | 58.7 MB | 0.9 %      |
 
 The package costs about 0.6 MB of RAM. The CPU values are higher in this environment (software rendering, 0.5 % even before) than on real hardware (0.1–0.2 %); the comparison is what counts: the reminder's tick can't be measured (over 120 s with a tick every 5 s, twelve times as often as in use: 760 ms CPU, 763 ms without the reminder). The big eyes cost as much as the small ones – the blinking was there before.
+
+**"Clip transfer" package (1.13.0)** – measured like above (Xvfb with a real Muffin, `linuxmos-perf 60`, 12 s after start, fresh profile), every row a separate start:
+
+| MosIsland                                                          | RSS     | PSS     | CPU (60 s) |
+|--------------------------------------------------------------------|---------|---------|------------|
+| before (1.12.0)                                                    | 59.9 MB | 42.4 MB | 0.2 % (13 ticks) |
+| after, transfer off (default): **nothing loaded, no monitor**      | 60.1 MB | 42.5 MB | 0.2 % (13 ticks) |
+| after, receiving only (one inotify monitor)                        | 60.4 MB | 42.7 MB | 0.2 % (13 ticks) |
+| after, sending only                                                | 60.5 MB | 42.8 MB | 0.2 % (14 ticks) |
+| after, both on                                                     | 60.4 MB | 42.8 MB | 0.2 % (13 ticks) |
+| after, both on, text + image received, clipboard tab opened        | 61.3 MB | 43.5 MB | 0.2 % (13 ticks) |
+| for comparison: before (1.12.0) with the clipboard tab opened once | 60.6 MB | 42.9 MB | 0.2 % (12 ticks) |
+
+"Ticks" are CPU time in hundredths of a second during the 60 s (13 ticks = 0.13 s). The package costs 0.2 to 0.6 MB of RAM while idle (0.7 MB more than before once content was received and the tab opened); the CPU load does not change measurably. Off means off: with sending and receiving off the module is not even imported (the log says `clip: disabled, no monitors`). A first draft cost 4 MB because `dataclasses`, `secrets` (→ OpenSSL) and `subprocess` stayed in memory; the core now only uses standard modules the island has loaded anyway. No daemon, no polling, no permanent SSH connection: one `ssh` process per clip, which ends afterwards.
 
 ---
 
@@ -186,6 +202,10 @@ linuxmos-island --chat       # open the AI chat
 linuxmos-island --voice      # start dictation, call again = recognise the text
 linuxmos-island --set-key    # store the AI chat's API key in the keyring
 linuxmos-island --set-city "Munich"
+linuxmos-island --clip-send  # send the clipboard to the default peer (clip transfer, only when called)
+linuxmos-clip setup          # set up clip transfer: key, peer, confirm the fingerprint
+linuxmos-clip doctor         # check clip transfer (ssh, key, peer, sshd, inbox)
+echo hello | linuxmos-clip send --peer Laptop   # send text/a file from the command line
 linuxmos-island --stretch-now   # show a stretch card right away (also while the island runs)
 linuxmos-island --stretch-test  # test: 1-minute interval, idle thresholds in seconds (at start-up only)
 linuxmos-island --force-idle    # test: mascot/big eyes without waiting, hover ends it (at start-up only)
@@ -209,6 +229,7 @@ LINUXMOS_LOG=debug linuxmos-island   # log with every measurement (default: info
 | `Ctrl+Alt+Shift+R` | Record the monitor under the pointer                      |
 | `Ctrl+Alt+A`     | Open the AI chat (with `ai_chat`)                           |
 | `Ctrl+Alt+M`     | Dictation: record, press again = recognise and paste (with `ai_voice`) |
+| `Ctrl+Alt+Shift+T` | Send the clipboard to the default peer (with "Clip-Senden"; `Ctrl+Alt+T` is Cinnamon's terminal) |
 | In the editor    | `A` arrow · `R` rectangle · `M` highlighter · `T` text · `B` pixelate · `O` recognise text · `1`–`6` color · `Ctrl+Z` · `Ctrl+C` · `Ctrl+S` = Done |
 | `Esc`            | Collapse MosIsland                                          |
 | Mouse wheel on the pill | Volume ±5 %                                          |
@@ -225,6 +246,9 @@ LINUXMOS_LOG=debug linuxmos-island   # log with every measurement (default: info
 
 > [!IMPORTANT]
 > Network access: weather via api.met.no and nominatim.openstreetmap.org (MosIsland) or wttr.in (Conky), lyrics via lrclib.net – only when you use the feature. The command bar gets exchange rates from api.frankfurter.dev (ECB rates, no account) – only when you type a currency conversion, at most every 12 hours; switch it off with `command_bar_currency`. The web search sends what you typed to the chosen search engine only when you press `Enter`. The VPN's country and IP come from ipinfo.io – only with `vpn_lookup` (off by default), once per VPN connection; ipinfo.io sees the VPN's exit IP. The clipboard history is stored unencrypted in `~/.local/share/linuxmos/island/clipboard.json`; copies from password managers are only skipped if they mark them as secret (KeePassXC and similar).
+
+> [!IMPORTANT]
+> Clip transfer is off until you switch "Clip-Senden" and/or "Clip-Empfang" on in the tray menu. Something is sent only when you ask for it (button, `Ctrl+Alt+Shift+T`, `linuxmos-clip send`), never automatically, and only over SSH (key, `StrictHostKeyChecking=yes`) to peers you set up with `linuxmos-clip setup` and whose fingerprint you confirmed. The receiver needs a running SSH server (port 22; `openssh-server` is not installed automatically). **The history, the inbox (`~/.local/share/linuxmos/island/clip-inbox/`) and received files (`~/Downloads/LinuxMos/`) are stored unencrypted**, like the clipboard history; copies marked private (KeePassXC) are neither stored nor sent. What arrives never lands on the clipboard by itself and is never opened. [Security in detail](docs/CLIP.md#sicherheit) (German)
 
 > [!IMPORTANT]
 > AI chat and dictation are off until you switch them on in the tray menu under "AI". After that they send your question or your voice recording to the server in `ai_base_url` (empty: OpenAI) – only when you send something. The conversation stays in memory, the dictation recording (`~/.cache/linuxmos/island/recordings/dictation.wav`) is deleted as soon as the text is back. The API key lives in the keyring (`secret-tool`), never in `config.json`, and reaches `curl` through standard input only, so it is not in the process list either. A local server (Ollama, LM Studio on `localhost`) needs no key and sends nothing to the internet.
@@ -257,6 +281,15 @@ MosIsland: `~/.config/linuxmos/island/config.json` – most switches are also in
   "lyrics_in_pill": false,
   "clipboard_limit": 50,
   "clipboard_autodelete_min": 0,
+  "clip_send_enabled": false,
+  "clip_receive_enabled": false,
+  "clip_max_text_kb": 1024,
+  "clip_max_image_mb": 20,
+  "clip_max_file_mb": 100,
+  "clip_inbox_keep_days": 7,
+  "clip_inbox_quota_mb": 500,
+  "clip_default_peer": "",
+  "clip_peers": [],
   "screenshot_save": true,
   "screenshot_dir": "",
   "screenshot_open_editor": false,
@@ -318,6 +351,8 @@ The easiest way is the **gear** at the top right of the opened island (or tray �
 
 `monitor`: `"primary"` (primary monitor, default), `"pointer"` (the monitor the mouse is on when you open the island via a hotkey or the tray – folded, it stays there until you open it somewhere else), a number from the left (`0` = leftmost, `1` = the one next to it …) or the connector name as in `xrandr --listmonitors` (`"HDMI-1"`, `"DP-2"`, `"eDP-1"`). If the chosen monitor is not connected, the island goes to the primary monitor and comes back when it is plugged in – the setting stays. The tray menu lists all connected monitors under "Monitor"; it stores the name, because the numbers can shift when monitors are replugged.
 
+Clip transfer: `clip_send_enabled` and `clip_receive_enabled` switch sending and receiving separately (both off; also in the tray menu under "Clip-Transfer"). `clip_max_text_kb`, `clip_max_image_mb`, `clip_max_file_mb` are the limits the **receiver enforces while reading**; `clip_inbox_keep_days` and `clip_inbox_quota_mb` tidy the inbox (at start-up and when something arrives, no timer) and refuse too much. `linuxmos-clip setup` writes `clip_peers`; an entry looks like `{"name": "Windows-PC", "host": "192.168.0.50", "user": "alec", "port": 22, "key": "~/.ssh/linuxmos_clip_ed25519", "os": "windows"}`; `clip_default_peer` is where the hotkey and `linuxmos-clip send` without `--peer` go. Everything in detail (German): [docs/CLIP.md](docs/CLIP.md), [docs/CONFIG.md](docs/CONFIG.md#clip-transfer).
+
 Screenshots: `screenshot_save` also keeps every shot as a PNG (otherwise clipboard only), `screenshot_dir` changes the folder (empty = `~/Pictures/LinuxMos`, localised like `~/Bilder/LinuxMos`), `screenshot_open_editor` opens the editor right after the shot. "Done" in the editor overwrites the shot with the marked-up version. All of it is also in the tray menu under "Screenshot".
 
 Text & QR: `ocr_languages` are tesseract languages joined with `+` (more via `sudo apt install tesseract-ocr-fra` etc., list: `tesseract --list-langs`). By default the lines of a paragraph are joined and hyphens at line ends removed; `ocr_keep_linebreaks` keeps the text line by line. `qr_open_links` opens links from QR codes in the browser right away instead of showing an "Open" button. Both switches are also in the tray menu under "Text & QR". Recognition runs entirely locally, the image is deleted afterwards.
@@ -346,6 +381,9 @@ Other files:
 | `~/.config/linuxmos/rofi/spotlight.rasi`      | Look of the Spotlight search                   |
 | `~/.local/share/linuxmos/install.conf`        | Chosen install options (used by `update.sh`)   |
 | `~/.local/share/linuxmos/island/`             | MosIsland data: note, to-dos, water log, clipboard history, shelf, stretch statistics (`stretch.json`, 30 days) |
+| `~/.local/share/linuxmos/island/clip-inbox/`  | Clip inbox (mode 700): received text and images with their entries; tidied after `clip_inbox_keep_days` |
+| `~/Downloads/LinuxMos/`                       | Files received through clip transfer (they always stay, also after `uninstall.sh`) |
+| `~/.ssh/linuxmos_clip_ed25519`                | The clip transfer's key, meant for that only (`linuxmos-clip setup`; `uninstall.sh --purge` deletes it) |
 | `~/.config/linuxmos/island/stretch_exercises.json` | Your stretch exercises (name, text, seconds, `long`) – created with the default list the first time |
 | `~/.cache/linuxmos/island/stretch-*.wav`      | The two chimes of the stretch reminder, made by the island on first use (`uninstall.sh` removes them) |
 
@@ -379,9 +417,28 @@ None of this leaves the computer: no network requests, and the island only store
 
 ---
 
+## Clip transfer
+
+Text, images and files between PCs over SSH – Linux ↔ Linux tested in the container, Windows as documentation only (untested). Step-by-step setup (German): **[docs/CLIP.md](docs/CLIP.md)**, Windows: [docs/CLIP-WINDOWS.md](docs/CLIP-WINDOWS.md), keys: [docs/CONFIG.md](docs/CONFIG.md#clip-transfer). The clip texts are German only.
+
+**Manual only**
+- **Sending** only on your explicit action: the "An PC senden" (paper plane) button on clipboard entries and shelf files, `Ctrl+Alt+Shift+T` (sends the **current** clipboard to the default peer: text, an image or a file copied in Nemo), `linuxmos-island --clip-send` or `linuxmos-clip send`. No watcher, no `owner-change`, nothing automatic – checked: change the clipboard several times → no `ssh` process, nothing arrives at the receiver. Several peers: a small choice row, otherwise straight to the default peer.
+- **Receiving** is passive: the clip goes to the inbox folder, the clipboard history (text, image, marked "empfangen") or the shelf and `~/Downloads/LinuxMos/` (files), with a card "Vom Windows-PC empfangen: Text (123 Zeichen)". **Nothing is written to the clipboard automatically**; a click on the card or entry copies it (and types nothing into a window). During fullscreen (or while the island is open, a capture runs or another card shows) the card waits and appears afterwards; if the island is not running the entry waits until it starts.
+- Copies marked private (password managers) are never sent. The result is always a card: "Gesendet an …" or the reason (unreachable, key refused, host key unknown, too large …), never a dialog window.
+
+**Security**
+- Transport: a single `ssh` call per clip, data on stdin and streamed (never loaded completely), `BatchMode=yes`, `StrictHostKeyChecking=yes`, `ControlMaster=no`, `IdentitiesOnly=yes`, `ConnectTimeout=5`; asynchronous (`Gio.Subprocess`), the UI never blocks.
+- `linuxmos-clip setup` creates `~/.ssh/linuxmos_clip_ed25519` (ed25519, mode 600), shows the receiver's **fingerprint** the first time and demands a deliberate confirmation (no silent `accept-new`), and prints the `authorized_keys` line: `restrict,command="~/.local/bin/linuxmos-clip receive-ssh" ssh-ed25519 AAAA…`. With it the key can do **nothing but deliver clips**.
+- `receive-ssh` checks `SSH_ORIGINAL_COMMAND` against a strict regex (only `receive --type text|image|file` and optionally `--name` with `[A-Za-z0-9._ -]{1,120}`) and never runs anything through a shell. The receiver enforces the limits (text 1 MB, image 20 MB, file 100 MB) **while reading stdin** and cleans up on abort; everything is written atomically (temporary file, then `rename`, the entry last). File names are sanitised (no path, no `..`, no leading dot, no control characters, limited length, collisions numbered, never overwritten, symlinks neither followed nor created).
+- No network port of the island. History and inbox are plain text (see "Important notes").
+
+`linuxmos-clip`: `setup`, `doctor`, `send`, `receive`, `receive-ssh`, `apply [ID]` (via `xclip`, optional only), `list`, `clean`, `--selftest`.
+
+---
+
 ## Tests
 
-Tested in the container without real hardware: Xvfb with a real **Muffin** (idle time, windows, fullscreen) and a private D-Bus; the reminder's rules also with a fake clock (`python3 -m unittest discover -s tests -t .`, 45 tests, Python only). What that cannot do (ears, a real screen, your default programs) is in [TEST.md](TEST.md) (German) under "Paket 11".
+Tested in the container without real hardware: Xvfb with a real **Muffin** (idle time, windows, fullscreen) and a private D-Bus; the reminder's rules also with a fake clock (`python3 -m unittest discover -s tests -t .`, 84 tests, Python only; the clip transfer's loopback test starts an `sshd` of its own on 127.0.0.1 and is skipped where `sshd` is missing). What that cannot do (ears, a real screen, your default programs, two real PCs, Windows) is in [TEST.md](TEST.md) (German) under "Paket 11" and "Paket 12".
 
 Helpers for trying it out: `linuxmos-island --stretch-now` (a card right away), `--stretch-test` (1-minute interval; tick 5 s, break after 20 s, skip after 40 s, "later" 10 s/6 s, card returns after 15 s), `--force-idle` (big-eyes mode without waiting).
 
@@ -400,6 +457,26 @@ Helpers for trying it out: `linuxmos-island --stretch-now` (a card right away), 
 | Gear | ✅ the file is filled with every key (own values and unknown keys stay), `xdg-open` is called, a changed value applies without restart, broken JSON → a card with "Zeile 4, Spalte 1" and the old values stay, nothing is written into the broken file, fixed → card gone. Which program opens on your system depends on it (TEST.md) |
 | `update.sh` on an existing install | ⚠️ the script itself can't run in the container (apt, no root). Tested: a `config.json` written by 1.11.0 keeps all user values, new keys take their defaults, the installed folder (`island-app`) starts. The script needed no change |
 | `uninstall.sh` | ✅ without `--purge` the pair of WAV files is gone, statistics and exercises stay; with `--purge` everything is gone |
+
+**Clip transfer (package 12)** – in the container with a real `sshd` (two users, 127.0.0.1) and Xvfb with Muffin; screenshots of the cards were looked at:
+
+| Test | Result |
+|---|---|
+| `--selftest` and a round trip over `ssh` to 127.0.0.1 | ✅ `--selftest` (16 checks, no SSH); text (with umlauts), image and file (3 MB, byte-identical) through a real `sshd`, with the line `restrict,command="~/.local/bin/linuxmos-clip receive-ssh" …` in the installed layout (`island-app`) |
+| Limits | ✅ text, image and file over the limit are aborted **at the receiver while reading** (also tested with an endless stream: aborted right after the limit), afterwards nothing half-written is left in the inbox or `Downloads/LinuxMos`; the same after `SIGHUP` (how `sshd` ends an aborted call) and on a dropped connection; quota and tidying old entries as unit tests |
+| Security: file names | ✅ `../x`, `../../.ssh/authorized_keys`, `.hidden`, control and bidi characters, 500 characters, `C:\dir\x.txt`: only the last part, no leading dot, shortened; collisions `name (1).ext`; a symlink at the target name is not followed |
+| Security: `receive-ssh`, the restricted key | ✅ `ls`, `id`, `receive --type file; id`, `… --name '$(id)'`, `/bin/sh`, no command: refused (exit 5), nothing executed. With the key: no terminal (`PTY allocation request failed`), no port forwarding (`administratively prohibited`), no `sftp`/`scp`. While writing the regex a test found that `$` lets a trailing newline through – now `fullmatch` everywhere |
+| Host key | ✅ `setup` demands the confirmation (a wrong `--fingerprint` aborts, nothing stored); an unknown host key when sending is refused, `known_hosts` stays unchanged |
+| Sending and receiving off | ✅ log `clip: disabled, no monitors`, module not imported; `linuxmos-perf` see the table above: CPU unchanged (0.2 %, 13 ticks), +0.2 MB RSS |
+| Receiving while the island is not running | ✅ entries that arrived while the island was off are delivered at start-up (log `3 new in the inbox`; two texts → card "2 Einträge empfangen", both in the history, the file on the shelf) |
+| Receiving during fullscreen | ✅ a real fullscreen window under Muffin: log `card waits (fullscreen)`, the card appears on leaving |
+| Peer unreachable, wrong key, host key unknown, key file missing or too open | ✅ a clear card each; the island stays responsive (hotkey call 30 ms while the attempt waits 5 s for a dead peer; the island can be opened meanwhile) |
+| No automatic sending or pasting | ✅ clipboard changed six times (text, file list, image) → no `ssh` process, no log entry about sending, nothing new at the receiver; received text shows up in the history, the clipboard stays unchanged until the card is clicked |
+| A copy marked private | ⚠️ a program that offers the clipboard like KeePassXC (text **and** `x-kde-passwordManagerHint`) simulated: hotkey → card "Als privat markiert", nothing sent, not in the history. Not tried with the real KeePassXC (TEST.md) |
+| Buttons, choice, hotkey action | ✅ button on history rows, the choice row with two peers, the hotkey action with text, an image (nothing left in the cache) and a file URL. The key combination `Ctrl+Alt+Shift+T` itself and a possible conflict in Cinnamon could not be checked without Cinnamon (TEST.md) |
+| `update.sh` on an existing install | ⚠️ the real script ran as an ordinary user with stand-ins for `apt`, `gsettings` and `dconf` (`--pulled --no-themes`; no Git, no themes): `config.json` byte-identical, new keys with defaults, `linuxmos-clip` and the new modules installed, the hotkey registered, `linuxmos-clip --selftest` runs from `island-app`. `git pull` and themes not |
+| `uninstall.sh` | ✅ without `--purge` `linuxmos-clip` is gone, inbox, peers, key and received files stay; with `--purge` inbox, peers and `~/.ssh/linuxmos_clip_*` are gone (other keys are not), received files stay |
+| Windows (sending to Linux, receiving on Windows, AutoHotkey, PowerShell script) | ❌ **not tested** (no Windows available): [docs/CLIP-WINDOWS.md](docs/CLIP-WINDOWS.md), scripts in `docs/windows/` |
 
 ---
 
@@ -426,6 +503,7 @@ Helpers for trying it out: `linuxmos-island --stretch-now` (a card right away), 
 - **Stretch reminder:** The island recognises fullscreen by the window manager's window state (`_NET_WM_STATE_FULLSCREEN`); games that don't set it go unnoticed. Counting is tied to input: if you only watch a video (no mouse, no keyboard), that is not active time. Whether the chime sounds good only your own ears can tell (`stretch_volume`). Without PulseAudio/PipeWire or `paplay` the reminder stays silent (the log says so).
 - **Big-eyes mode:** when nothing else is in the pill it replaces the normal mascot pill; the microphone/camera dots and the download ring stay visible next to it. With the mascot off (`mascot: false`) it does nothing.
 - **Gear:** the file opens in your default program for `.json` (`xdg-open`). If that is the browser, change it with `xdg-mime default xed.desktop application/json`. A restart is only needed for `language`; tabs that were already built show changed values the next time the island opens.
+- **Clip transfer:** the **Windows side is untested** (best effort); there is no Windows island yet, and it is to get its own sender and receiver later (V2.1). The receiver needs a running SSH server (not installed automatically). The forced command in `authorized_keys` uses `~/.local/bin/linuxmos-clip` because sshd starts it without your `PATH`. A clip's sender is only the address it came from (`ip` in the peer entry makes the card show the name). The history cuts texts at 20,000 characters (the hotkey sends the full clipboard). The hotkey sends a single file, several only one by one from the shelf; folders are not sent. The clip texts exist in German only.
 - **A screenshot on the clipboard** is held by a small `xclip` process in the background until you copy something else (so the image survives quitting the island).
 
 More solutions (German): [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.md#troubleshooting)
@@ -455,6 +533,9 @@ More solutions (German): [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.
 - [x] Big-eyes mode: a big character while you are away (`eye_mode`, `eye_mode_scale`)
 - [x] Settings gear with reload without restart and [docs/CONFIG.md](docs/CONFIG.md)
 - [ ] Check the stretch reminder and big-eyes mode on a real Mint (sound, lock screen, real fullscreen)
+- [x] Clip transfer: text, images, files over SSH, manual only (`clip_*`, `Ctrl+Alt+Shift+T`, `linuxmos-clip`), see [docs/CLIP.md](docs/CLIP.md)
+- [ ] Check clip transfer on two real PCs and with Windows ([TEST.md](TEST.md) package 12, [docs/CLIP-WINDOWS.md](docs/CLIP-WINDOWS.md))
+- [ ] Windows island (V2.1) with its own clip sender and receiver
 
 ---
 

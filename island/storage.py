@@ -116,6 +116,21 @@ DEFAULT_CONFIG = {
     "stretch_sound": True,
     "stretch_volume": 0.5,
     "stretch_off_date": "",
+    # Clip transfer (text, images, files between PCs over SSH; both directions off by default, see docs/CLIP.md).
+    # Sending happens only when you press a button, the hotkey or call `linuxmos-clip send`; receiving only
+    # fills the inbox and the history, nothing is put on the clipboard until you click it.
+    # clip_max_*: limits the RECEIVER enforces while reading; the inbox drops entries after clip_inbox_keep_days
+    # and refuses new ones above clip_inbox_quota_mb. clip_peers: [{"name", "host", "user", "port", "key",
+    # "os"}] (made by `linuxmos-clip setup`), clip_default_peer: the name of the one the hotkey sends to.
+    "clip_send_enabled": False,
+    "clip_receive_enabled": False,
+    "clip_max_text_kb": 1024,
+    "clip_max_image_mb": 20,
+    "clip_max_file_mb": 100,
+    "clip_inbox_keep_days": 7,
+    "clip_inbox_quota_mb": 500,
+    "clip_default_peer": "",
+    "clip_peers": [],
     # Big eyes in the idle island: the mascot grows by eye_mode_scale (1.5-3.0), temperature and battery go
     "eye_mode": True,
     "eye_mode_scale": 2.0,

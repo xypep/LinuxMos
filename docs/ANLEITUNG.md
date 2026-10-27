@@ -269,7 +269,7 @@ Manche Hinweise sind klickbar: Ein Klick auf die Wasser-Erinnerung trägt eine P
 | 🔍 | **Suche** – die [Command Bar](#suche-command-bar): Apps, Dateien, Rechner, Einheiten, Währungen und Websuche in einem Feld (`Ctrl+Alt+Space`). |
 | ![Jetzt](img/island-home.png) | **Jetzt** – Cover, Titel, ⏮ ⏯ ⏭, **auf den Fortschrittsbalken klicken zum Spulen**; darunter Wetter, Timer, Akku |
 | ![Lyrics](img/island-lyrics.png) | **Synced Lyrics** – Lyrics-Knopf im Player: Jede Zeile leuchtet auf, während sie gesungen wird. **Klick auf eine Zeile springt dorthin.** Optional zeigt die eingeklappte Pille die aktuelle Zeile. Quelle: [LRCLIB](https://lrclib.net) (kostenlos, ohne Konto). |
-| ![Zwischenablage](img/island-clipboard.png) | **Zwischenablage** – Verlauf (Text + Bilder) mit Suche und Pins. **Ein Klick fügt den Eintrag direkt ins Fenster ein, in dem du gerade tippst.** Terminals bekommen automatisch `Ctrl+Shift+V`. Passwörter aus KeePassXC & Co. werden nie gespeichert. Optional werden nicht angepinnte Einträge nach X Minuten automatisch gelöscht (Tray-Menü). |
+| ![Zwischenablage](img/island-clipboard.png) | **Zwischenablage** – Verlauf (Text + Bilder) mit Suche und Pins. **Ein Klick fügt den Eintrag direkt ins Fenster ein, in dem du gerade tippst.** Terminals bekommen automatisch `Ctrl+Shift+V`. Passwörter aus KeePassXC & Co. werden nie gespeichert. Optional werden nicht angepinnte Einträge nach X Minuten automatisch gelöscht (Tray-Menü). Unten der Streifen **Transfer** für den [Clip-Transfer](#clip-transfer-zwischen-pcs-per-ssh): Peer, letzte Übertragung, „Einrichten“. |
 | ![Ablage](img/island-shelf.png) | **Ablage** – Dateien auf die Insel ziehen, sie warten dort, bis du sie in ein anderes Fenster ziehst (einzeln oder „Alle ziehen“). Doppelklick öffnet. Die Dateien bleiben, wo sie sind, gespeichert wird nur der Pfad. |
 | ![Aufgaben](img/island-todo.png) | **Aufgaben** – To-do-Liste mit Erinnerung: Aufgabe eintippen, Zeit dazu (`14:30`, `9`, `2pm`, `in 20 min`, `in 2 h`), und die Insel tippt dir zur Zeit auf die Schulter. Erledigtes von gestern räumt sich selbst auf. |
 | ![Notiz & Fokus](img/island-note.png) | **Notiz & Fokus** – Notiz, die sich selbst speichert. **Pomodoro**: 25 min Fokus, dann startet die Pause automatisch (jede 4. ist 15 min lang), dazu ein leiser Gong. Dazu normale Timer. |
@@ -291,6 +291,20 @@ Auf der Karte: **Start**, **Später** (höchstens zweimal, 5 und 3 Minuten), **H
 Die Übungen stehen in `~/.config/linuxmos/island/stretch_exercises.json` (Tray → Dehnen → „Übungen bearbeiten …“): `name`, `text`, `seconds` (Dauer), `long` (`true` = aufwendig). Jede vierte Erinnerung ist eine aufwendige, höchstens zweimal pro Tag; sonst rotiert die Auswahl ohne direkte Wiederholung. Den Ton erzeugt die Insel beim ersten Mal selbst (Sinuswellen, nichts von Dritten) und spielt ihn mit `paplay`.
 
 Aus ist aus: Mit `stretch_enabled: false` (Tray-Häkchen „Dehn-Erinnerung“) laufen weder Timer noch Ticks noch Abfragen; im Log steht `disabled, no timers`. Zum Ausprobieren: `linuxmos-island --stretch-now`, oder `--stretch-test` (1 Minute Intervall, Schwellen in Sekunden).
+
+#### Clip-Transfer zwischen PCs per SSH
+
+Text, Bilder und Dateien von einem PC zum anderen: ein Knopf (Papierflieger) an jedem Eintrag der Zwischenablage und an den Dateien der Ablage, der Hotkey `Ctrl+Alt+Shift+T` (schickt die aktuelle Zwischenablage an den Standard-Peer) oder `linuxmos-clip send`. **Nur auf deinen Handgriff:** kein automatisches Senden, kein Watcher. Empfangenes landet im Eingangsordner und im Verlauf (markiert „empfangen“) bzw. in der Ablage und in `~/Downloads/LinuxMos/`, dazu eine Karte; **erst ein Klick auf Karte oder Eintrag kopiert** es in die Zwischenablage, und es wird nichts automatisch geöffnet oder eingefügt. Als privat markierte Kopien (KeePassXC) werden nie gesendet.
+
+Transport ist ein einzelner `ssh`-Aufruf pro Clip (nur Schlüssel, `StrictHostKeyChecking=yes`, keine dauerhafte Verbindung, kein Daemon); der Schlüssel ist per `restrict,command=…` in `authorized_keys` auf „Clips abliefern“ beschränkt. Beide Richtungen sind getrennt schaltbar und standardmäßig aus (Tray → „Clip-Transfer“ → „Clip-Senden“ / „Clip-Empfang“); sind beide aus, läuft kein Monitor. Der Empfang beobachtet den Eingangsordner mit inotify (`Gio.FileMonitor`), nichts wird abgefragt.
+
+Einrichtung, Limits, Sicherheit und Fehlermeldungen: **[CLIP.md](CLIP.md)**, Windows (ungetestet): [CLIP-WINDOWS.md](CLIP-WINDOWS.md), alle Schlüssel: [CONFIG.md](CONFIG.md#clip-transfer).
+
+```bash
+linuxmos-clip setup        # Schlüssel, Peer, Fingerabdruck bestätigen, authorized_keys-Zeile ausgeben
+linuxmos-clip doctor       # alles auf dem Weg prüfen
+echo hallo | linuxmos-clip send --peer Laptop
+```
 
 #### Suche (Command Bar)
 
@@ -426,6 +440,7 @@ Das MosIsland-Icon liegt in der Top Bar neben der Uhr (Rechtsklick):
 | Minimal-Notch                     | Eingeklappt nur ein dünner Strich, z. B. für Laptops mit dickem Rand oben oder damit Browser-Tabs frei bleiben |
 | Lautstärke & Helligkeit anzeigen  | MosIsland-Overlays statt Cinnamons eigenem OSD (aus = Cinnamon-OSD zurück) |
 | Zwischenablage automatisch leeren | Nicht angepinnte Einträge nach 15 min, 1 h oder 24 h löschen (Standard: nie) |
+| Clip-Transfer                     | „Clip-Senden“ und „Clip-Empfang“ (getrennt, beide standardmäßig aus), „Einrichten …“ (Befehl und Anleitung) |
 | Bildschirmaufnahme                | Bereich/Bildschirm aufnehmen, beenden, Format (MP4/GIF), Ton (aus/System/Mikrofon), Ordner öffnen |
 | KI                                | Chat-Tab und Diktat an/aus, Diktat direkt einfügen, „Verbindung & API-Key …“, Key entfernen |
 | Suche                             | Suche öffnen, „Dateien durchsuchen“, „Währungen (fragt frankfurter.dev)“, „Websuche mit“ (Suchmaschine) |
@@ -453,6 +468,7 @@ Ein Linksklick aufs Icon klappt die Insel auf.
 | Text erkennen / QR-Code lesen | `Ctrl+Alt+O` / `Ctrl+Alt+Q`                             |
 | Bildschirmaufnahme Bereich / Bildschirm | `Ctrl+Alt+R` / `Ctrl+Alt+Shift+R` (nochmal = beenden) |
 | KI-Chat / Diktat              | `Ctrl+Alt+A` / `Ctrl+Alt+M`                             |
+| Zwischenablage an den Standard-Peer senden | `Ctrl+Alt+Shift+T` (mit „Clip-Senden“; `Ctrl+Alt+T` ist Cinnamons Terminal) |
 | Lautstärke                    | Mausrad auf der eingeklappten Pille                     |
 | Dateien ablegen               | Datei aus Nemo/Desktop auf die Pille ziehen             |
 | Spulen                        | Klick auf den Fortschrittsbalken oder eine Lyrics-Zeile |
@@ -465,6 +481,7 @@ Per Terminal steuern:
 linuxmos-island --toggle
 linuxmos-island --tab todo          # search|home|clipboard|shelf|todo|note|water|stretch|weather|controls
 linuxmos-island --set-city "München"
+linuxmos-island --clip-send         # Zwischenablage an den Standard-Peer senden (wie der Hotkey)
 linuxmos-island --stretch-now       # sofort eine Dehn-Karte zeigen
 linuxmos-island --stretch-test      # Test beim Start: 1 Minute Intervall, Leerlauf-Schwellen in Sekunden
 linuxmos-island --force-idle        # Test beim Start: Augen-Modus ohne Warten
@@ -814,11 +831,14 @@ config/rofi/               Spotlight-Theme (Template)
 bin/linuxmos-widgets       Widgets starten/stoppen
 bin/linuxmos-spotlight     Spotlight öffnen/schließen
 bin/linuxmos-perf          CPU-Last und Insel-RAM messen
+bin/linuxmos-clip          Clip-Transfer auf der Kommandozeile (reines Python, auch ohne Bildschirm)
 bin/linuxmos-island        MosIsland starten/steuern (Hotkeys gehen per D-Bus direkt an die laufende Insel)
 island/                    MosIsland (Python + GTK3)
   app.py                   Fenster, Zustände, Hover/Fokus/Einfügen, Drag & Drop, Lyrics-Takt, Pomodoro
   pages.py                 Die Tabs (Jetzt, Zwischenablage, Ablage, Aufgaben, Notiz, Wasser, Wetter, Steuerung)
   commandbar.py            Such-Tab / Command Bar (wird erst beim ersten Öffnen geladen)
+  clipcli.py               linuxmos-clip: setup, doctor, send, receive, receive-ssh, apply (ohne GTK)
+  clipview.py              Streifen „Transfer“ im Zwischenablage- und Ablage-Tab (erst beim ersten Öffnen)
   tray.py                  Tray-Icon mit den Schaltern
   editor.py                Markup-Editor für Screenshots (wird erst beim ersten Öffnen geladen)
   shot.py                  Screenshot, Text & QR ohne laufende Insel (Fallback der Hotkeys)
@@ -829,7 +849,9 @@ island/                    MosIsland (Python + GTK3)
                            Leerlauf, Clipboard, Ablage, Aufgaben, Wasser, Wetter, Timer, System-Controls,
                            Screenshot (maim/slop/xclip), Text & QR (tesseract/zbarimg),
                            Bildschirmaufnahme (ffmpeg), KI-Chat/Diktat/Schlüsselbund (curl, secret-tool),
-                           Rechner/Einheiten/Währungen (calc.py), Apps/Dateien/Websuche (finder.py)
+                           Rechner/Einheiten/Währungen (calc.py), Apps/Dateien/Websuche (finder.py),
+                           Clip-Transfer (clipcore.py: Empfang, Eingang, Limits, ssh-Aufruf ohne GTK;
+                           clipxfer.py: Senden und Eingangs-Monitor, nur geladen, wenn der Transfer an ist)
 ```
 
 Gesichert wird nach `~/.local/share/linuxmos/backup/`, der Download-Cache liegt in `~/.cache/linuxmos/`.

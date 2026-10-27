@@ -308,7 +308,7 @@ class ClipboardPage(Page):
         self.listbox = Gtk.ListBox(selection_mode=Gtk.SelectionMode.BROWSE)
         self.listbox.set_activate_on_single_click(True)
         self.listbox.set_filter_func(self._filter)
-        self.listbox.connect("row-activated", lambda _lb, row: island.paste(row.item))
+        self.listbox.connect("row-activated", lambda _lb, row: self._activate(row.item))
         placeholder = label(_("Noch nichts kopiert – alles, was du kopierst, landet hier."), ("dim",), xalign=0.5)
         placeholder.show()
         self.listbox.set_placeholder(placeholder)
@@ -317,7 +317,19 @@ class ClipboardPage(Page):
         scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         scrolled.add(self.listbox)
         self.pack_start(scrolled, True, True, 0)
+        self.transfer = None       # the "Transfer" strip: built the first time the tab opens
         self._dirty = True
+
+    def _activate(self, item):
+        """A click on an entry types it into the window you came from; a received one is only copied."""
+        if item.get("received"):
+            self.island.copy_received(item)
+        else:
+            self.island.paste(item)
+
+    def update_transfer(self):
+        if self.transfer is not None:
+            self.transfer.refresh()
 
     def mark_dirty(self):
         self._dirty = True
@@ -326,6 +338,10 @@ class ClipboardPage(Page):
 
     def on_show(self):
         self.island.clipboard.prune()
+        if self.transfer is None:
+            from island.clipview import TransferBar      # lazy: only once the tab is looked at
+            self.transfer = TransferBar(self.island)
+            self.pack_end(self.transfer, False, False, 0)
         if self._dirty:
             self.rebuild()
 
@@ -354,9 +370,16 @@ class ClipboardPage(Page):
             text = " ⏎ ".join(line.strip() for line in item["text"].strip().splitlines()[:3])
             box.pack_start(label(text[:300], max_chars=60), True, True, 0)
 
+        if received := item.get("received"):
+            mark = label("empfangen", ("dim", "small", "received"), ellipsize=False)
+            mark.set_tooltip_text(f"Von {received.get('from') or 'einem anderen PC'} empfangen · Klick kopiert")
+            box.pack_start(mark, False, False, 0)
         stamp = datetime.fromtimestamp(item.get("time", 0))
         when = f"{stamp:%H:%M}" if stamp.date() == datetime.now().date() else day_month(stamp)
         box.pack_start(label(when, ("dim", "small"), ellipsize=False), False, False, 0)
+        if self.island.clip_can_send():
+            box.pack_start(button("document-send-symbolic", tooltip="An PC senden", css=("mini",), size=14,
+                                  on_click=lambda: self._send(item)), False, False, 0)
         pin = button("view-pin-symbolic", tooltip=_("Anpinnen"), css=("mini",) + (("pinned",) if item.get("pinned") else ()),
                      size=14, on_click=lambda: self.island.clipboard.toggle_pin(item))
         remove = button("window-close-symbolic", tooltip=_("Entfernen"), css=("mini",), size=14,
@@ -365,6 +388,23 @@ class ClipboardPage(Page):
         box.pack_start(remove, False, False, 0)
         row.add(box)
         return row
+
+    def _send(self, item):
+        """The row's button: ask for the peer if there are several, then send this entry (only on this click)."""
+        clip = self.island.clip
+        if clip is None or self.transfer is None:
+            return
+
+        def send(peer):
+            if item["kind"] == "image":
+                clip.send_path(self.island.clipboard.image_path(item), kind="image", peer=peer)
+            else:
+                text = item["text"]
+                note = f"Text ({len(text)} Zeichen" + (", gekürzt auf die Länge des Verlaufs" if len(text) >= 20000
+                                                       else "") + ")"
+                clip.send_text(text, peer=peer, note=note)
+
+        self.transfer.request_send(send)
 
     def _filter(self, row):
         query = self.search.get_text().strip().lower()
@@ -378,7 +418,7 @@ class ClipboardPage(Page):
     def _paste_first(self):
         rows = self._visible_rows()
         if rows:
-            self.island.paste(rows[0].item)
+            self._activate(rows[0].item)
 
     def _on_search_key(self, _entry, event):
         if event.keyval == Gdk.KEY_Down:
@@ -436,7 +476,12 @@ class ShelfPage(Page):
         self.stack.add_named(scrolled, "files")
         self.stack.add_named(empty, "empty")
         self.pack_start(self.stack, True, True, 0)
+        self.transfer = None       # the "Transfer" strip, only while sending is on (built when needed)
         self.rebuild()
+
+    def update_transfer(self):
+        if self.transfer is not None:
+            self.transfer.refresh()
 
     def _make_drag_source(self, widget, get_uris, icon_name):
         widget.drag_source_set(Gdk.ModifierType.BUTTON1_MASK, URI_TARGETS,
@@ -456,6 +501,12 @@ class ShelfPage(Page):
         self.flow.show_all()
         self.drag_all.set_visible(n > 1)
         self.stack.set_visible_child_name("files" if uris else "empty")
+        if self.island.clip_can_send() and self.transfer is None:
+            from island.clipview import TransferBar
+            self.transfer = TransferBar(self.island, always=False)
+            self.pack_end(self.transfer, False, False, 0)
+        if self.transfer is not None:
+            self.transfer.refresh()
 
     def _tile(self, uri):
         gfile = Gio.File.new_for_uri(uri)
@@ -499,7 +550,27 @@ class ShelfPage(Page):
         overlay = Gtk.Overlay()
         overlay.add(event)
         overlay.add_overlay(remove)
+        if self.island.clip_can_send() and gfile.get_path() and self._is_regular(gfile):
+            send = button("document-send-symbolic", tooltip="An PC senden", css=("mini", "tile-close"), size=12,
+                          on_click=lambda: self._send(gfile.get_path()))
+            send.set_halign(Gtk.Align.START)
+            send.set_valign(Gtk.Align.START)
+            overlay.add_overlay(send)
         return overlay
+
+    @staticmethod
+    def _is_regular(gfile):
+        try:
+            return gfile.query_info("standard::type", Gio.FileQueryInfoFlags.NONE, None).get_file_type() \
+                == Gio.FileType.REGULAR
+        except GLib.Error:
+            return False
+
+    def _send(self, path):
+        """The tile's button: a file goes to a peer (asks first if there are several). Folders are not sent."""
+        clip = self.island.clip
+        if clip is not None and self.transfer is not None:
+            self.transfer.request_send(lambda peer: clip.send_path(path, kind="file", peer=peer))
 
     def _on_tile_press(self, _widget, event, uri):
         if event.type == Gdk.EventType._2BUTTON_PRESS:

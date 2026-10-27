@@ -75,6 +75,7 @@ class Tray:
               lambda on: self.island.set_option("compact_when_idle", on))
         check(_("Lautstärke & Helligkeit anzeigen"), cfg.get("osd", True), self._set_osd)
         menu.append(self._autodelete_menu(cfg.get("clipboard_autodelete_min", 0)))
+        menu.append(self._clip_menu(cfg))
         menu.append(self._search_menu(cfg))
         menu.append(self._screenshot_menu(cfg))
         menu.append(self._read_menu(cfg))
@@ -153,6 +154,30 @@ class Tray:
             choices.append((current, _("Nach {minutes} Minuten").format(minutes=current)))
         return self._radio_menu(_("Zwischenablage automatisch leeren"), choices, current,
                                 lambda minutes: self.island.set_option("clipboard_autodelete_min", minutes))
+
+    def _clip_menu(self, cfg):
+        """Clip transfer between PCs: sending and receiving are switched separately (both off by default)."""
+        sub = Gtk.Menu()
+        for key, text in (("clip_send_enabled", "Clip-Senden"), ("clip_receive_enabled", "Clip-Empfang")):
+            mi = Gtk.CheckMenuItem(label=text)
+            mi.set_active(cfg.flag(key))
+            mi.connect("toggled", lambda w, k=key: self.island.set_option(k, w.get_active()))
+            sub.append(mi)
+        sub.append(Gtk.SeparatorMenuItem())
+        setup = Gtk.MenuItem(label="Einrichten …")
+        setup.connect("activate", lambda *_: self._clip_setup())
+        sub.append(setup)
+        top = Gtk.MenuItem(label="Clip-Transfer")
+        top.set_submenu(sub)
+        return top
+
+    def _clip_setup(self):
+        island = self.island
+        if island.clip is not None:
+            island.clip.setup_hint()
+        else:
+            from island.services.clipxfer import ClipTransfer
+            ClipTransfer(island).setup_hint()
 
     def _mascot_menu(self, cfg):
         sub = Gtk.Menu()

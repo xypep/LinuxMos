@@ -13,7 +13,7 @@ Abhaken, was klappt. Was nicht klappt: Nummer + was passiert ist notieren (unten
 cd ~/LinuxMos
 git fetch && git checkout claude/affectionate-feynman-573ubj && git pull
 ./update.sh
-linuxmos-island --version          # erwartet: MosIsland 1.12.0
+linuxmos-island --version          # erwartet: MosIsland 1.13.0
 ```
 
 - [ ] **V1** `update.sh` läuft ohne Fehler durch, die Insel startet neu
@@ -464,6 +464,37 @@ Zum Abkürzen: `linuxmos-island --quit; linuxmos-island --stretch-test` (Interva
 - [ ] **AD1** `./update.sh` auf deiner bestehenden Installation: deine Werte in `config.json` sind danach unverändert; die neuen Schlüssel gelten mit ihren Standardwerten (sichtbar nach Klick aufs Zahnrad)
 - [ ] **AD2** `ls ~/.cache/linuxmos/island/stretch-*.wav` → zwei Töne nach der ersten Erinnerung; `./uninstall.sh` entfernt sie, `--purge` auch `stretch.json` und `stretch_exercises.json`
 - [ ] **AD3** `linuxmos-perf` im Leerlauf mit Erinnerung an: CPU ______ % (Erwartung ~0,1 %), RSS ______ MB (Erwartung ≤ 65 MB)
+
+---
+
+## Paket 12 – Clip-Transfer (Text, Bilder, Dateien per SSH)
+
+Im Container getestet (echter `sshd` auf 127.0.0.1, zwei Benutzer, Xvfb mit Muffin): Empfangsweg, Senden aus der Insel, Limits, Sicherheit, Fehlerkarten. Offen ist alles mit **zwei echten PCs**, mit **Windows** und mit **echten Hotkeys**. Einrichtung: [docs/CLIP.md](docs/CLIP.md).
+
+### AE. Zwei Linux-PCs
+
+Beide mit Mint und dem aktuellen Stand. Auf dem Empfänger `openssh-server` installiert, Tray → Clip-Transfer → „Clip-Empfang“ an; auf dem Absender „Clip-Senden“ an.
+
+- [ ] **AE1** `linuxmos-clip setup` auf dem Absender: zeigt den Fingerabdruck, fragt, wartet auf „ja“. Er stimmt mit `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` des Empfängers überein. Ohne Bestätigung wird **nichts** gespeichert (`~/.ssh/known_hosts`, `config.json` prüfen)
+- [ ] **AE2** Die ausgegebene Zeile in `~/.ssh/authorized_keys` des Empfängers → `linuxmos-clip doctor` (Absender) ist grün: „erreichbar, Schlüssel angenommen, Empfänger bereit“
+- [ ] **AE3** Text kopieren → Tab Zwischenablage → Papierflieger am Eintrag: Karte „Gesendet an …“ auf dem Absender; auf dem Empfänger Karte „Vom … empfangen: Text (n Zeichen)“, Eintrag mit „empfangen“ im Verlauf. **Die Zwischenablage des Empfängers ist noch unverändert** (vorher etwas anderes kopiert haben). Klick auf die Karte → Text liegt in der Zwischenablage, es wird **nichts ins aktive Fenster getippt**
+- [ ] **AE4** Dasselbe mit einem Bild (Screenshot `Ctrl+Alt+S`) und einer Datei (Ablage → Papierflieger am Symbol). Die Datei liegt in `~/Downloads/LinuxMos/` und in der Ablage des Empfängers, wird **nicht** geöffnet
+- [ ] **AE5** Hotkey `Ctrl+Alt+Shift+T` nach dem Kopieren: schickt die Zwischenablage; **kein Konflikt** mit einem anderen Kürzel (Cinnamon → Tastatur → Tastenkombinationen nach „Shift+T“ suchen). Der Eintrag „MosIsland Clip senden“ steht in den eigenen Kürzeln
+- [ ] **AE6** KeePassXC: ein Passwort kopieren, Hotkey drücken → Karte „Als privat markiert … nie gesendet“, am Empfänger kommt nichts an
+- [ ] **AE7** Zwei Peers in `clip_peers` → der Papierflieger fragt „Senden an: …“ (Zeile unten im Tab); der Peer-Name im Streifen „Transfer“ wechselt den Standard-Peer
+- [ ] **AE8** Empfänger im Vollbild (Video mit `F11`): Karte erscheint erst nach dem Verlassen des Vollbilds. Insel auf dem Empfänger beenden (`linuxmos-island --quit`), vom Absender senden, Insel starten → Eintrag und Karte sind da
+- [ ] **AE9** Fehlerkarten: Empfänger ausschalten → „nicht erreichbar“ (UI bleibt flüssig, nach ~5 s); `authorized_keys`-Zeile entfernen → „Schlüssel abgelehnt“; `~/.ssh/known_hosts`-Eintrag löschen → „Host-Schlüssel unbekannt“
+- [ ] **AE10** Datei über dem Limit (z. B. `clip_max_file_mb: 1` auf dem Empfänger, 5-MB-Datei senden) → „zu groß“, im Eingang und in `~/Downloads/LinuxMos/` liegt nichts Halbes
+- [ ] **AE11** Beide Schalter aus → im Log `clip: disabled, no monitors`; `linuxmos-perf`: CPU ______ % (Erwartung unverändert ~0,1 %), RSS ______ MB
+- [ ] **AE12** Die Schalter im Tray folgen `config.json` (Datei ändern → Häkchen ändern sich); `update.sh` auf einer bestehenden Installation lässt deine Werte stehen und legt `linuxmos-clip` nach `~/.local/bin`
+
+### AF. Windows (ungetestet, [docs/CLIP-WINDOWS.md](docs/CLIP-WINDOWS.md))
+
+- [ ] **AF1** Windows → Linux: `Get-Clipboard | ssh …` mit Umlauten (PowerShell 5.1: erst `$OutputEncoding` setzen) → Text kommt richtig an
+- [ ] **AF2** Windows → Linux: eine Binärdatei (PDF, ZIP) per `cmd /c "ssh … < datei"`; auf dem Linux-PC `sha256sum` vergleichen
+- [ ] **AF3** AutoHotkey-v2-Script `docs/windows/linuxmos-clip-send.ahk`: `Strg+Alt+Umschalt+T` sendet; läuft **nur** auf Tastendruck
+- [ ] **AF4** Linux → Windows: OpenSSH-Server läuft, Zeile mit `restrict,command="powershell.exe … linuxmos-clip-receive.ps1"` eingetragen (Administrator-Konto: `administrators_authorized_keys` mit den `icacls`-Rechten). `linuxmos-clip doctor` auf dem Linux-PC zeigt „Empfänger bereit“ (das Script antwortet auf den leeren Clip mit Exit-Code 6)
+- [ ] **AF5** Text, Bild und Datei vom Linux-PC senden: Dateien in `%USERPROFILE%\Downloads\LinuxMos`, Text/Bild in `%LOCALAPPDATA%\LinuxMos\clip-inbox`; **nichts** landet in der Windows-Zwischenablage. Fremde Befehle (`ssh … ls`) und zu große Clips werden abgelehnt
 
 ---
 

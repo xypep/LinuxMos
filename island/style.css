@@ -182,3 +182,7 @@
 /* The gear in the opened island's header: quiet until you point at it */
 #island button.settings image { color: rgba(245, 245, 247, 0.38); }
 #island button.settings:hover image { color: rgba(245, 245, 247, 0.95); }
+
+/* ---- clip transfer ----------------------------------------------------------- */
+/* The mark on history entries that another PC sent */
+#island .received { color: #64d2ff; }

@@ -57,9 +57,16 @@ class ClipboardHistory:
     def _on_image(self, _clipboard, pixbuf, *_):
         if pixbuf is None:
             return
+        name = self._store_image(pixbuf)
+        if name:
+            self._add({"kind": "image", "image": name, "size": [pixbuf.get_width(), pixbuf.get_height()]}, key=name)
+
+    @staticmethod
+    def _store_image(pixbuf):
+        """Save the picture as PNG into the history's folder; its file name (None if it cannot be encoded)."""
         ok, data = pixbuf.save_to_bufferv("png", [], [])
         if not ok:
-            return
+            return None
         # GLib's SHA-1 (same file names as hashlib's) keeps OpenSSL's libcrypto out of memory
         digest = GLib.compute_checksum_for_bytes(GLib.ChecksumType.SHA1, GLib.Bytes.new(data))[:16]
         name = f"{digest}.png"
@@ -67,7 +74,19 @@ class ClipboardHistory:
         path = IMAGE_DIR / name
         if not path.exists():
             path.write_bytes(data)
-        self._add({"kind": "image", "image": name, "size": [pixbuf.get_width(), pixbuf.get_height()]}, key=name)
+        return name
+
+    # ---- entries from the clip inbox (another PC sent them) --------------------------------
+    def add_received_text(self, text, sender, entry_id):
+        """History entry marked "received". It is NOT put on the clipboard: a click on it does that."""
+        received = {"from": sender, "id": entry_id}
+        self._add({"kind": "text", "text": text[:MAX_TEXT], "received": received}, key=text[:MAX_TEXT])
+
+    def add_received_image(self, pixbuf, sender, entry_id):
+        name = self._store_image(pixbuf)
+        if name:
+            self._add({"kind": "image", "image": name, "size": [pixbuf.get_width(), pixbuf.get_height()],
+                       "received": {"from": sender, "id": entry_id}}, key=name)
 
     def _add(self, item, key):
         # Same content again -> move it to the top, keep its pin
@@ -75,6 +94,8 @@ class ClipboardHistory:
         for old in list(self.items):
             if old.get("text", old.get("image")) == key:
                 pinned = old.get("pinned", False)
+                if "received" in old and "received" not in item:
+                    item["received"] = old["received"]     # copying a received entry keeps its mark
                 self.items.remove(old)
         item.update(pinned=pinned, time=time.time())
         self.items.insert(0, item)
@@ -101,10 +122,24 @@ class ClipboardHistory:
                 return False
             self._clipboard.set_image(pixbuf)
         else:
-            self._clipboard.set_text(item["text"], -1)
+            self._clipboard.set_text(self._full_text(item), -1)
         # Hand the content to the clipboard manager so it survives the island
         self._clipboard.store()
         return True
+
+    @staticmethod
+    def _full_text(item):
+        """The history keeps MAX_TEXT characters; a received text may be longer and is still in the inbox."""
+        received = item.get("received")
+        if received and len(item["text"]) >= MAX_TEXT:
+            from island.services import clipcore    # only a received entry needs the inbox code
+            path = clipcore.default_paths().inbox / f"{received.get('id', '')}.txt"
+            if clipcore.ID_RE.fullmatch(received.get("id", "")):
+                try:
+                    return path.read_text(encoding="utf-8") or item["text"]
+                except (OSError, ValueError):
+                    pass
+        return item["text"]
 
     def toggle_pin(self, item):
         item["pinned"] = not item.get("pinned")

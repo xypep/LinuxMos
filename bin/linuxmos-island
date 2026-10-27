@@ -13,6 +13,7 @@
 #   linuxmos-island --chat         KI-Chat öffnen (Tab, braucht "ai_chat": true)
 #   linuxmos-island --voice        Diktat: Aufnahme starten, nochmal aufrufen = Text erkennen
 #   linuxmos-island --set-key      API-Key für den KI-Chat im Schlüsselbund speichern
+#   linuxmos-island --clip-send    Zwischenablage an den Standard-Peer senden (Clip-Transfer, nur auf Aufruf)
 #   linuxmos-island --stretch-now  sofort eine Dehn-Karte zeigen (zum Ausprobieren)
 #   linuxmos-island --stretch-test starten mit 1 Minute Intervall und Leerlauf-Schwellen in Sekunden
 #   linuxmos-island --force-idle   starten im Leerlauf: Maskottchen bzw. Augen-Modus ohne Warten
@@ -64,6 +65,10 @@ case "${1:-}" in
   --voice)
     action voice "[]" && exit 0
     echo "MosIsland läuft nicht – Diktat geht nur mit laufender Insel." >&2
+    exit 1 ;;
+  --clip-send)
+    action clip-send "[]" && exit 0
+    echo "MosIsland läuft nicht – Clip-Senden geht nur mit laufender Insel (oder: linuxmos-clip send)." >&2
     exit 1 ;;
   --stretch-now)
     action stretch-now "[]" && exit 0 ;;   # läuft sie nicht, startet die Insel damit und zeigt die Karte

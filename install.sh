@@ -52,6 +52,8 @@ ISLAND_PACKAGES=(
   xdotool pulseaudio-utils libnotify-bin sound-theme-freedesktop
   # Screenshot-Tool (Ctrl+Alt+S)
   maim slop xclip
+  # Clip-Transfer zwischen PCs (ssh-Client; den Server installiert nichts: sudo apt install openssh-server)
+  openssh-client
   # Text (Ctrl+Alt+O) und QR-Codes (Ctrl+Alt+Q) vom Bildschirm
   tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng zbar-tools
   # Bildschirmaufnahme (Ctrl+Alt+R) und Diktat (Ctrl+Alt+M): ffmpeg;
@@ -528,6 +530,8 @@ setup_island() {
   cp -r "${REPO_DIR}/island" "${app_dir}/"
   find "${app_dir}" -name __pycache__ -prune -exec rm -rf {} +
   install -m 755 "${REPO_DIR}/bin/linuxmos-island" "${BIN_DIR}/linuxmos-island"
+  # Clip-Transfer (Text, Bilder, Dateien per SSH): reines Python, braucht nur den ssh-Client
+  install -m 755 "${REPO_DIR}/bin/linuxmos-clip" "${BIN_DIR}/linuxmos-clip"
 
   if [[ -n "${WEATHER_CITY}" ]]; then
     "${BIN_DIR}/linuxmos-island" --set-city "${WEATHER_CITY}" >/dev/null
@@ -584,9 +588,13 @@ EOF
     "${BIN_DIR}/linuxmos-island --chat" "<Primary><Alt>a"
   python3 "${TWEAKS}" add-keybinding "MosIsland Diktat (LinuxMos)" \
     "${BIN_DIR}/linuxmos-island --voice" "<Primary><Alt>m"
+  # Ctrl+Alt+T ist in Cinnamon das Terminal -> Clip senden liegt auf Ctrl+Alt+Shift+T (tut nichts, solange
+  # "Clip-Senden" im Tray aus ist)
+  python3 "${TWEAKS}" add-keybinding "MosIsland Clip senden (LinuxMos)" \
+    "${BIN_DIR}/linuxmos-island --clip-send" "<Primary><Alt><Shift>t"
 
   setsid "${BIN_DIR}/linuxmos-island" >/dev/null 2>&1 < /dev/null &
-  ok "MosIsland läuft (Ctrl+Alt+I öffnen, Ctrl+Alt+Space Suche, Ctrl+Alt+V Zwischenablage, Ctrl+Alt+S Screenshot, Ctrl+Alt+O Text, Ctrl+Alt+R Aufnahme, Ctrl+Alt+A KI-Chat, Ctrl+Alt+M Diktat, Tray-Icon für Einstellungen)"
+  ok "MosIsland läuft (Ctrl+Alt+I öffnen, Ctrl+Alt+Space Suche, Ctrl+Alt+V Zwischenablage, Ctrl+Alt+S Screenshot, Ctrl+Alt+O Text, Ctrl+Alt+R Aufnahme, Ctrl+Alt+A KI-Chat, Ctrl+Alt+M Diktat, Ctrl+Alt+Shift+T Clip senden, Tray-Icon für Einstellungen)"
 }
 
 install_tools() {

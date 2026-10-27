@@ -39,7 +39,7 @@ rm -f "${CONFIG_DIR}/autostart/linuxmos-plank.desktop" \
       "${CONFIG_DIR}/autostart/linuxmos-island.desktop" \
       "${DATA_DIR}/applications/linuxmos-island.desktop" \
       "${BIN_DIR}/linuxmos-widgets" "${BIN_DIR}/linuxmos-spotlight" "${BIN_DIR}/linuxmos-perf" \
-      "${BIN_DIR}/linuxmos-island"
+      "${BIN_DIR}/linuxmos-island" "${BIN_DIR}/linuxmos-clip"
 rm -rf "${STATE_DIR}/island-app"
 rm -f "${STATE_DIR}/install.conf"
 # Die Töne der Dehn-Erinnerung (WAV) erzeugt die Insel selbst im Cache – die gehen immer mit
@@ -95,7 +95,12 @@ if (( PURGE )); then
          "${DATA_DIR}/backgrounds/linuxmos" \
          "${CACHE_DIR}" \
          "${STATE_DIR}/island" "${CONFIG_DIR}/linuxmos"
-  ok "Gelöscht (inkl. MosIsland-Daten: Notiz, Clipboard-Verlauf, Ablage, App-Zähler der Suche, Dehn-Statistik und Übungsliste)"
+  ok "Gelöscht (inkl. MosIsland-Daten: Notiz, Clipboard-Verlauf, Ablage, App-Zähler der Suche, Dehn-Statistik, Übungsliste, Clip-Eingang und gespeicherte Clip-Peers)"
+  # Der Clip-Schlüssel ist nur für LinuxMos gedacht (Name linuxmos_clip_*): mit --purge geht er mit
+  if compgen -G "${HOME}/.ssh/linuxmos_clip_*" >/dev/null; then
+    rm -f "${HOME}"/.ssh/linuxmos_clip_*
+    ok "Clip-Schlüssel ~/.ssh/linuxmos_clip_* gelöscht (die Zeile in authorized_keys der Empfänger ist damit wertlos – bei Gelegenheit dort entfernen)"
+  fi
   # API-Key des KI-Chats aus dem Schlüsselbund
   if command -v secret-tool >/dev/null 2>&1; then
     secret-tool clear service linuxmos-island account ai-api-key 2>/dev/null || true
@@ -119,6 +124,12 @@ if [[ -d "${SHOT_DIR}" ]]; then
   echo "    Deine Screenshots bleiben in ${SHOT_DIR}"
 fi
 
+# Per Clip-Transfer empfangene Dateien auch nicht
+CLIP_DIR="$(xdg-user-dir DOWNLOAD 2>/dev/null || echo "$HOME/Downloads")/LinuxMos"
+if [[ -d "${CLIP_DIR}" ]]; then
+  echo "    Per Clip-Transfer empfangene Dateien bleiben in ${CLIP_DIR}"
+fi
+
 # Aufnahmen auch nicht
 REC_DIR="$(xdg-user-dir VIDEOS 2>/dev/null || echo "$HOME/Videos")/LinuxMos"
 if [[ -d "${REC_DIR}" ]]; then
@@ -130,8 +141,8 @@ fi
 
 if (( ! PURGE )) && [[ -d "${STATE_DIR}/island" ]]; then
   echo
-  echo "    MosIsland-Daten (Notiz, Clipboard-Verlauf, Ablage, Dehn-Statistik) bleiben in ${STATE_DIR}/island"
-  echo "    – löschen mit: ./uninstall.sh --purge (auch deine config.json und stretch_exercises.json in ${CONFIG_DIR}/linuxmos/island)"
+  echo "    MosIsland-Daten (Notiz, Clipboard-Verlauf, Ablage, Dehn-Statistik, Clip-Eingang) bleiben in ${STATE_DIR}/island"
+  echo "    – löschen mit: ./uninstall.sh --purge (auch deine config.json mit den Clip-Peers und stretch_exercises.json in ${CONFIG_DIR}/linuxmos/island, dazu den Clip-Schlüssel ~/.ssh/linuxmos_clip_*)"
 fi
 
 step "Fertig – einmal ab- und wieder anmelden."

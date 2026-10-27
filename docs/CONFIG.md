@@ -78,6 +78,33 @@ Gezählt wird nur **aktive** Zeit (Eingabe in der letzten Minute). Mehr dazu in 
 | `ocr_keep_linebreaks` | `false` | Zeilenumbrüche der erkannten Texte behalten |
 | `qr_open_links` | `false` | Links aus QR-Codes sofort im Browser öffnen |
 
+## Clip-Transfer
+
+Text, Bilder und Dateien per SSH zwischen PCs, **nur auf Handlung** (Knopf, Hotkey `Ctrl+Alt+Shift+T`, `linuxmos-clip send`); empfangene Inhalte landen im Eingang und im Verlauf, nie automatisch in der Zwischenablage. Einrichtung: [CLIP.md](CLIP.md). Beide Schalter sind auch im Tray-Menü („Clip-Transfer“). Sind beide aus, gibt es keinen Datei-Monitor und nichts wird geladen (Log: `clip: disabled, no monitors`). Die Schlüssel `clip_auto_send` und `clip_autoapply` gibt es nicht.
+
+| Schlüssel | Standard | Bedeutung · gültige Werte |
+|---|---|---|
+| `clip_send_enabled` | `false` | Senden erlauben (Knopf „An PC senden“, Hotkey, `linuxmos-clip send`) |
+| `clip_receive_enabled` | `false` | Empfang: die Insel beobachtet den Eingang (`Gio.FileMonitor`), und `linuxmos-clip receive` nimmt Clips an. Aus: der Empfänger lehnt alles ab |
+| `clip_max_text_kb` | `1024` | Größtes Textstück in KB: `1`–`10240`. Der **Empfänger** erzwingt es beim Lesen |
+| `clip_max_image_mb` | `20` | Größtes Bild in MB: `1`–`500` |
+| `clip_max_file_mb` | `100` | Größte Datei in MB: `1`–`8192` |
+| `clip_inbox_keep_days` | `7` | Einträge im Eingang werden nach so vielen Tagen gelöscht (beim Start und beim Eintreffen eines neuen, ohne Timer): `1`–`365`. Empfangene Dateien in `~/Downloads/LinuxMos` bleiben |
+| `clip_inbox_quota_mb` | `500` | Der Eingang lehnt neue Clips ab, wenn er (Text, Bilder und die Dateien der vorhandenen Einträge) darüber käme: `10`–`100000` |
+| `clip_default_peer` | `""` | Name des Peers für Hotkey und `linuxmos-clip send` ohne `--peer`. Leer: der einzige Peer, sonst fragt der Knopf nach |
+| `clip_peers` | `[]` | Liste der Empfänger (`linuxmos-clip setup` trägt sie ein), siehe unten |
+
+Ein Peer-Eintrag:
+
+```json
+{"name": "Windows-PC", "host": "192.168.0.50", "user": "alec", "port": 22,
+ "key": "~/.ssh/linuxmos_clip_ed25519", "os": "windows"}
+```
+
+`name` (höchstens 40 Zeichen, eindeutig), `host` (Adresse oder Name), `user`, `port` (`1`–`65535`, Standard `22`), `key` (Standard `~/.ssh/linuxmos_clip_ed25519`), `os` (`linux` oder `windows`), optional `ip` (Adresse, mit der dieser PC zu dir sendet, falls sie nicht `host` ist; so zeigt die Karte „Vom Windows-PC“). Ein Eintrag, dessen Angaben nicht stimmen (ein Host oder Benutzer, der mit `-` beginnt, Leerzeichen, ein falscher Port), wird ignoriert.
+
+**Dateien:** Eingang `~/.local/share/linuxmos/island/clip-inbox/` (Rechte 700), empfangene Dateien `~/Downloads/LinuxMos/`, Schlüssel `~/.ssh/linuxmos_clip_ed25519`, Stand der gezeigten Einträge `~/.local/share/linuxmos/island/clip-state.json`.
+
 ## Benachrichtigungen und Live-Hinweise
 
 | Schlüssel | Standard | Bedeutung · gültige Werte |
