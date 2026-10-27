@@ -95,6 +95,7 @@ EN = {
     "Wasser": "Water",
     "Wetter": "Weather",
     "Steuerung": "Controls",
+    "Werkzeuge": "Tools",
 
     # Folded island: live activities
     "Wiedergabe": "Playing",

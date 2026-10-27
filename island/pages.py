@@ -313,11 +313,12 @@ class ClipboardPage(Page):
         placeholder.show()
         self.listbox.set_placeholder(placeholder)
 
-        scrolled = Gtk.ScrolledWindow(vexpand=True)
-        scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        scrolled.add(self.listbox)
-        self.pack_start(scrolled, True, True, 0)
+        self.scrolled = Gtk.ScrolledWindow(vexpand=True)
+        self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.scrolled.add(self.listbox)
+        self.pack_start(self.scrolled, True, True, 0)
         self.transfer = None       # the "Transfer" strip: built the first time the tab opens
+        self.actions_bar = None    # the text actions: built the first time they are asked for
         self._dirty = True
 
     def _activate(self, item):
@@ -380,6 +381,11 @@ class ClipboardPage(Page):
         if self.island.clip_can_send():
             box.pack_start(button("document-send-symbolic", tooltip="An PC senden", css=("mini",), size=14,
                                   on_click=lambda: self._send(item)), False, False, 0)
+        if item["kind"] == "text" and self.island.config.flag("clipactions_enabled"):
+            box.pack_start(button("view-more-symbolic", tooltip="Aktionen (Formatierung, Links, JSON …)",
+                                  css=("mini",), size=14,
+                                  on_click=lambda: self.show_actions(self.island.clipboard.full_text(item))),
+                           False, False, 0)
         pin = button("view-pin-symbolic", tooltip=_("Anpinnen"), css=("mini",) + (("pinned",) if item.get("pinned") else ()),
                      size=14, on_click=lambda: self.island.clipboard.toggle_pin(item))
         remove = button("window-close-symbolic", tooltip=_("Entfernen"), css=("mini",), size=14,
@@ -431,6 +437,51 @@ class ClipboardPage(Page):
 
     def focus_search(self):
         self.search.grab_focus()
+
+    # ---- text actions on an entry or on what is on the clipboard now ----------------------------------------
+    def show_actions(self, text):
+        """Replace the list with the action buttons for this text (the list comes back with the close button)."""
+        from island.services import textactions
+        if self.actions_bar is None:
+            self._build_actions_bar(textactions)
+            self.pack_start(self.actions_bar, True, True, 0)
+        self._actions_text = text
+        preview = " ⏎ ".join(line.strip() for line in text.strip().splitlines()[:2])
+        self.actions_title.set_text(f"Aktion für: {preview[:70]}" + ("…" if len(preview) > 70 else ""))
+        self.scrolled.hide()
+        self.actions_bar.show()
+        self.qr_button.set_visible(self.island.qr_available())
+
+    def hide_actions(self):
+        if self.actions_bar is not None:
+            self.actions_bar.hide()
+        self.scrolled.show()
+
+    def _build_actions_bar(self, textactions):
+        self.actions_bar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        head = Gtk.Box(spacing=8)
+        self.actions_title = label("", ("title",))
+        head.pack_start(self.actions_title, True, True, 0)
+        head.pack_end(button("window-close-symbolic", tooltip=_("Schließen"), css=("mini",), size=14,
+                             on_click=self.hide_actions), False, False, 0)
+        self.actions_bar.pack_start(head, False, False, 0)
+        flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, max_children_per_line=4, min_children_per_line=2,
+                           homogeneous=True, row_spacing=6, column_spacing=6, valign=Gtk.Align.START)
+        for action_id, (text, _func) in textactions.ACTIONS.items():
+            btn = button(text=text, css=("tile",),
+                         on_click=lambda a=action_id: self.island.run_clip_action(a, self._actions_text))
+            flow.add(btn)
+        self.qr_button = button(text=textactions.QR_LABEL, css=("tile",),
+                                on_click=lambda: self.island.run_clip_action(textactions.QR_ID, self._actions_text))
+        self.qr_button.set_no_show_all(True)
+        flow.add(self.qr_button)
+        scrolled = Gtk.ScrolledWindow(vexpand=True)
+        scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scrolled.add(flow)
+        self.actions_bar.pack_start(scrolled, True, True, 0)
+        self.actions_bar.show_all()             # the children are visible; the bar itself waits until it is asked for
+        self.actions_bar.set_no_show_all(True)
+        self.actions_bar.hide()
 
 
 # =============================================================================

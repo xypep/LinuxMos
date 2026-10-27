@@ -36,6 +36,7 @@ and freed memory is handed back a few seconds after the island folds.
 
 import ctypes
 import gc
+import json
 import logging
 import math
 import os
@@ -62,7 +63,7 @@ try:
 except (ValueError, ImportError):
     Wnck = None
 
-from island import APP_ID, __version__, i18n  # noqa: E402
+from island import APP_ID, __version__, gestures, i18n, registry  # noqa: E402
 from island.i18n import _, n_  # noqa: E402
 from island.pages import (ClipboardPage, ControlsPage, HomePage, LazyPage, NotePage, ShelfPage,  # noqa: E402
                           StretchPage, TodoPage, URI_TARGETS, WaterPage, WeatherPage)
@@ -83,7 +84,7 @@ from island.services.todo import TodoList  # noqa: E402
 from island.services.vpn import Vpn  # noqa: E402
 from island.services.water import Water  # noqa: E402
 from island.services.weather import Weather  # noqa: E402
-from island.storage import Config  # noqa: E402
+from island.storage import Config, launcher_path  # noqa: E402
 from island.stretchview import GlibEnv, IslandGates, StretchView  # noqa: E402
 from island.tray import Tray  # noqa: E402
 from island.widgets import (Animator, Eyes, LiveDots, Pill, Ring, button, clear, css_class, icon, label,  # noqa: E402
@@ -125,6 +126,8 @@ TRIM_MS, TRIM_START_MS = 5000, 15000
 CONFIG_RELOAD_MS = 300
 # Cinnamon's switch for its own banners; the island turns it off while it shows the cards
 BANNERS = ("org.cinnamon.desktop.notifications", "display-notifications")
+# The control interface of the settings window (next to the app's actions, same bus name and object path)
+CONTROL_PATH, CONTROL_IFACE = "/org/linuxmos/Island", "org.linuxmos.Island.Control"
 
 # Tooltips are German source strings, translated when the tab bar is built
 TABS = [
@@ -139,6 +142,7 @@ TABS = [
     ("stretch", "avatar-default-symbolic", "Dehnen"),
     ("weather", "weather-few-clouds-symbolic", "Wetter"),
     ("controls", "emblem-system-symbolic", "Steuerung"),
+    ("tools", "applications-utilities-symbolic", "Werkzeuge"),
 ]
 
 TERMINALS = {"gnome-terminal-server", "gnome-terminal", "xfce4-terminal", "tilix", "terminator", "kitty",
@@ -156,13 +160,12 @@ class IslandWindow(Gtk.Window):
         self._activity = None       # dict(icon, text, level, sticky)
         self._activity_id = 0
         self._pinned = False        # opened for typing / via hotkey: stays open off-hover
-        self._prev_window = None    # Wnck window to return focus and pastes to
+        self._prev_xid = 0          # the window to return focus and pastes to (see _prev_window)
         self._dragging_out = False
         self._open_id = self._close_id = self._position_id = 0
         self._monitor = None        # the monitor the island sits on (pointer mode: the last one used)
         self._place_id = 0
         self._shown_kind = None
-        self._scroll_acc = 0.0
         self._current_tab = "home"
         self._idle_state = "idle" if self.debug.get("force_idle") else "active"   # active | idle | sleep | hello
         self._force_idle = bool(self.debug.get("force_idle"))   # stays idle until the island is opened
@@ -191,6 +194,17 @@ class IslandWindow(Gtk.Window):
         self._trim_id = 0
         self.clip = None                 # ClipTransfer, only while sending or receiving clips is switched on
         self._clip_flush_id = 0
+        self.keepawake = None            # KeepAwake, only while "keepawake_enabled" is on
+        self.pins = None                 # Pins, only while "pin_enabled" is on
+        self._picking = False            # the colour picker's overlay is up
+        self._picker = None
+        self._colors = None              # colour history, read the first time it is needed
+        self._gesture_ids = []           # signal handlers of the gestures (none while they are off)
+        self._gesture_map = {}
+        self._scroll = gestures.Scroll()
+        self._click_expanded_ms = 0      # when a click opened the island: a double click can still follow
+        self._hotkeys_applied = dict(self.config.section("hotkeys"))
+        self._started = GLib.get_monotonic_time()
         # Lyrics: fetched lazily, advanced by one timeout per line (no polling)
         self._lyrics_view = False
         self._lyrics_key = None
@@ -270,6 +284,12 @@ class IslandWindow(Gtk.Window):
         self._watch_config()
         self.stretch.apply()
         self._apply_clip()
+        registry.populate(self)
+        self._apply_tools()
+        self._apply_gestures()
+        self._schedule_intro()
+        if self._hotkeys_applied:
+            GLib.idle_add(self._apply_hotkeys, True)    # a hotkeys section written while the island was off
         if self.config.error:
             GLib.idle_add(self._config_invalid_card, self.config.error, False)
         if self.debug.get("stretch_now"):
@@ -304,7 +324,6 @@ class IslandWindow(Gtk.Window):
         self.connect("enter-notify-event", self._on_enter)
         self.connect("leave-notify-event", self._on_leave)
         self.connect("button-press-event", self._on_button_press)
-        self.connect("scroll-event", self._on_scroll)
         self.connect("key-press-event", self._on_key)
         self.connect("focus-out-event", self._on_focus_out)
 
@@ -489,6 +508,8 @@ class IslandWindow(Gtk.Window):
         self._pinned = False
         if note := self._built("note"):
             note.flush()
+        if clipboard_page := self._built("clipboard"):
+            clipboard_page.hide_actions()
         self.stack.set_visible_child_full("blank", Gtk.StackTransitionType.NONE)
         self._release_focus()
         self.anim.to(self._collapsed_geometry(), on_done=lambda: None if self.expanded else self._show_collapsed())
@@ -741,7 +762,7 @@ class IslandWindow(Gtk.Window):
         content = body
         if card["image"] is not None:
             content = Gtk.Box(spacing=10)
-            picture = rounded_image(card["image"], 40, 9, self.get_scale_factor())
+            picture = rounded_image(card["image"], card.get("image_size", CARD_IMAGE_H), 9, self.get_scale_factor())
             picture.set_valign(Gtk.Align.START)
             content.pack_start(picture, False, False, 0)
             content.pack_start(body, True, True, 0)
@@ -801,6 +822,7 @@ class IslandWindow(Gtk.Window):
             "stretch": LazyPage(self, StretchPage),
             "weather": LazyPage(self, WeatherPage),
             "controls": LazyPage(self, ControlsPage),
+            "tools": LazyPage(self, _tools_page),
         }
         self.tab_buttons = {}
         tabs = Gtk.Box(spacing=2)
@@ -821,8 +843,8 @@ class IslandWindow(Gtk.Window):
 
         self.header_time = label("", ("title",), ellipsize=False)
         self.header_live = Gtk.Box(spacing=2, valign=Gtk.Align.CENTER)   # microphone, camera, VPN, downloads
-        gear = button("emblem-system-symbolic", tooltip="Einstellungen", size=14, css=("mini", "settings"),
-                      on_click=self.open_settings)
+        gear = button("emblem-system-symbolic", tooltip="Einstellungen & Übersicht", size=14,
+                      css=("mini", "settings"), on_click=lambda: self.open_overview("functions"))
         header = Gtk.Box(spacing=8)
         header.pack_start(tabs, False, False, 0)
         header.pack_end(gear, False, False, 0)
@@ -880,6 +902,18 @@ class IslandWindow(Gtk.Window):
     # =========================================================================
     # Focus & paste
     # =========================================================================
+    @property
+    def _prev_window(self):
+        """The window the user came from, looked up by its id when needed.
+
+        Not kept as an object: libwnck crashes when the last reference to a window that has been closed
+        meanwhile is dropped (a short-lived window like the settings one is enough to hit it)."""
+        return Wnck.Window.get(self._prev_xid) if Wnck is not None and self._prev_xid else None
+
+    @_prev_window.setter
+    def _prev_window(self, window):
+        self._prev_xid = window.get_xid() if window is not None else 0
+
     def _own_xid(self):
         win = self.get_window()
         return win.get_xid() if isinstance(win, GdkX11.X11Window) else None
@@ -1027,10 +1061,18 @@ class IslandWindow(Gtk.Window):
         return bool(mask & Gdk.ModifierType.BUTTON1_MASK)
 
     def _on_button_press(self, _w, event):
+        if event.type == Gdk.EventType._2BUTTON_PRESS:
+            return self._on_double_click(event)
         if self.expanded:
             return False
         if self._card:
             return True  # only the card's own buttons act
+        if event.button != Gdk.BUTTON_PRIMARY:
+            # Middle and right click are gestures (they open the island by default); with gestures off: nothing
+            gesture = gestures.classify_click(event.button)
+            if gesture and self._gesture_ids:
+                self._do_gesture(gesture)
+            return True
         if self._stretch_mark and self._click_on_stretch_mark(event):
             self.stretch.reshow()
             return True
@@ -1040,7 +1082,25 @@ class IslandWindow(Gtk.Window):
             if callback:
                 callback()
             return True
+        self._click_expanded_ms = GLib.get_monotonic_time() // 1000
         self.expand()
+        return True
+
+    def _on_double_click(self, event):
+        """A second quick click on the pill that the first one just opened: the double-click gesture.
+
+        The first click has opened the island already (no waiting for a second one), so the gesture folds it
+        again before it runs – unless the gesture is to open it."""
+        if event.button != Gdk.BUTTON_PRIMARY or not self._gesture_ids or not self.expanded:
+            return False
+        if GLib.get_monotonic_time() // 1000 - self._click_expanded_ms > 600:
+            return False
+        action = gestures.action_for("click_double", self._gesture_map)
+        if action in ("none", "expand"):
+            return False
+        self._click_expanded_ms = 0
+        self.collapse()
+        self._run_gesture_action(action, 0)
         return True
 
     def _click_on_stretch_mark(self, event):
@@ -1050,19 +1110,68 @@ class IslandWindow(Gtk.Window):
         x, _y = self.live_dots.translate_coordinates(self, 0, 0)
         return self.live_dots.hits_stretch(event.x - x)
 
+    # ---- gestures: the wheel and the other buttons on the folded pill -------------------------------------------
+    def _apply_gestures(self):
+        """Connect the wheel handler while gestures are on; with them off nothing is connected."""
+        if not self.config.flag("gestures_enabled"):
+            for handler in self._gesture_ids:
+                self.disconnect(handler)
+            self._gesture_ids = []
+            log.info("gestures: disabled, no handlers")
+            return
+        self._gesture_map = gestures.resolve(self.config.section("gestures"), tabs=[t[0] for t in TABS],
+                                             function_ids=registry.REGISTRY.ids())
+        if not self._gesture_ids:
+            self._gesture_ids = [self.connect("scroll-event", self._on_scroll)]
+        log.info("gestures: on (wheel: %s)", self._gesture_map["wheel"])
+
     def _on_scroll(self, _w, event):
         if self.expanded:
             return False
         if event.direction == Gdk.ScrollDirection.SMOOTH:
             _ok, _dx, dy = event.get_scroll_deltas()
-            self._scroll_acc += dy
+            step = self._scroll.add(dy)
         elif event.direction in (Gdk.ScrollDirection.UP, Gdk.ScrollDirection.DOWN):
-            self._scroll_acc += -1 if event.direction == Gdk.ScrollDirection.UP else 1
-        if abs(self._scroll_acc) >= 1:
-            step = -5 if self._scroll_acc > 0 else 5
-            self._scroll_acc = 0.0
-            system.volume_step(step, self._on_volume)
+            step = self._scroll.add(-1 if event.direction == Gdk.ScrollDirection.UP else 1)
+        else:
+            return True
+        if step:
+            width = self.anim.value[0] or 1
+            x = event.x - (WIN_W - width) / 2          # in the pill, whatever its width is just now
+            self._do_gesture(gestures.classify_wheel(int(event.state), x, width), step)
         return True
+
+    def _do_gesture(self, gesture, direction=0):
+        self._run_gesture_action(gestures.action_for(gesture, self._gesture_map), direction)
+
+    def _run_gesture_action(self, action, direction):
+        """direction: +1 wheel up, -1 wheel down, 0 a click."""
+        if action in ("none", "default"):
+            return
+        if action == "expand":
+            self.expand()
+        elif action.startswith("volume"):
+            step = gestures.VOLUME_STEP * (direction if action == "volume_wheel" else 1 if action == "volume_up" else -1)
+            system.volume_step(step, self._on_volume)
+        elif action.startswith("brightness"):
+            step = gestures.BRIGHTNESS_STEP * (direction if action == "brightness_wheel"
+                                               else 1 if action == "brightness_up" else -1)
+            system.brightness_get(lambda percent: percent is not None and system.brightness_set(percent + step))
+        elif action.startswith("tab_"):
+            names = [name for name, _icon, _tip in TABS if name != "chat" or self.config.get("ai_chat", False)]
+            step = -direction if action == "tab_wheel" else (1 if action == "tab_next" else -1)
+            self.expand(tab=gestures.next_in(names, self._current_tab, step))
+        elif action == "play_pause":
+            self.media.play_pause()
+        elif action.startswith("track_"):
+            step = direction if action == "track_wheel" else (1 if action == "track_next" else -1)
+            (self.media.next if step > 0 else self.media.previous)()
+        elif action.startswith(gestures.TAB_PREFIX):
+            self.expand(tab=action[len(gestures.TAB_PREFIX):])
+        elif action.startswith(gestures.FUNCTION_PREFIX):
+            self.run_function(action[len(gestures.FUNCTION_PREFIX):])
+        elif action == "settings":
+            self.open_overview("functions")
 
     def _on_volume(self, value, muted=False):
         if value is None:
@@ -1249,7 +1358,8 @@ class IslandWindow(Gtk.Window):
         p, d = self.privacy, self.downloads
         mic = ("muted" if p.mic_muted else "on") if p.mic_apps else None
         download = (-1 if d.percent is None else d.percent) if d.active else None
-        if self.live_dots.set_state(mic, bool(p.cam_apps), download, self._stretch_mark):
+        if self.live_dots.set_state(mic, bool(p.cam_apps), download, self._stretch_mark,
+                                    awake=self.keepawake_active(), pins=self.pins.count if self.pins else 0):
             self.refresh_collapsed()   # the pill grows or shrinks by the marks
         self._fill_header_live()
 
@@ -1498,6 +1608,7 @@ class IslandWindow(Gtk.Window):
         self.show()
         self._place()
         self._clip_flush_soon()
+        self.emit_action_finished()
 
     def _on_shot(self, ok, path):
         if not ok or not path.is_file():
@@ -1900,10 +2011,537 @@ class IslandWindow(Gtk.Window):
     def shutdown(self):
         if note := self._built("note"):
             note.flush()
+        if self.keepawake:
+            self.keepawake.shutdown()
+        if self.pins:
+            (self.pins.release_all if self.config.flag("pin_release_on_exit") else self.pins.forget_all)()
         if self.clip:
             self.clip.stop()
         self.notifications.stop()
         self.restore_banners()
+
+    # =========================================================================
+    # Tools: clipboard actions, colour picker, keep awake, pinned windows
+    # =========================================================================
+    def _apply_tools(self):
+        """Create or drop what the tools need so that a switched-off tool costs nothing (log lines say so)."""
+        self._apply_keepawake()
+        self._apply_pins()
+        if not self.config.flag("clipactions_enabled"):
+            log.info("clipactions: disabled")
+        if not self.config.flag("colorpicker_enabled"):
+            log.info("colorpicker: disabled")
+
+    def hotkey_hint(self, fid):
+        """'Ctrl+Alt+C' for the function's hotkey (config or default; '' if it has none)."""
+        fn = registry.REGISTRY.get(fid)
+        if fn is None:
+            return ""
+        from island import hotkeys
+        accel = registry.effective_hotkey(fn, self.config)
+        return hotkeys.pretty(accel) if accel else ""
+
+    def _tools_page(self):
+        return self._built("tools")
+
+    # ---- text actions on the clipboard ------------------------------------------------------------------
+    def clip_actions_current(self):
+        """Hotkey: the actions for what is on the clipboard now (never for a copy marked as private)."""
+        if not self.config.flag("clipactions_enabled"):
+            self._hint("Zwischenablage-Aktionen sind aus · Einstellungen & Übersicht")
+            return
+        from island.services.clipboard import SECRET_TARGETS, TEXT_TARGETS
+        board = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+
+        def on_text(_board, text, *_):
+            if not text or not text.strip():
+                self._note_card("Zwischenablage ohne Text", "Zum Bearbeiten erst Text kopieren.")
+                return
+            self.expand(tab="clipboard", focus=True)
+            self.pages["clipboard"].page.show_actions(text)
+
+        def on_targets(_board, atoms, *_):
+            names = {atom.name() for atom in (atoms or [])}
+            if names & SECRET_TARGETS:
+                self._note_card("Als privat markiert", "Kopien aus Passwort-Managern werden nie verarbeitet.")
+            elif names & TEXT_TARGETS:
+                board.request_text(on_text)
+            else:
+                self._note_card("Zwischenablage ohne Text", "Zum Bearbeiten erst Text kopieren.")
+
+        board.request_targets(on_targets)
+
+    def qr_available(self):
+        return system.has("qrencode")
+
+    def run_clip_action(self, action_id, text):
+        """Do a text action; the result goes onto the clipboard (and so into the history as a new entry, the
+        original stays) and a card tells what happened. An action that can't work leaves the clipboard alone."""
+        from island.services import textactions
+        if not self.config.flag("clipactions_enabled"):
+            return
+        if action_id == textactions.QR_ID:
+            self._clip_qr(text)
+            return
+        extra = self.config.get("clipactions_tracking_params")
+        try:
+            result = textactions.apply(action_id, text, extra if isinstance(extra, list) else ())
+        except textactions.ActionError as error:
+            self._note_card("Aktion nicht möglich", f"{error}\nDie Zwischenablage ist unverändert.")
+            return
+        if result.text == text and action_id != "plain":
+            self._note_card("Nichts zu ändern", "Das Ergebnis wäre derselbe Text.")
+            return
+        self.clipboard.copy({"kind": "text", "text": result.text})
+        self.collapse()
+        self.show_card("edit-paste-symbolic", result.message, result.text[:300],
+                       meta=f"{len(result.text)} Zeichen",
+                       actions=[("Original zurück", lambda: self._copy_again(text), False),
+                                ("Einfügen", self._paste_into_previous, True)])
+
+    def _note_card(self, title, body):
+        """A short card in the folded island (the opened one is folded first: cards show only there)."""
+        self.collapse()
+        self.show_card("dialog-information-symbolic", title, body, ms=6000)
+
+    def _hint(self, text, seconds=4):
+        self.show_activity("dialog-information-symbolic", text, seconds=seconds)
+
+    def _clip_qr(self, text):
+        from island.services import textactions
+        if not self.qr_available():
+            self._note_card("QR-Code nicht möglich", "qrencode fehlt: sudo apt install qrencode")
+            return
+        if len(text) > textactions.QR_MAX_CHARS:
+            self._note_card("Zu lang für einen QR-Code", f"Höchstens {textactions.QR_MAX_CHARS} Zeichen.")
+            return
+        from island.storage import CACHE_DIR
+        path = CACHE_DIR / "qr" / "qr.png"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            proc = Gio.Subprocess.new(["qrencode", "-t", "PNG", "-o", str(path), "-s", "8", "-m", "2"],
+                                      Gio.SubprocessFlags.STDIN_PIPE | Gio.SubprocessFlags.STDERR_SILENCE
+                                      | Gio.SubprocessFlags.STDOUT_SILENCE)
+        except GLib.Error:
+            self._note_card("QR-Code nicht möglich", "qrencode lässt sich nicht starten.")
+            return
+
+        def done(p, result):
+            try:
+                p.communicate_finish(result)
+                ok = p.get_successful() and path.is_file()
+            except GLib.Error:
+                ok = False
+            self._show_qr(path, text) if ok else self._note_card("QR-Code nicht möglich", "qrencode meldet einen Fehler.")
+
+        proc.communicate_async(GLib.Bytes.new(text.encode("utf-8")), None, done)
+
+    def _show_qr(self, path, text):
+        from gi.repository import GdkPixbuf
+        try:
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file(str(path))
+            side = 150
+            pixbuf = pixbuf.scale_simple(side, side, GdkPixbuf.InterpType.NEAREST)   # keep the modules sharp
+        except GLib.Error:
+            self._note_card("QR-Code nicht möglich", "Das Bild lässt sich nicht lesen.")
+            return
+        self.collapse()
+        self.show_card("view-grid-symbolic", "QR-Code", text[:80], image=pixbuf, image_size=side, height=210,
+                       actions=[("Als Bild kopieren", lambda: screenshot.copy(path), False)], ms=30000)
+
+    # ---- colour picker ----------------------------------------------------------------------------------------
+    def color_history(self):
+        from island.services import colors
+        if self._colors is None:
+            self._colors = colors.History(self.config.integer("colorpicker_history", 1, 200))
+        return self._colors
+
+    def pick_color(self):
+        """Hide the island, freeze the screen, let the user pick a pixel (see colorpicker.py)."""
+        if not self.config.flag("colorpicker_enabled"):
+            self._hint("Farbpipette ist aus · Einstellungen & Übersicht")
+            return
+        if self._picking or self._shooting:
+            return
+        self._picking = self._shooting = True
+        self._capture_gen += 1
+        self._drop_card()
+        if self.expanded:
+            self.collapse()
+        self.anim.jump(self._collapsed_geometry())
+        self._show_collapsed()
+        self.hide()
+        GLib.timeout_add(SHOT_HIDE_MS, self._start_picker)
+
+    def _start_picker(self):
+        missing = screenshot.missing("screen")
+        if missing:
+            self._on_picked(None, failed=True, missing=missing)
+            return GLib.SOURCE_REMOVE
+        from island import colorpicker
+        colorpicker.grab_snapshot(self._on_snapshot)
+        return GLib.SOURCE_REMOVE
+
+    def _on_snapshot(self, snapshot):
+        from island import colorpicker
+        if snapshot is None:
+            self._on_picked(None, failed=True)
+            return
+        surface, scale = snapshot
+        self._picker = colorpicker.Picker(surface, scale, self._on_picked)
+        self._picker.start()
+
+    def _on_picked(self, rgb, failed=False, missing=()):
+        self._picker = None
+        self._picking = False
+        self._end_capture()
+        self._schedule_trim(1000)       # the snapshot is gone: give its memory back
+        if failed:
+            self.show_activity("dialog-warning-symbolic", "Für die Farbpipette fehlt: " + ", ".join(missing)
+                               if missing else "Bildschirm lässt sich nicht aufnehmen", seconds=4)
+        elif rgb is not None:
+            self._color_picked(rgb)
+
+    def _color_picked(self, rgb):
+        from island.services import colors
+        self.color_history().add(rgb)
+        kind = colors.format_choice(self.config.get("colorpicker_format"))
+        ocr.copy_text(colors.fmt(rgb, kind))
+        formats = colors.all_formats(rgb)
+        from gi.repository import GdkPixbuf
+        swatch = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, 40, 40)
+        swatch.fill((rgb[0] << 24) | (rgb[1] << 16) | (rgb[2] << 8) | 0xFF)
+        actions = [(colors.FORMAT_LABELS[k], lambda k=k: self._copy_color_format(rgb, k), k == kind)
+                   for k in colors.FORMATS]
+        self.show_card("color-select-symbolic", f"{formats[kind]} · kopiert",
+                       f"{formats['hex']} · {formats['rgb']}\n{formats['hsl']} · {formats['hsv']}",
+                       image=swatch, actions=actions, ms=12000)
+        if page := self._tools_page():
+            page.update_colors()
+
+    def _copy_color_format(self, rgb, kind):
+        from island.services import colors
+        if ocr.copy_text(colors.fmt(rgb, kind)):
+            self.show_activity("edit-copy-symbolic", f"{colors.FORMAT_LABELS[kind]} kopiert")
+
+    def copy_color(self, hex_):
+        """A swatch in the history: copy it in the chosen format."""
+        from island.services import colors
+        rgb = colors.from_hex(hex_)
+        if rgb:
+            self._copy_color_format(rgb, colors.format_choice(self.config.get("colorpicker_format")))
+
+    def pin_color(self, hex_):
+        self.color_history().toggle_pin(hex_)
+        if page := self._tools_page():
+            page.update_colors()
+
+    # ---- keep awake -------------------------------------------------------------------------------------------
+    def _apply_keepawake(self):
+        if self.config.flag("keepawake_enabled"):
+            if self.keepawake is None:
+                from island.services.keepawake import KeepAwake
+                self.keepawake = KeepAwake(self._on_keepawake_changed)
+                log.info("keepawake: ready, no lock until it is switched on")
+        else:
+            if self.keepawake is not None:
+                self.keepawake.shutdown("disabled")
+                self.keepawake = None
+                self._on_keepawake_changed()
+            log.info("keepawake: disabled, no lock, no timer")
+
+    def keepawake_active(self):
+        return bool(self.keepawake and self.keepawake.active)
+
+    def keepawake_text(self):
+        """'An · noch 42 min' for the tools tab and the overview."""
+        if not self.keepawake_active():
+            return "Aus"
+        left = self.keepawake.remaining()
+        if left is None:
+            return "An · bis du es ausschaltest"
+        return f"An · noch {max(1, round(left / 60))} min"
+
+    def toggle_keepawake(self):
+        if self.keepawake is None:
+            self._hint("Wach halten ist aus · Einstellungen & Übersicht")
+            return
+        self.keepawake.toggle(self.config.integer("keepawake_minutes", 0, 1440))
+
+    def _on_keepawake_changed(self):
+        k = self.keepawake
+        if k is not None and k.active:
+            left = k.remaining()
+            text = "Wach halten an" + (f" · {max(1, round(left / 60))} min" if left is not None else "")
+            self.show_activity("display-brightness-symbolic", text, seconds=2.5)
+        elif k is not None and k.failed:
+            k.failed = False
+            self._note_card("Wach halten nicht möglich",
+                            "Weder der Sitzungsmanager noch systemd-inhibit nehmen die Sperre an.")
+        elif k is not None and k.announce_off:
+            k.announce_off = False
+            self.show_activity("display-brightness-symbolic", "Wach halten aus", seconds=2.5)
+        self._update_live()
+        self.tray.refresh_checks()
+        if page := self._tools_page():
+            page.update_awake()
+
+    # ---- pinned windows ---------------------------------------------------------------------------------------
+    def _apply_pins(self):
+        if self.config.flag("pin_enabled") and Wnck is not None:
+            if self.pins is None:
+                from island.services.pins import Pins
+                self.pins = Pins(Wnck, self._wnck, self._on_pins_changed, self._own_xids)
+                log.info("pins: ready")
+        else:
+            if self.pins is not None:
+                self.pins.release_all()
+                self.pins = None
+                self._on_pins_changed()
+            log.info("pins: disabled, no handlers")
+
+    def _own_xids(self):
+        xids = set()
+        app = self.get_application()
+        for window in (app.get_windows() if app else [self]):
+            gdk_window = window.get_window()
+            if isinstance(gdk_window, GdkX11.X11Window):
+                xids.add(gdk_window.get_xid())
+        return xids
+
+    def _target_window(self):
+        """The window the user is working in: the active one, or the one before the island took the focus."""
+        window = self._wnck.get_active_window() if self._wnck else None
+        if window is None or window.get_xid() in self._own_xids():
+            window = self._prev_window
+        return window
+
+    def toggle_pin_active(self):
+        if self.pins is None:
+            self._hint("Fenster anpinnen ist aus · Einstellungen & Übersicht")
+            return
+        ok, message = self.pins.toggle(self._target_window())
+        if ok:
+            self.show_activity("view-pin-symbolic", message, seconds=2.5)
+        else:
+            self._note_card("Lässt sich nicht anpinnen", message)
+
+    def pinned_windows(self):
+        return self.pins.windows() if self.pins else []
+
+    def unpin_window(self, window):
+        if self.pins:
+            self.pins.unpin(window)
+
+    def _on_pins_changed(self):
+        self._update_live()
+        self.tray.refresh_checks()
+        if page := self._tools_page():
+            page.update_pins()
+
+    # ---- the rest of the register's actions -------------------------------------------------------------------
+    def launch_spotlight(self):
+        program = GLib.find_program_in_path("linuxmos-spotlight") or str(Path.home() / ".local/bin/linuxmos-spotlight")
+        try:
+            Gio.Subprocess.new([program], Gio.SubprocessFlags.NONE)
+        except GLib.Error:
+            self._hint("Spotlight-Suche (rofi) ist nicht installiert")
+
+    def system_lock(self):
+        system.lock()
+
+    def system_suspend(self):
+        system.suspend()
+
+    def system_reboot(self):
+        system.reboot()
+
+    def system_poweroff(self):
+        system.poweroff()
+
+    def run_function(self, fid):
+        """A function from the register by id: a hotkey, a gesture, a click in the overview, `--action ID`."""
+        fn = registry.REGISTRY.get(fid)
+        if fn is None:
+            self.show_activity("dialog-warning-symbolic", f"Unbekannte Funktion: {fid}", seconds=4)
+            return False
+        if fn.enabled_key and fn.action is not None and not self.config.flag(fn.enabled_key):
+            self._hint(f"{fn.name} ist aus · Einstellungen & Übersicht")
+            return False
+        ok, message = registry.run(fid)
+        if not ok:
+            self.show_activity("dialog-warning-symbolic", message or f"{fn.name} lässt sich nicht starten", seconds=4)
+        return ok
+
+    # ---- the settings & overview window (its own process) ------------------------------------------------------
+    def open_overview(self, tab="overview"):
+        """Start linuxmos-island-settings (a second start just shows the open window on that tab)."""
+        root = str(Path(__file__).resolve().parent.parent)
+        launcher = Gio.SubprocessLauncher.new(Gio.SubprocessFlags.NONE)
+        launcher.setenv("PYTHONPATH", root, True)
+        try:
+            launcher.spawnv([sys.executable, "-m", "island.settings", "--tab", tab])
+        except GLib.Error as error:
+            log.warning("settings window did not start: %s", error.message)
+            self.show_activity("dialog-warning-symbolic", "Einstellungen lassen sich nicht öffnen", seconds=4)
+
+    def _schedule_intro(self):
+        if not self.config.flag("overview_intro_seen"):
+            GLib.timeout_add_seconds(10, self._show_intro)
+
+    def _show_intro(self):
+        """Once after an install or update: a card that points to the overview."""
+        if self._shooting or self._card or self.expanded:
+            return GLib.SOURCE_CONTINUE      # busy: try again in 10 seconds
+        self.config["overview_intro_seen"] = True
+        self.config.save()
+        key = self.hotkey_hint("settings")
+        self.show_card("view-list-symbolic", "Neu: Übersicht der Funktionen",
+                       "Alle Funktionen, Hotkeys und Gesten an einem Ort" + (f" · {key}" if key else ""),
+                       actions=[("Öffnen", lambda: self.open_overview("overview"), True)], ms=20000)
+        return GLib.SOURCE_REMOVE
+
+    # ---- hotkeys: the config's section -> Cinnamon's custom shortcuts -----------------------------------------
+    def _apply_hotkeys(self, initial=False):
+        """Write the changed hotkeys into Cinnamon's custom shortcuts (live, no restart). Entries that left the
+        section go back to their default."""
+        from island import hotkeys
+        wanted = {fid: accel for fid, accel in self.config.section("hotkeys").items()
+                  if fid in registry.REGISTRY and isinstance(accel, str)}
+        todo = {fid: hotkeys.normalize(accel) or "" for fid, accel in wanted.items()
+                if initial or self._hotkeys_applied.get(fid) != accel}
+        for fid in self._hotkeys_applied:
+            if fid not in wanted:
+                fn = registry.REGISTRY.get(fid)
+                if fn is not None:
+                    todo[fid] = hotkeys.normalize(fn.default_hotkey) or ""
+        self._hotkeys_applied = dict(self.config.section("hotkeys"))
+        if not todo:
+            return GLib.SOURCE_REMOVE
+        keys = hotkeys.CinnamonKeys()
+        bin_dir = str(Path(launcher_path()).parent)
+        wrote = 0
+        for fid, accel in todo.items():
+            fn = registry.REGISTRY.get(fid)
+            if fn is None or not fn.kb_name:
+                continue
+            tail = fn.kb_args if fn.kb_exe == "island" else "linuxmos-spotlight"
+            if keys.set_binding(fn.kb_name, fn.kb_command(bin_dir), accel, tail):
+                wrote += 1
+        if not keys.available:
+            self.show_activity("dialog-warning-symbolic", "Hotkeys: Cinnamons Kürzel sind nicht erreichbar", seconds=5)
+        elif wrote and not initial:
+            self.show_activity("input-keyboard-symbolic", "Hotkey übernommen", seconds=2)
+        return GLib.SOURCE_REMOVE
+
+    # ---- status and the control interface the settings window talks to ---------------------------------------------
+    def function_statuses(self):
+        """{function id: callable -> (running, text)} for the register."""
+        def awake():
+            return (True, self.keepawake_text()) if self.keepawake_active() else (False, "Aus")
+
+        def pinned():
+            n = self.pins.count if self.pins else 0
+            return (n > 0, f"{n} Fenster angepinnt" if n else "Keins angepinnt")
+
+        def stretch():
+            if self.stretch.round or self.stretch.pending:
+                return True, "Karte oder Übung läuft"
+            if not self.stretch.enabled():
+                return False, "Aus"
+            left = max(0, self.stretch.rules.interval_s - self.stretch.counter.active_s)
+            return True, f"Nächste Karte in etwa {max(1, round(left / 60))} min aktiver Zeit"
+
+        def media():
+            return (bool(self.track and self.track.playing),
+                    (self.track.title or "Wiedergabe") if self.track and self.track.playing else "Nichts läuft")
+
+        def timer():
+            return (self.timer.running, f"{self.timer.label} · {format_seconds(self.timer.remaining)}"
+                    if self.timer.running else "Kein Timer")
+
+        def recording():
+            return (self._recording, "Aufnahme läuft") if self._recording else None
+
+        def clip_send():
+            return (self.clip_can_send(), "Bereit" if self.clip_can_send() else "Aus")
+
+        def clip_receive():
+            on = bool(self.clip and self.clip.receive_enabled)
+            return on, "Eingang wird beobachtet" if on else "Aus"
+
+        def privacy():
+            p = self.privacy
+            apps = [f"Mikro: {', '.join(p.mic_apps)}"] * bool(p.mic_apps) + [f"Kamera: {', '.join(p.cam_apps)}"] \
+                * bool(p.cam_apps)
+            return (bool(apps), " · ".join(apps) or "Nichts in Benutzung")
+
+        def vpn():
+            return (bool(self.vpn.names), ", ".join(self.vpn.names) if self.vpn.names else "Nicht verbunden")
+
+        def downloads():
+            n = len(self.downloads.items)
+            return (self.downloads.active, f"{n} Download{'s' if n != 1 else ''}" if self.downloads.active
+                    else "Keiner")
+
+        def water():
+            return (False, f"Heute {self.water.today_ml} von {self.water.goal} ml")
+
+        def weather():
+            c = self.weather.current
+            return (False, f"{c['temp']}° · {c['text']}") if c else (False, "Kein Wetter")
+
+        def picker():
+            return (True, "Pipette offen") if self._picking else None
+
+        def voice():
+            return (True, "Nimmt auf") if self._dictation is not None else None
+
+        def gestures_status():
+            return (bool(self._gesture_ids), f"Mausrad: {gestures.ACTIONS.get(self._gesture_map.get('wheel', ''), ('',))[0]}"
+                    if self._gesture_ids else "Aus")
+
+        return {"keep-awake": awake, "pin-window": pinned, "stretch": stretch, "media": media, "note": timer,
+                "record-area": recording, "record-screen": recording, "clip-send": clip_send,
+                "clip-receive": clip_receive, "privacy": privacy, "vpn": vpn, "downloads": downloads,
+                "water": water, "weather": weather, "color-picker": picker, "voice": voice,
+                "gestures": gestures_status}
+
+    def control_registry(self):
+        """The register with live status and the real hotkeys, as the settings window wants it."""
+        from island import hotkeys
+        entries = None
+        try:
+            keys = hotkeys.CinnamonKeys()
+            entries = keys.entries() if keys.available else None
+        except Exception:        # no gsettings: the defaults and the config are what we know
+            log.exception("hotkeys: Cinnamon's shortcuts could not be read")
+        return registry.REGISTRY.rows(self.config, entries, live=True)
+
+    def control_status(self):
+        pid = os.getpid()
+        hidden = [fn.name for fn in registry.REGISTRY if fn.enabled_key and not self.config.flag(fn.enabled_key)]
+        return {"version": __version__, "pid": pid,
+                "uptime_s": int((GLib.get_monotonic_time() - self._started) / 1_000_000),
+                "disabled": hidden, "recording": self._recording, "picking": self._picking,
+                "gestures": dict(self._gesture_map) if self._gesture_ids else None,
+                "busy": self._shooting, "expanded": self.expanded, "tab": self._current_tab}
+
+    def control_run(self, fid):
+        """(ok, message, busy): busy = a screen grab has the island hidden and will report when it is over."""
+        self.follow_pointer()
+        ok = self.run_function(fid)
+        return ok, "" if ok else "Die Funktion läuft nicht an", self._shooting
+
+    def emit_action_finished(self):
+        """Tell the settings window (which stepped aside for a screen grab) that it may come back."""
+        app = self.get_application()
+        connection = app.get_dbus_connection() if app else None
+        if connection is not None:
+            try:
+                connection.emit_signal(None, CONTROL_PATH, CONTROL_IFACE, "ActionFinished", None)
+            except GLib.Error:
+                pass
 
     # ---- options (tray, checkboxes) ----------------------------------------------
     def set_option(self, key, value):
@@ -1942,6 +2580,29 @@ class IslandWindow(Gtk.Window):
             page.refresh()
         elif key == "vpn_lookup" and value:
             self.vpn.refresh_info()
+        elif key == "keepawake_enabled":
+            self._apply_keepawake()
+        elif key == "pin_enabled":
+            self._apply_pins()
+            if page := self._tools_page():
+                page.update_pins()
+        elif key in ("gestures_enabled", "gestures"):
+            self._apply_gestures()
+        elif key == "hotkeys":
+            self._apply_hotkeys()
+        elif key == "clipactions_enabled":
+            if not value:
+                log.info("clipactions: disabled")
+            if page := self._built("clipboard"):
+                page.mark_dirty()
+                page.hide_actions()
+        elif key == "colorpicker_enabled":
+            if not value:
+                log.info("colorpicker: disabled")
+            if page := self._tools_page():
+                page.update_colors()
+        elif key == "colorpicker_history" and self._colors is not None:
+            self._colors.set_limit(self.config.integer("colorpicker_history", 1, 200))
         elif key.startswith("command_bar_") and (page := self._built("search")):
             page.refresh()
 
@@ -2408,6 +3069,20 @@ def _chat_page(island):
     return ChatPage(island)
 
 
+def _tools_page(island):
+    from island.toolspage import ToolsPage  # loaded on first use only
+    return ToolsPage(island)
+
+
+CONTROL_XML = f"""<node><interface name="{CONTROL_IFACE}">
+  <method name="GetRegistry"><arg type="s" direction="out" name="json"/></method>
+  <method name="GetStatus"><arg type="s" direction="out" name="json"/></method>
+  <method name="Run"><arg type="s" direction="in" name="id"/><arg type="b" direction="out" name="ok"/>
+    <arg type="s" direction="out" name="message"/><arg type="b" direction="out" name="busy"/></method>
+  <signal name="ActionFinished"/>
+</interface></node>"""
+
+
 class IslandApp(Gtk.Application):
     def __init__(self, debug=None):
         super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.FLAGS_NONE)
@@ -2446,11 +3121,43 @@ class IslandApp(Gtk.Application):
         voice = hotkey("voice", None, lambda win, _p: win.voice())
         stretch_now = hotkey("stretch-now", None, lambda win, _p: win.stretch.trigger_now())
         clip_send = hotkey("clip-send", None, lambda win, _p: win.clip_send_clipboard())
+        run = hotkey("run", "s", lambda win, fid: win.run_function(fid))
         quit_action = Gio.SimpleAction.new("quit", None)
         quit_action.connect("activate", lambda *_: self.quit())
-        for action in (toggle, tab, shot, read_text, read_qr, record, chat_tab, voice, stretch_now, clip_send,
+        for action in (toggle, tab, shot, read_text, read_qr, record, chat_tab, voice, stretch_now, clip_send, run,
                        quit_action):
             self.add_action(action)
+
+    def do_dbus_register(self, connection, object_path):
+        """Besides the actions (Gtk.Application exports those): the control interface the settings window uses
+        to read the register and the status and to run a function."""
+        if not Gtk.Application.do_dbus_register(self, connection, object_path):
+            return False
+        try:
+            node = Gio.DBusNodeInfo.new_for_xml(CONTROL_XML)
+            connection.register_object(object_path, node.interfaces[0], self._on_control_call, None, None)
+        except GLib.Error as error:
+            log.warning("control interface not exported: %s", error.message)
+        return True
+
+    def _on_control_call(self, _connection, _sender, _path, _iface, method, params, invocation):
+        window = self.window
+        if window is None:
+            invocation.return_dbus_error("org.linuxmos.Island.Error.NotReady", "the island is still starting")
+            return
+        try:
+            if method == "GetRegistry":
+                invocation.return_value(GLib.Variant("(s)", (json.dumps(window.control_registry()),)))
+            elif method == "GetStatus":
+                invocation.return_value(GLib.Variant("(s)", (json.dumps(window.control_status()),)))
+            elif method == "Run":
+                ok, message, busy = window.control_run(params.unpack()[0])
+                invocation.return_value(GLib.Variant("(bsb)", (ok, message, busy)))
+            else:
+                invocation.return_dbus_error("org.linuxmos.Island.Error.UnknownMethod", method)
+        except Exception as error:      # never let a request take the island down
+            log.exception("control call %s failed", method)
+            invocation.return_dbus_error("org.linuxmos.Island.Error.Failed", str(error))
 
     def do_activate(self):
         if self.window is None:
@@ -2546,6 +3253,10 @@ def main(argv=None):
 
     if "--set-key" in argv:
         return _set_key()
+
+    if "--list-actions" in argv or "--check-hotkeys" in argv:
+        from island import cli
+        return cli.list_actions(argv) if "--list-actions" in argv else cli.check_hotkeys()
 
     _set_process_name()
     _setup_logging()

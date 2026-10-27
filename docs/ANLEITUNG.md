@@ -428,12 +428,27 @@ Wenn es losgeht, sagt die Insel kurz, wer: „Mikrofon aktiv · Firefox“, „K
 
 **Wie das ohne Dauerlast geht:** Das Mikrofon kommt aus demselben `pactl subscribe`, das schon die Lautstärke liefert; nur bei einem Ereignis werden die Aufnahme-Streams einmal abgefragt. Pegelanzeigen (pavucontrol) und Aufnahmen vom Lautsprecher-Monitor zählen nicht. Die Kamera meldet der Kernel per inotify, sobald jemand `/dev/video*` öffnet oder schließt; erst dann sucht die Insel in `/proc` nach der App – und auch erst nach einer Sekunde, damit kurzes Antasten (PipeWire, Browser beim Auflisten der Kameras) keinen Punkt auslöst. Downloads beobachtet inotify im Download-Ordner, höchstens einmal pro Sekunde.
 
+#### Werkzeuge & Zentrale
+
+Der Tab **Werkzeuge** (letztes Symbol der Tab-Leiste) bündelt vier Handgriffe, die es auch per Hotkey und im Tray gibt:
+
+| Werkzeug | Hotkey | Was es tut |
+|---|---|---|
+| Farbpipette | `Ctrl+Alt+C` | Insel blendet sich aus, der Bildschirm wird einmal aufgenommen und eingefroren; Lupe (11×11 Pixel, 10-fach) mit Hex-Wert am Mauszeiger, Klick wählt, `Esc` bricht ab, Mausrad ändert die Lupe. Die Farbe landet als Hex, RGB, HSL oder HSV in der Zwischenablage (`colorpicker_format`), eine Karte zeigt alle Formate, die letzten 20 Farben stehen als Farbfelder im Tab (Klick kopiert, Rechtsklick fixiert) |
+| Wach halten | `Ctrl+Alt+K` | Kein Bildschirmschoner, keine Bildschirmabschaltung, kein automatischer Ruhezustand, solange es an ist (Kaffeetasse in der Pille); nach `keepawake_minutes` (60) schaltet es sich selbst aus |
+| Fenster anpinnen | `Ctrl+Alt+P` | Das aktive Fenster bleibt im Vordergrund (Pin mit Anzahl in der Pille); im Tab die Liste mit „Aufheben“ |
+| Zwischenablage-Aktionen | `Ctrl+Alt+Shift+V` | Im Tab Zwischenablage am Eintrag „Aktionen“, oder für den aktuellen Inhalt: Formatierung entfernen, Tracking aus Links, GROSS/klein/Titel, JSON, URL, Base64, Leerzeichen, Zeilen sortieren, doppelte Zeilen, QR-Code (mit `qrencode`) |
+
+Das **Einstellungsfenster** (`Ctrl+Alt+H`, Zahnrad, Tray, `linuxmos-island --settings`) ist ein eigener Prozess, der nur beim Öffnen läuft. Tab „Übersicht“: alle Funktionen mit Hotkey (Klick ändert ihn, mit Konfliktwarnung), Schalter und Status; ein Klick auf den Namen startet die Funktion; „Was läuft gerade“ mit CPU und RAM der Insel. Tab „Gesten“: Mausrad, Mittel-/Rechts-/Doppelklick auf der Pille frei belegbar. Tab „Funktionen“: alle Einstellungen mit geprüften Feldern. Alle Einzelheiten, die Technik von Wach halten und die Messwerte: [README → Werkzeuge & Zentrale](../README.md#werkzeuge--zentrale), alle Schlüssel: [CONFIG.md](CONFIG.md).
+
 ### Tray-Menü
 
 Das MosIsland-Icon liegt in der Top Bar neben der Uhr (Rechtsklick):
 
 | Schalter                          | Wirkung                                                         |
 |-----------------------------------|-----------------------------------------------------------------|
+| Einstellungen & Übersicht         | Das Einstellungsfenster (alle Funktionen, Hotkeys, Gesten, Einstellungen) |
+| Wach halten · Farbpipette starten · Aktives Fenster anpinnen | Die drei Werkzeuge (Wach halten als Häkchen), mit ihren Hotkeys im Namen |
 | Mit Cinnamon starten              | Autostart an/aus                                                |
 | Maskottchen                       | Im Leerlauf an/aus, Figur (Augen, Katze, Roboter, Blob) und „Augen-Modus (groß im Leerlauf)“ |
 | Dehnen                            | „Dehn-Erinnerung“ an/aus, „Heute aus“ (bis Mitternacht), „Jetzt dehnen“, „Übungen bearbeiten …“ |
@@ -450,7 +465,7 @@ Das MosIsland-Icon liegt in der Top Bar neben der Uhr (Rechtsklick):
 | Live-Hinweise                     | „Mikrofon & Kamera“, „VPN-Status“, „VPN: Land & IP (fragt ipinfo.io)“, „Download-Fortschritt“ |
 | Monitor                           | „Hauptmonitor“, „Monitor mit der Maus (beim Öffnen)“ oder einer der angeschlossenen Monitore (Anschlussname · Auflösung) |
 | Sprache / Language                | Automatisch (Systemsprache), Deutsch oder English – die Insel startet dabei kurz neu |
-| Einstellungen öffnen              | `config.json` im Editor (wie das Zahnrad in der aufgeklappten Insel) |
+| Config-Datei öffnen               | `config.json` im Editor (das Zahnrad in der aufgeklappten Insel öffnet das Einstellungsfenster) |
 | Über MosIsland · Beenden          |                                                                 |
 
 Ein Linksklick aufs Icon klappt die Insel auf.
@@ -469,7 +484,11 @@ Ein Linksklick aufs Icon klappt die Insel auf.
 | Bildschirmaufnahme Bereich / Bildschirm | `Ctrl+Alt+R` / `Ctrl+Alt+Shift+R` (nochmal = beenden) |
 | KI-Chat / Diktat              | `Ctrl+Alt+A` / `Ctrl+Alt+M`                             |
 | Zwischenablage an den Standard-Peer senden | `Ctrl+Alt+Shift+T` (mit „Clip-Senden“; `Ctrl+Alt+T` ist Cinnamons Terminal) |
-| Lautstärke                    | Mausrad auf der eingeklappten Pille                     |
+| Aktionen für die Zwischenablage | `Ctrl+Alt+Shift+V`                                    |
+| Farbpipette                   | `Ctrl+Alt+C` (Klick wählt, `Esc` bricht ab, Mausrad = Lupe) |
+| Wach halten / Fenster anpinnen | `Ctrl+Alt+K` / `Ctrl+Alt+P`                            |
+| Einstellungen & Übersicht     | `Ctrl+Alt+H`                                            |
+| Lautstärke                    | Mausrad auf der eingeklappten Pille (umbelegbar: Einstellungen → Gesten) |
 | Dateien ablegen               | Datei aus Nemo/Desktop auf die Pille ziehen             |
 | Spulen                        | Klick auf den Fortschrittsbalken oder eine Lyrics-Zeile |
 
@@ -482,6 +501,10 @@ linuxmos-island --toggle
 linuxmos-island --tab todo          # search|home|clipboard|shelf|todo|note|water|stretch|weather|controls
 linuxmos-island --set-city "München"
 linuxmos-island --clip-send         # Zwischenablage an den Standard-Peer senden (wie der Hotkey)
+linuxmos-island --settings          # Einstellungen & Übersicht (--tab overview|gestures|functions)
+linuxmos-island --action color-picker   # eine Funktion aus dem Register auslösen (IDs: --list-actions)
+linuxmos-island --list-actions      # alle Funktionen mit Hotkey, Schalter und Aktion
+linuxmos-island --check-hotkeys     # Hotkey-Konflikte (untereinander und mit Cinnamon)
 linuxmos-island --stretch-now       # sofort eine Dehn-Karte zeigen
 linuxmos-island --stretch-test      # Test beim Start: 1 Minute Intervall, Leerlauf-Schwellen in Sekunden
 linuxmos-island --force-idle        # Test beim Start: Augen-Modus ohne Warten
@@ -490,7 +513,7 @@ linuxmos-island --quit
 
 ### Einstellungen
 
-Die meisten Schalter liegen im Tray-Menü bzw. im Wasser-Tab (⚙). Alles steht außerdem in `~/.config/linuxmos/island/config.json`. Das **Zahnrad** oben rechts in der aufgeklappten Insel (oder Tray → „Einstellungen öffnen“) trägt fehlende Schlüssel mit ihren Standardwerten ein und öffnet die Datei im Editor (`xdg-open`, sonst `gio open`, sonst `xed`). **Änderungen gelten sofort, ohne Neustart** (nur `language` braucht einen). Ist das JSON ungültig, bleiben die alten Werte aktiv und eine Karte meldet „Config ungültig, alte Werte bleiben“ mit Zeile und Spalte. Alle Schlüssel mit Standardwert, Bedeutung und gültigem Bereich stehen in **[CONFIG.md](CONFIG.md)**; hier die wichtigsten:
+Die meisten Schalter liegen im Tray-Menü bzw. im Wasser-Tab (⚙). Alles steht außerdem in `~/.config/linuxmos/island/config.json`. Das **Zahnrad** oben rechts in der aufgeklappten Insel (oder Tray → „Einstellungen & Übersicht“, `Ctrl+Alt+H`) öffnet das **Einstellungsfenster**; darin trägt der Link „Config als Datei öffnen“ (oder Tray → „Config-Datei öffnen“) fehlende Schlüssel mit ihren Standardwerten ein und öffnet die Datei im Editor (`xdg-open`, sonst `gio open`, sonst `xed`). **Änderungen gelten sofort, ohne Neustart** (nur `language` braucht einen). Ist das JSON ungültig, bleiben die alten Werte aktiv und eine Karte meldet „Config ungültig, alte Werte bleiben“ mit Zeile und Spalte. Alle Schlüssel mit Standardwert, Bedeutung und gültigem Bereich stehen in **[CONFIG.md](CONFIG.md)**; hier die wichtigsten:
 
 | Key                  | Default   | Bedeutung                                                    |
 |----------------------|-----------|--------------------------------------------------------------|
@@ -833,6 +856,7 @@ bin/linuxmos-spotlight     Spotlight öffnen/schließen
 bin/linuxmos-perf          CPU-Last und Insel-RAM messen
 bin/linuxmos-clip          Clip-Transfer auf der Kommandozeile (reines Python, auch ohne Bildschirm)
 bin/linuxmos-island        MosIsland starten/steuern (Hotkeys gehen per D-Bus direkt an die laufende Insel)
+bin/linuxmos-island-settings  Einstellungsfenster (eigener Prozess, läuft nur solange es offen ist)
 island/                    MosIsland (Python + GTK3)
   app.py                   Fenster, Zustände, Hover/Fokus/Einfügen, Drag & Drop, Lyrics-Takt, Pomodoro
   pages.py                 Die Tabs (Jetzt, Zwischenablage, Ablage, Aufgaben, Notiz, Wasser, Wetter, Steuerung)
@@ -840,6 +864,14 @@ island/                    MosIsland (Python + GTK3)
   clipcli.py               linuxmos-clip: setup, doctor, send, receive, receive-ssh, apply (ohne GTK)
   clipview.py              Streifen „Transfer“ im Zwischenablage- und Ablage-Tab (erst beim ersten Öffnen)
   tray.py                  Tray-Icon mit den Schaltern
+  registry.py              Register aller Funktionen (Name, Hotkey, Schalter, Aktion, Status): Quelle der Wahrheit
+  hotkeys.py               Tastenkombinationen, Konflikte, Brücke zu Cinnamons benutzerdefinierten Kürzeln
+  gestures.py              Gesten auf der Pille (Klassifizierung, Aktionen, Standardwerte)
+  colorpicker.py           Farbpipette: Standbild-Overlay mit Lupe
+  toolspage.py             Tab „Werkzeuge“ (Farbpipette, Wach halten, Pins)
+  settings.py, settingspages.py, settingslogic.py, settingsmeta.py, settingsui.py, settings.css
+                           Einstellungsfenster (GTK, eigener Prozess), seine Regeln und Eingabeprüfung ohne GTK
+  control.py, cli.py       D-Bus-Zugang zur laufenden Insel; `--list-actions`, `--check-hotkeys`
   editor.py                Markup-Editor für Screenshots (wird erst beim ersten Öffnen geladen)
   shot.py                  Screenshot, Text & QR ohne laufende Insel (Fallback der Hotkeys)
   i18n.py                  Oberflächen-Texte Deutsch → Englisch, Datumsformate
@@ -850,6 +882,8 @@ island/                    MosIsland (Python + GTK3)
                            Screenshot (maim/slop/xclip), Text & QR (tesseract/zbarimg),
                            Bildschirmaufnahme (ffmpeg), KI-Chat/Diktat/Schlüsselbund (curl, secret-tool),
                            Rechner/Einheiten/Währungen (calc.py), Apps/Dateien/Websuche (finder.py),
+                           Zwischenablage-Aktionen (textactions.py), Farben (colors.py), Wach halten
+                           (keepawake.py: D-Bus-Sperre), Fenster anpinnen (pins.py: libwnck),
                            Clip-Transfer (clipcore.py: Empfang, Eingang, Limits, ssh-Aufruf ohne GTK;
                            clipxfer.py: Senden und Eingangs-Monitor, nur geladen, wenn der Transfer an ist)
 ```

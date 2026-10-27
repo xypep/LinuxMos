@@ -8,7 +8,7 @@
 
 Turns Linux Mint Cinnamon into a lightweight macOS look-alike – dock, top bar, widgets, Spotlight and an optional Dynamic Island – without the desktop eating CPU while idle.
 
-![MosIsland](https://img.shields.io/badge/MosIsland-1.13.0-blue)
+![MosIsland](https://img.shields.io/badge/MosIsland-1.14.0-blue)
 ![Platform](https://img.shields.io/badge/platform-Linux%20Mint%2022%20Cinnamon-87CF3E)
 ![Display server](https://img.shields.io/badge/display-X11-lightgrey)
 
@@ -34,6 +34,7 @@ Turns Linux Mint Cinnamon into a lightweight macOS look-alike – dock, top bar,
 - [Configuration](#configuration)
 - [Stretch reminder](#stretch-reminder)
 - [Clip transfer](#clip-transfer)
+- [Tools & hub](#tools--hub)
 - [Tests](#tests)
 - [Known issues](#known-issues)
 - [Roadmap](#roadmap)
@@ -81,8 +82,13 @@ Turns Linux Mint Cinnamon into a lightweight macOS look-alike – dock, top bar,
 - **Mascot** – eyes, a cat, a robot or a blob while you are away; they doze off and wave when you come back
 - **Big-eyes mode** – while you are away the pill grows and the character gets 1.5 to 3 times as big (`eye_mode_scale`), temperature and battery go; hover, click or any input brings everything back within about 250 ms. Warnings, music, timers and the stretch card come first. Needs the mascot switched on (`mascot`), otherwise it does nothing
 - **Stretch reminder** – after 45 minutes of *active* time at the computer (input within the last minute) the island shows a card with an exercise and a soft two-note chime. "Start" runs a countdown with a ring in the pill, and **"Done" only counts if you really did not type during it.** A real break (5 minutes without input) replaces the stretching, and the card waits during fullscreen and while a focus timer runs. Later, Today off, Off, daily statistics, your own exercises → [details](#stretch-reminder)
-- **Settings gear** – the gear at the top right of the opened island opens `config.json` in your editor, with every option in it. Changes apply at once (inotify, costs nothing); a typo keeps the old values active and a card names the place in the file
-- **Tray menu** – autostart, mascot (pick the character, big-eyes mode), stretch (reminder, today off, stretch now, exercises), minimal notch, OSD, clipboard auto-clear, clip transfer (send, receive), search (files, currencies, search engine), screenshot, text & QR, screen recording (format, sound), AI (chat, dictation, connection & API key), notifications (on/off, do not disturb, hide apps), live hints (mic & camera, VPN, downloads), monitor, language, open settings, quit
+- **Clipboard actions** – on every history entry (the "Aktionen" button) and with `Ctrl+Alt+Shift+V` for what is on the clipboard now: strip formatting, remove tracking parameters from links (`utm_*`, `fbclid`, `gclid` …), UPPER/lower/Title case, format or minify JSON, URL and Base64 encode/decode, tidy whitespace, sort lines, remove duplicate lines, QR code (if `qrencode` is installed). The result shows up as a **new** history entry and the original stays; copies marked private (password managers) are never touched → [details](#tools--hub)
+- **Colour picker** – `Ctrl+Alt+C`: freezes the screen, a loupe (11×11 pixels, 10× magnified) with the hex value at the pointer, a click picks. Hex, RGB, HSL or HSV goes onto the clipboard, a card shows all formats, the last 20 colours are kept as swatches (pinnable)
+- **Keep awake** – `Ctrl+Alt+K` or the tray tick: no screen saver, no screen blanking, no automatic suspend; a coffee cup in the pill, switches itself off after 60 minutes. The lock belongs to the island's D-Bus connection – if the island crashes it is gone
+- **Pin a window** – `Ctrl+Alt+P`: the active window stays on top (a pin with the count in the pill, a list with "Aufheben" in the Tools tab)
+- **Settings & overview** – `Ctrl+Alt+H`, the gear or the tray entry open a window of its own (its own process, only while it is open): **every function** with hotkey, switch and status, a search box, a click on a name runs the function, a click on the shortcut changes the hotkey (with a conflict warning, effective at once), "what is running now" with the island's CPU and RAM, the pill's **gestures** (wheel, middle/right/double click … freely assignable) and every setting with checked inputs → [details](#tools--hub)
+- **Config reload** – changes to `config.json` apply at once (inotify, costs nothing); a typo keeps the old values active and a card names the place in the file. Open it as a file from the settings window ("Config als Datei öffnen") or tray → "Config-Datei öffnen"
+- **Tray menu** – settings & overview, keep awake (tick), colour picker, pin the active window, autostart, mascot (pick the character, big-eyes mode), stretch (reminder, today off, stretch now, exercises), minimal notch, OSD, clipboard auto-clear, clip transfer (send, receive), search (files, currencies, search engine), screenshot, text & QR, screen recording (format, sound), AI (chat, dictation, connection & API key), notifications (on/off, do not disturb, hide apps), live hints (mic & camera, VPN, downloads), monitor, language, open config file, quit
 - **English or German** – follows the system language automatically, switchable in the tray menu (`Sprache / Language`)
 
 **Lightweight** – measured: Conky widgets ~0.03 % CPU, MosIsland ~0.1 % CPU (Cinnamon 6, music playing) and ~60 MB RAM. No blur compositor, no polling loops.
@@ -124,6 +130,21 @@ The package costs about 0.6 MB of RAM. The CPU values are higher in this environ
 
 "Ticks" are CPU time in hundredths of a second during the 60 s (13 ticks = 0.13 s). The package costs 0.2 to 0.6 MB of RAM while idle (0.7 MB more than before once content was received and the tab opened); the CPU load does not change measurably. Off means off: with sending and receiving off the module is not even imported (the log says `clip: disabled, no monitors`). A first draft cost 4 MB because `dataclasses`, `secrets` (→ OpenSSL) and `subprocess` stayed in memory; the core now only uses standard modules the island has loaded anyway. No daemon, no polling, no permanent SSH connection: one `ssh` process per clip, which ends afterwards.
 
+**"Tools & hub" package (1.14.0)** – measured as above, every row its own start with a fresh profile, 12 s after start, `linuxmos-perf 60`; "ticks" are CPU time in hundredths of a second during the 60 s. So that before and after are in the same state, with `--force-idle` (the mascot from the start, which blinks – the most expensive idle state):
+
+| MosIsland                                              | RSS     | PSS     | CPU (60 s)       |
+|--------------------------------------------------------|---------|---------|------------------|
+| before (1.13.0), run 1                                 | 59 MB   | 39 MB   | 0.8 % (49 ticks) |
+| before (1.13.0), run 2                                 | 59 MB   | 39 MB   | 0.8 % (49 ticks) |
+| after (1.14.0), run 1                                  | 60 MB   | 40 MB   | 0.8 % (47 ticks) |
+| after (1.14.0), run 2                                  | 59 MB   | 40 MB   | 0.8 % (51 ticks) |
+| after, all new features off                            | 59 MB   | 40 MB   | 0.7 % (42 ticks) |
+| after, keep awake on + one window pinned (without `--force-idle`) | 61 MB | 34 MB | 0.7 % (41 ticks) |
+| after, "Werkzeuge" tab opened, colour picker used 3× (without `--force-idle`) | 62 MB | 37 MB | 0.4 % (26 ticks) |
+| after, settings window open                            | island 60 MB, window (own process) 63 MB | – | 0.7 % (44 ticks) |
+
+The package costs **about 0.5 to 1 MB of RAM** while idle (new modules, the register with 41 entries, the D-Bus object), the CPU load does not change measurably: there is no new timer, no tick, no polling. Keep awake is a lock without a tick (one timer on the end time), pins only attach one signal to the screen while a window is pinned. Without `--force-idle` the state decides the number, not the version: right after input (the pill shows the clock) it is about 25 ticks, after a minute of rest (blinking mascot) about 40 to 47 – measured the same with 1.13.0 (25 and 47 ticks in two runs). PSS depends on how many other processes share the same pages and so varies between 34 and 41 MB. **The colour picker** needs 15 MB more while it is open (the still), 60.6 MB → 75 MB → **61.0 MB** after closing, also after the third time; a first draft that read the screen through GDK kept 15 MB for good (GDK keeps a shared-memory image attached), so `maim` takes the picture now. **The settings window** is a process of its own (63 MB while open) and gone afterwards: `pgrep -f island.settings` is empty.
+
 ---
 
 ## Requirements
@@ -133,7 +154,7 @@ The package costs about 0.6 MB of RAM. The CPU values are higher in this environ
 - Internet connection (apt packages and the WhiteSur themes from GitHub)
 - Optional: **Timeshift** set up (for the snapshot before installing)
 
-`install.sh` installs every package itself, e.g. `plank`, `conky-std`, `rofi`, `fonts-inter`, `sassc`; with `--island` also `python3-gi`, `gir1.2-gtk-3.0`, `gir1.2-wnck-3.0`, `gir1.2-xapp-1.0`, `xdotool`, `pulseaudio-utils`, `iso-codes`, `ffmpeg` (recording, dictation) and `libsecret-tools` (API key in the keyring).
+`install.sh` installs every package itself, e.g. `plank`, `conky-std`, `rofi`, `fonts-inter`, `sassc`; with `--island` also `python3-gi`, `gir1.2-gtk-3.0`, `gir1.2-wnck-3.0`, `gir1.2-xapp-1.0`, `xdotool`, `pulseaudio-utils`, `iso-codes`, `ffmpeg` (recording, dictation) and `libsecret-tools` (API key in the keyring). **Optional, not installed automatically:** `qrencode` (`sudo apt install qrencode`) for the clipboard's "QR code" action.
 
 ---
 
@@ -206,6 +227,10 @@ linuxmos-island --clip-send  # send the clipboard to the default peer (clip tran
 linuxmos-clip setup          # set up clip transfer: key, peer, confirm the fingerprint
 linuxmos-clip doctor         # check clip transfer (ssh, key, peer, sshd, inbox)
 echo hello | linuxmos-clip send --peer Laptop   # send text/a file from the command line
+linuxmos-island --settings   # settings & overview (a window of its own), --tab overview|gestures|functions
+linuxmos-island --action ID  # run a function from the register, e.g. color-picker, keep-awake, pin-window, clip-actions
+linuxmos-island --list-actions  # every function as a table (--markdown: the hotkey table for the README)
+linuxmos-island --check-hotkeys # check the hotkeys for conflicts (among themselves and with Cinnamon/Mint)
 linuxmos-island --stretch-now   # show a stretch card right away (also while the island runs)
 linuxmos-island --stretch-test  # test: 1-minute interval, idle thresholds in seconds (at start-up only)
 linuxmos-island --force-idle    # test: mascot/big eyes without waiting, hover ends it (at start-up only)
@@ -230,9 +255,16 @@ LINUXMOS_LOG=debug linuxmos-island   # log with every measurement (default: info
 | `Ctrl+Alt+A`     | Open the AI chat (with `ai_chat`)                           |
 | `Ctrl+Alt+M`     | Dictation: record, press again = recognise and paste (with `ai_voice`) |
 | `Ctrl+Alt+Shift+T` | Send the clipboard to the default peer (with "Clip-Senden"; `Ctrl+Alt+T` is Cinnamon's terminal) |
+| `Ctrl+Alt+Shift+V` | Actions for the clipboard's content (formatting, links, JSON, Base64 …) |
+| `Ctrl+Alt+C`     | Colour picker: loupe at the pointer, click picks, `Esc` cancels, wheel resizes the loupe |
+| `Ctrl+Alt+K`     | Keep awake on/off                                           |
+| `Ctrl+Alt+P`     | Pin / unpin the active window                               |
+| `Ctrl+Alt+H`     | Settings & overview ("Übersicht" tab)                       |
 | In the editor    | `A` arrow · `R` rectangle · `M` highlighter · `T` text · `B` pixelate · `O` recognise text · `1`–`6` color · `Ctrl+Z` · `Ctrl+C` · `Ctrl+S` = Done |
 | `Esc`            | Collapse MosIsland                                          |
-| Mouse wheel on the pill | Volume ±5 %                                          |
+| Mouse wheel on the pill | Volume ±5 % (re-assignable, see [gestures](#tools--hub)) |
+
+Every key can be changed in the settings window ("Übersicht" tab, click the shortcut) and lives in the config under `hotkeys`. The table matches the island's register; `linuxmos-island --list-actions` shows it with the **real** values, `--check-hotkeys` checks for conflicts.
 
 ---
 
@@ -341,11 +373,24 @@ MosIsland: `~/.config/linuxmos/island/config.json` – most switches are also in
   "stretch_volume": 0.5,
   "stretch_off_date": "",
   "eye_mode": true,
-  "eye_mode_scale": 2.0
+  "eye_mode_scale": 2.0,
+  "clipactions_enabled": true,
+  "clipactions_tracking_params": [],
+  "colorpicker_enabled": true,
+  "colorpicker_format": "hex",
+  "colorpicker_history": 20,
+  "keepawake_enabled": true,
+  "keepawake_minutes": 60,
+  "pin_enabled": true,
+  "pin_release_on_exit": true,
+  "hotkeys": {},
+  "gestures_enabled": true,
+  "gestures": {},
+  "overview_intro_seen": false
 }
 ```
 
-The easiest way is the **gear** at the top right of the opened island (or tray → "Open settings"): it adds missing keys with their defaults and opens the file with `xdg-open` (else `gio open`, else `xed`) – that is, in your default program for `.json` files. Save and it applies at once, no restart. If the JSON is invalid, the old values stay active, a card says "Config ungültig, alte Werte bleiben" (invalid config, old values stay) with line and column, and the island does not write to the file until it is right again. Unknown keys are kept, values outside the valid range are clamped. **Every key with its default, meaning and range: [docs/CONFIG.md](docs/CONFIG.md)** (German).
+The easiest way is the **settings window** (the gear at the top right of the opened island, `Ctrl+Alt+H`, tray → "Einstellungen & Übersicht"): its "Funktionen" tab has an input for every key that checks the value. As a file: the "Config als Datei öffnen" link in the window or tray → "Config-Datei öffnen" – that adds missing keys with their defaults and opens the file with `xdg-open` (else `gio open`, else `xed`), that is, in your default program for `.json` files. Save and it applies at once, no restart. If the JSON is invalid, the old values stay active, a card says "Config ungültig, alte Werte bleiben" (invalid config, old values stay) with line and column, and the island does not write to the file until it is right again. Unknown keys are kept, values outside the valid range are clamped. **Every key with its default, meaning and range: [docs/CONFIG.md](docs/CONFIG.md)** (German).
 
 `language`: `auto` (system language: German for `de_*`, English otherwise), `de` or `en`. Switching it in the tray menu restarts MosIsland briefly (a running timer is lost).
 
@@ -436,9 +481,56 @@ Text, images and files between PCs over SSH – Linux ↔ Linux tested in the co
 
 ---
 
+## Tools & hub
+
+Package "Tools & hub" (1.14.0). Everything can be switched off on its own (settings window, `config.json`); off means off: no handlers, no timers, no locks – the log says so (`keepawake: disabled, no lock, no timer`, `pins: disabled, no handlers`, `gestures: disabled, no handlers` …). The texts of this package exist in German only.
+
+### Clipboard actions
+
+The **Aktionen** button (the three dots) on a history entry, or `Ctrl+Alt+Shift+V` for what is on the clipboard now. The actions appear as buttons, a click runs one:
+
+| Action | What happens |
+|---|---|
+| Formatierung entfernen (strip formatting) | Plain text only (HTML/RTF leaves the clipboard) |
+| Tracking aus Links entfernen (remove tracking) | `utm_*`, `fbclid`, `gclid`, `msclkid`, `mc_eid`, `igshid`, `ref_src` and the like disappear from every link in the text; functional parameters (`id`, `page`, `q`, `ref`, `v` …) and the rest stay character for character. More names in `clipactions_tracking_params` ("Link bereinigt, 3 Parameter entfernt") |
+| GROSS · klein · Titel-Schreibweise | `don't` becomes `Don't`, not `Don'T` |
+| JSON formatieren / zusammenfassen | Order and umlauts stay; broken JSON: a card with line and column, the clipboard stays as it was |
+| URL kodieren / dekodieren · Base64 kodieren / dekodieren | Base64 also takes the URL-safe alphabet and missing `=`; binary data is refused |
+| Leerzeichen bereinigen | Doubled spaces, trailing spaces, more than one blank line, the ends |
+| Zeilen sortieren · Doppelte Zeilen entfernen | Sorted ignoring case; removing keeps the first one |
+| QR-Code | Only if `qrencode` is installed (otherwise the button is missing): a card with the code, "Als Bild kopieren" |
+
+The result replaces the clipboard only after the click and appears as a **new history entry** – the original stays. The card offers "Original zurück" and "Einfügen". **Copies marked private (KeePassXC & co.) are never processed** (card "Als privat markiert"; they never enter the history either). Plain text functions: nothing runs while idle.
+
+### Colour picker
+
+`Ctrl+Alt+C`, the button in the "Werkzeuge" tab or tray → "Farbpipette starten". The island hides, the whole screen (all monitors, also with HiDPI scaling) is shot **once** and laid over the screen as a still – so neither the island nor the overlay is in the picture. A loupe at the pointer (11×11 pixels, 10×, the middle marked) with the hex value, redrawn only when the pointer moves. **Click** picks, **`Esc`** or a right click cancels, the **mouse wheel** resizes the loupe (5 to 25 pixels). The colour then sits on the clipboard in the format `colorpicker_format` (`hex`, `rgb`, `hsl`, `hsv`), a card shows a swatch and all four formats (a click on HEX/RGB/HSL/HSV copies that one). The last 20 colours (`colorpicker_history`, `~/.local/share/linuxmos/island/colors.json`) are small swatches in the "Werkzeuge" tab: click copies, right click pins (yellow border, pinned ones do not count against the limit). The still is released at once (measurement below). `maim`, which the screenshots need anyway, takes the picture.
+
+### Keep awake
+
+`Ctrl+Alt+K`, the switch in the "Werkzeuge" tab or the tray tick. While on: a coffee cup in the pill, no screen saver, no screen blanking, no automatic suspend; locking and suspending **by hand** still work. After `keepawake_minutes` (default 60, `0` = never) it switches itself off – a single timer on the end time, no tick. After a restart it is always off.
+
+**How:** `org.gnome.SessionManager.Inhibit` with the "suspend" and "idle" flags. That is Cinnamon's session manager (`cinnamon-session`): it passes the idle state to the screen saver and to `cinnamon-settings-daemon`, which does screen blanking and automatic suspend – both keep still. As a fallback `org.freedesktop.ScreenSaver.Inhibit` (`csd-screensaver-proxy` accepts it and hands it to the session manager), finally `systemd-inhibit`. **The lock belongs to the island's D-Bus connection:** if the island quits or crashes (even `kill -9`), `cinnamon-session` takes the lock back – with `systemd-inhibit` it hangs on a child process that ends as soon as the island is gone. Tested against the real `cinnamon-session` (see tests).
+
+### Pin a window
+
+`Ctrl+Alt+P` toggles the active window (`Wnck.Window.make_above()` / `unmake_above()`); the button in the "Werkzeuge" tab lists the pinned windows with "Aufheben". While one is pinned, a pin with the count sits in the pill. The island itself, the desktop, panel and dock and menus cannot be pinned; for fullscreen windows and those the window manager does not allow, a card says why. The island remembers pins for the running session only: if you close a window (libwnck's `window-closed` signal – a single Wnck window has no `closed` signal) it drops off the list; taking "Always on top" off in the window menu is noticed by `state-changed`. When the island quits all pins are released (`pin_release_on_exit`). **Fullscreen games and videos cannot be overlaid** – the window manager decides that, not the island.
+
+### Settings & overview
+
+`Ctrl+Alt+H`, the gear or tray → "Einstellungen & Übersicht" (also `linuxmos-island --settings [--tab …]`). A **program of its own** (`linuxmos-island-settings`): it starts only when you open it and is gone when you close it – it costs nothing while idle. It asks the running island over D-Bus (your user only, no network) for the register and the status; if the island is not running it shows the config and a notice. It remembers size and position.
+
+- **Übersicht (overview):** a search box on top. All functions by category with description, **hotkey**, **switch** and **status**. A click on the **name** runs the function (for screenshot, recording, OCR, QR and colour picker the window steps aside first and comes back afterwards; functions without an action open their tab, restart and power off ask first). A click on the **shortcut** changes the hotkey: press the combination, on a conflict a red warning names the other function (saving then only with "Trotzdem speichern"), "Zurücksetzen" per hotkey, "Entfernen". The change applies at once. On top "Was läuft gerade" (running and switched-off functions, the island's CPU and RAM – read once, "Aktualisieren" reads again, no timer), below the gestures and the tray menu's content.
+- **Gesten (gestures):** a main switch and one choice per gesture. On the **folded** pill: mouse wheel, wheel with Shift or Ctrl, wheel at the left or right edge, middle click, right click, double click. Actions: volume ±, brightness ±, next/previous tab, play/pause, next/previous track, open a tab, a function from the register, settings, open the island, nothing. **The defaults are the old behaviour** (wheel = volume ±5 %, middle and right click open the island). Plain event handling; with the main switch off the handlers are not even connected. If you linger on the pill a moment, hover opens it – the wheel and clicks then belong to the opened tab.
+- **Funktionen (functions):** every config key with a matching input (switch, number, choice, text). Invalid values are marked red and not saved; the config stays valid.
+
+Once after an install or update the island shows the card "Neu: Übersicht der Funktionen" with a button to open it.
+
+**Hotkeys and Cinnamon:** Cinnamon listens for the keys (custom shortcuts that `install.sh` creates). The window writes changes into exactly those shortcuts and into `hotkeys` in the config; a hand-edited `hotkeys` section is applied to the shortcuts by the running island. Note: Cinnamon already uses `Ctrl+Alt+Shift+R` itself (screen recorder) – the same key as "record the screen" (`linuxmos-island --check-hotkeys` shows it); change one of the two.
+
 ## Tests
 
-Tested in the container without real hardware: Xvfb with a real **Muffin** (idle time, windows, fullscreen) and a private D-Bus; the reminder's rules also with a fake clock (`python3 -m unittest discover -s tests -t .`, 84 tests, Python only; the clip transfer's loopback test starts an `sshd` of its own on 127.0.0.1 and is skipped where `sshd` is missing). What that cannot do (ears, a real screen, your default programs, two real PCs, Windows) is in [TEST.md](TEST.md) (German) under "Paket 11" and "Paket 12".
+Tested in the container without real hardware: Xvfb with a real **Muffin** (idle time, windows, fullscreen) and a private D-Bus; the reminder's rules also with a fake clock (`python3 -m unittest discover -s tests -t .`, 198 tests; most need only Python, those for keep awake, hotkeys and pins need PyGObject or `dbus-daemon` and are skipped otherwise; the clip transfer's loopback test starts an `sshd` of its own on 127.0.0.1 and is skipped where `sshd` is missing). What that cannot do (ears, a real screen, your default programs, two real PCs, Windows) is in [TEST.md](TEST.md) (German) under "Paket 11" and "Paket 12".
 
 Helpers for trying it out: `linuxmos-island --stretch-now` (a card right away), `--stretch-test` (1-minute interval; tick 5 s, break after 20 s, skip after 40 s, "later" 10 s/6 s, card returns after 15 s), `--force-idle` (big-eyes mode without waiting).
 
@@ -478,6 +570,28 @@ Helpers for trying it out: `linuxmos-island --stretch-now` (a card right away), 
 | `uninstall.sh` | ✅ without `--purge` `linuxmos-clip` is gone, inbox, peers, key and received files stay; with `--purge` inbox, peers and `~/.ssh/linuxmos_clip_*` are gone (other keys are not), received files stay |
 | Windows (sending to Linux, receiving on Windows, AutoHotkey, PowerShell script) | ❌ **not tested** (no Windows available): [docs/CLIP-WINDOWS.md](docs/CLIP-WINDOWS.md), scripts in `docs/windows/` |
 
+**Tools & hub (package 13)** – in the container with Xvfb and a real Muffin, a **real `cinnamon-session`** on a private D-Bus (`--session` with an empty component list; it provides `org.gnome.SessionManager`), the installed Cinnamon schemas (gsettings backend `keyfile` so two processes see the same), two monitors (`xrandr --setmonitor`, 3840×1080) and `GDK_SCALE=2`; the screenshots of the cards, the loupe and the windows were looked at:
+
+| Test | Result |
+|---|---|
+| Debug helpers | ✅ `--list-actions` (41 functions; without the island from the definitions and the config, with it including status, `--markdown` for the hotkey table), `--action ID` (over D-Bus if the island runs, otherwise a notice and exit 1), `--check-hotkeys` (exit 1 on a conflict). The report found a **real** conflict: `Ctrl+Alt+Shift+R` ("record the screen") is also Cinnamon's `toggle-recording` |
+| Idle CPU and RAM before/after | ✅ see the table above: +0.5 to 1 MB RSS, CPU unchanged (49/49 ticks before, 47/51 after); 42 with every new feature off. With the settings window closed no process for it runs (`pgrep -f island.settings` is empty) |
+| All features off | ✅ log: `clipactions: disabled`, `colorpicker: disabled`, `keepawake: disabled, no lock, no timer`, `pins: disabled, no handlers`, `gestures: disabled, no handlers`; the hotkeys show "… ist aus · Einstellungen & Übersicht"; wheel and middle click do nothing (no `scroll-event` handler connected), a left click still opens. Switched off at run time (config changed): a running keep-awake lock is released (`off (disabled)`), pins are released, the wheel handler is disconnected; switched on again it works without a restart |
+| Clipboard actions | ✅ every action with an example text as a unit test (tracking: 9 cases incl. punctuation after links, brackets inside links, encoded names, an own list; broken JSON with line and column; Base64 with the URL alphabet, without padding, binary data refused). In the island: the button on the entry and the hotkey; "Tracking aus Links entfernen" → card "Link bereinigt, 1 Parameter entfernt", the result is a **new** entry at the top of the history, the original below it. QR code: a card, `zbarimg` reads the link back |
+| A copy marked private | ⚠️ a program that offers text **and** `x-kde-passwordManagerHint`, simulated: not in the history, `Ctrl+Alt+Shift+V` → card "Als privat markiert", nothing processed. Not tried with the real KeePassXC (TEST.md AH3) |
+| Colour picker | ✅ pixel-exact (a stripe image, every pixel another colour) at 100 % scale across two monitors (x = 100, 301, 1919, 2500, 3839) and at `GDK_SCALE=2` (x = 101, 300, 1000, 1919); loupe 11×11, wheel 5–25, `Esc` and right click cancel (clipboard stays), history with a pinned colour, a click in the tab copies. The island is not in the picture (the pixel under the black pill is white), RAM 60.6 → 75 → **61.0 MB**, three runs in a row. ⚠️ **150 %** could not be tested (GDK only knows whole factors; Cinnamon's fractional scaling via `xrandr` is not something Xvfb has); the pixel right at the monitor edge (x = 1920) was distorted by the window shadow of my test windows |
+| Keep awake | ✅ against the **real `cinnamon-session`**: the lock appears (`GetInhibitors`, flags 12 = suspend + idle, `IsInhibited(8)` = true), auto-off after 1 minute (log `off (time is up)`, list empty), freed after switching off, `--quit`, `SIGTERM` and **`kill -9`** of the island (the lock goes with the D-Bus connection). The fall-backs (`org.freedesktop.ScreenSaver`, `systemd-inhibit` with a stand-in script: its child process ends with the island) as tests with stand-ins; no service reachable → card "Wach halten nicht möglich". ⚠️ whether the screen really stays on cannot be seen without real hardware (TEST.md AI1) |
+| Pin a window | ✅ under Muffin: pin and unpin by the hotkey call (`_NET_WM_STATE_ABOVE`), two windows ("2 Fenster angepinnt"), closing a window (`window-closed`) and a change through the window menu (`set_keep_above(False)` from an app makes the same message as the menu) are noticed, pins released on quit, with `pin_release_on_exit: false` they stay, switched off at run time → all released. A panel/dock window: card "Panel und Dock lassen sich nicht anpinnen". The rules (the island itself, desktop, menu, fullscreen, not allowed by the window manager) as unit tests with a Wnck stand-in; the pin with the count and the coffee cup in the pill were looked at. ⚠️ real fullscreen and the real Cinnamon panel not tried |
+| Register | ✅ 41 functions; all 13 existing hotkeys appear with the **real** values (also a key changed in Cinnamon, e.g. `Super+V`); the conflict warning tested with a deliberate duplicate (`Ctrl+Alt+V` for two functions), with a Cinnamon key (`Ctrl+Alt+T`) and with the real finding above |
+| A click on a function name | ✅ keep awake starts in the island; a function without an action (water) opens its tab; colour picker, screenshot, OCR: the window steps aside first (not in the picture) and **comes back** as soon as the island reports the end; restart asks first ("Abbrechen" runs nothing, "Ja" calls `systemctl reboot` – a stand-in, **not** the real one) |
+| Change a hotkey, apply, reset | ✅ press the keys (with a keyboard grab so Cinnamon's own shortcuts don't swallow them), a conflict in red, refused without Ctrl/Alt/Super, `Esc`, "Trotzdem speichern", "Zurücksetzen", "Entfernen"; `config.json` and Cinnamon's shortcut (gsettings) are written, a hand-edited `hotkeys` section is picked up by the running island at once. ⚠️ that **real** Cinnamon rereads the key at once could not be seen without Cinnamon (TEST.md AG3) |
+| Gestures | ✅ defaults = the old behaviour: middle and right click open (xdotool), "wheel = volume ±5 %" is checked as a default value (unit test) – the volume itself is not, `pactl` is missing in the container. Re-assigned it works at once: wheel → the "Wach halten" function, Shift → nothing, Ctrl → "like the wheel", right click → nothing, double click → a function (folds the island the first click opened). The left and right edge as classification in a unit test, with the "pin a window" action and no active window only seen as a card. Main switch off → no gestures, a left click still opens |
+| Island not running | ✅ the window shows the notice and the config, a click on a function says the island is missing, values can be changed and apply at the next start |
+| Invalid values | ✅ `9999` for "Abstand zur Top Bar" and `99:99` for the time: red, message, **not saved** (file unchanged, valid JSON); a broken config file is never overwritten. Every default passes its own check (test) |
+| `update.sh` on an existing installation | ⚠️ the real script ran as an ordinary user with stand-ins for `apt` and `dpkg` (`--pulled --no-themes`, without Git/themes, without a screen) over a "1.13.0 installation": `config.json` **byte-identical**, own and unknown keys stay, new ones come with defaults; a shortcut changed by hand (`Super+V`) stays, the five new shortcuts are added; `linuxmos-island-settings` and the new modules are there, `--list-actions` from the installed folder shows `Super+V`. `git pull` and themes not |
+| `uninstall.sh` | ✅ without `--purge` `linuxmos-island-settings` is gone, colour history and config stay; with `--purge` colour history, window position and cache are gone |
+| Crash when a remembered window closes | ✅ found and fixed while testing: the island remembered the window it was opened from as a libwnck object; if that had been closed meanwhile (e.g. the short-lived settings window) libwnck crashed on letting go of it (a segfault, before that only a GLib warning). Now only the window id is kept and looked up when needed; three rounds without a crash |
+
 ---
 
 ## Known issues
@@ -504,6 +618,7 @@ Helpers for trying it out: `linuxmos-island --stretch-now` (a card right away), 
 - **Big-eyes mode:** when nothing else is in the pill it replaces the normal mascot pill; the microphone/camera dots and the download ring stay visible next to it. With the mascot off (`mascot: false`) it does nothing.
 - **Gear:** the file opens in your default program for `.json` (`xdg-open`). If that is the browser, change it with `xdg-mime default xed.desktop application/json`. A restart is only needed for `language`; tabs that were already built show changed values the next time the island opens.
 - **Clip transfer:** the **Windows side is untested** (best effort); there is no Windows island yet, and it is to get its own sender and receiver later (V2.1). The receiver needs a running SSH server (not installed automatically). The forced command in `authorized_keys` uses `~/.local/bin/linuxmos-clip` because sshd starts it without your `PATH`. A clip's sender is only the address it came from (`ip` in the peer entry makes the card show the name). The history cuts texts at 20,000 characters (the hotkey sends the full clipboard). The hotkey sends a single file, several only one by one from the shelf; folders are not sent. The clip texts exist in German only.
+- **Tools & hub:** Cinnamon already uses `Ctrl+Alt+Shift+R` itself (screen recorder) – the same key as "record the screen"; `linuxmos-island --check-hotkeys` shows it, and one of the two can be changed in the settings window. **Keep awake** prevents the screen saver, blanking and automatic suspend through the session manager; programs that work against it and suspend by closing the lid are untouched. **Pin a window** does not work over fullscreen games/videos; windows you pin yourself through the window menu are not counted by the island (it only sees the ones it pinned). The **colour picker** reads the screen as X11 delivers it: with fractional scaling (xrandr) the pixels before downscaling, not the finished screen; it does not work under Wayland. The mouse wheel on the pill only acts while the pill is still folded – if you stay on it a moment it opens. The texts of this package (clipboard actions, tools, settings window) exist in German only. Changing a hotkey in the window writes Cinnamon's shortcuts and assumes Cinnamon rereads them live; whether it does on your Mint is checked in [TEST.md](TEST.md) package 13 (AG3).
 - **A screenshot on the clipboard** is held by a small `xclip` process in the background until you copy something else (so the image survives quitting the island).
 
 More solutions (German): [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.md#troubleshooting)
@@ -535,6 +650,8 @@ More solutions (German): [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.
 - [ ] Check the stretch reminder and big-eyes mode on a real Mint (sound, lock screen, real fullscreen)
 - [x] Clip transfer: text, images, files over SSH, manual only (`clip_*`, `Ctrl+Alt+Shift+T`, `linuxmos-clip`), see [docs/CLIP.md](docs/CLIP.md)
 - [ ] Check clip transfer on two real PCs and with Windows ([TEST.md](TEST.md) package 12, [docs/CLIP-WINDOWS.md](docs/CLIP-WINDOWS.md))
+- [x] Tools & hub: clipboard actions, colour picker, keep awake, pin a window, settings window with hotkey overview and gestures (`Ctrl+Alt+Shift+V`, `Ctrl+Alt+C`, `Ctrl+Alt+K`, `Ctrl+Alt+P`, `Ctrl+Alt+H`)
+- [ ] Check tools & hub on a real Mint: real keys, screen blanking, fractional scaling ([TEST.md](TEST.md) package 13)
 - [ ] Windows island (V2.1) with its own clip sender and receiver
 
 ---

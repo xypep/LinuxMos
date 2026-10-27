@@ -241,6 +241,8 @@ class LiveDots(Gtk.DrawingArea):
     DOT, RING, GLYPH, GAP = 7, 14, 12, 5
     MIC, MUTED, CAM, RING_FG = (1.0, 0.62, 0.04), (0.6, 0.6, 0.62), (0.19, 0.82, 0.35), (0.04, 0.52, 1.0)
     STRETCH = (0.30, 0.82, 0.70)
+    AWAKE, PIN = (0.96, 0.78, 0.50), (1.0, 0.84, 0.04)       # coffee cup, pushpin
+    PIN_W = 18                                               # pin glyph plus the count beside it
 
     def __init__(self):
         super().__init__()
@@ -248,15 +250,19 @@ class LiveDots(Gtk.DrawingArea):
         self.cam = False
         self.download = None     # None | -1 (no percentage) | 0..100
         self.stretch = False
+        self.awake = False       # keep awake is on: a coffee cup
+        self.pins = 0            # windows pinned on top: a pin and how many
         self.set_valign(Gtk.Align.CENTER)
         self.set_no_show_all(True)
 
-    def set_state(self, mic, cam, download, stretch=False):
+    def set_state(self, mic, cam, download, stretch=False, awake=False, pins=0):
         """True if the width changed (the pill has to resize)."""
-        if (mic, cam, download, stretch) == (self.mic, self.cam, self.download, self.stretch):
+        if (mic, cam, download, stretch, awake, pins) == (self.mic, self.cam, self.download, self.stretch,
+                                                          self.awake, self.pins):
             return False
         before = self.width
         self.mic, self.cam, self.download, self.stretch = mic, cam, download, stretch
+        self.awake, self.pins = awake, pins
         self.set_size_request(self.width, self.RING)
         self.set_visible(self.width > 0)
         self.queue_draw()
@@ -264,8 +270,8 @@ class LiveDots(Gtk.DrawingArea):
 
     @property
     def width(self):
-        parts = [self.GLYPH] * self.stretch + [self.DOT] * ((self.mic is not None) + self.cam) \
-            + ([self.RING] if self.download is not None else [])
+        parts = [self.GLYPH] * self.stretch + [self.GLYPH] * self.awake + [self.PIN_W] * bool(self.pins) \
+            + [self.DOT] * ((self.mic is not None) + self.cam) + ([self.RING] if self.download is not None else [])
         return sum(parts) + self.GAP * max(0, len(parts) - 1)
 
     def hits_stretch(self, x):
@@ -278,6 +284,12 @@ class LiveDots(Gtk.DrawingArea):
         if self.stretch:
             self._draw_stretcher(cr, x + self.GLYPH / 2, cy)
             x += self.GLYPH + self.GAP
+        if self.awake:
+            self._draw_cup(cr, x + self.GLYPH / 2, cy)
+            x += self.GLYPH + self.GAP
+        if self.pins:
+            self._draw_pin(cr, x, cy)
+            x += self.PIN_W + self.GAP
         for color in ([self.MIC if self.mic == "on" else self.MUTED] if self.mic else []) + \
                      ([self.CAM] if self.cam else []):
             cr.set_source_rgb(*color)
@@ -305,6 +317,51 @@ class LiveDots(Gtk.DrawingArea):
             cr.line_to(cx + 2.5, cy)
             cr.stroke()
         return False
+
+    def _draw_cup(self, cr, cx, cy):
+        """A coffee cup with a wisp of steam (keep awake)."""
+        cr.set_source_rgb(*self.AWAKE)
+        cr.set_line_width(1.5)
+        cr.set_line_cap(cairo.LINE_CAP_ROUND)
+        cr.move_to(cx - 4.4, cy - 0.8)        # the cup
+        cr.line_to(cx - 3.6, cy + 4.0)
+        cr.line_to(cx + 2.4, cy + 4.0)
+        cr.line_to(cx + 3.2, cy - 0.8)
+        cr.close_path()
+        cr.fill()
+        cr.arc(cx + 3.6, cy + 1.3, 1.9, -1.2, 1.2)   # the handle
+        cr.stroke()
+        cr.set_line_width(1.1)
+        cr.set_source_rgba(*self.AWAKE, 0.8)
+        for dx in (-2.0, 1.0):                   # steam
+            cr.move_to(cx + dx, cy - 2.2)
+            cr.curve_to(cx + dx - 1.2, cy - 3.6, cx + dx + 1.2, cy - 4.4, cx + dx, cy - 5.8)
+        cr.stroke()
+
+    def _draw_pin(self, cr, x, cy):
+        """A pushpin and the number of pinned windows."""
+        cx = x + 5
+        cr.set_source_rgb(*self.PIN)
+        cr.set_line_width(1.6)
+        cr.set_line_cap(cairo.LINE_CAP_ROUND)
+        cr.save()
+        cr.translate(cx, cy)
+        cr.rotate(0.6)
+        cr.rectangle(-2.4, -5.0, 4.8, 5.0)          # the head
+        cr.fill()
+        cr.move_to(-3.6, 0.2)
+        cr.line_to(3.6, 0.2)
+        cr.stroke()
+        cr.move_to(0, 0.4)                          # the needle
+        cr.line_to(0, 5.2)
+        cr.stroke()
+        cr.restore()
+        if self.pins:
+            cr.select_font_face("Inter", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+            cr.set_font_size(9)
+            cr.set_source_rgb(0.96, 0.96, 0.97)
+            cr.move_to(x + 11, cy + 3.2)
+            cr.show_text(str(min(self.pins, 99)))
 
     def _draw_stretcher(self, cr, cx, cy):
         """A little figure with its arms up."""

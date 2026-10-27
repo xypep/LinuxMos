@@ -1,6 +1,6 @@
 # MosIsland – alle Einstellungen
 
-Datei: `~/.config/linuxmos/island/config.json`. Am einfachsten öffnest du sie mit dem **Zahnrad** oben rechts in der aufgeklappten Insel (oder Tray → „Einstellungen öffnen“): Fehlende Schlüssel werden vorher mit ihren Standardwerten eingetragen, damit du alle Optionen siehst.
+Datei: `~/.config/linuxmos/island/config.json`. Am bequemsten änderst du sie im **Einstellungsfenster** (Zahnrad oben rechts in der aufgeklappten Insel, Tray → „Einstellungen & Übersicht“, `Ctrl+Alt+H` oder `linuxmos-island --settings`): Der Tab „Funktionen“ hat für jeden Schlüssel unten ein passendes Eingabefeld, das den Wert prüft (ungültig = rot, wird nicht gespeichert). Als Datei öffnest du sie mit dem Link „Config als Datei öffnen“ im Fenster (oder Tray → „Config-Datei öffnen“): Fehlende Schlüssel werden vorher mit ihren Standardwerten eingetragen, damit du alle Optionen siehst.
 
 - **Änderungen gelten sofort.** Die Insel beobachtet die Datei (inotify, kostet nichts) und übernimmt, was sich geändert hat – ohne Neustart. Ausnahme: `language` (wirkt nach einem Neustart der Insel).
 - **Ungültiges JSON** (Komma vergessen, Anführungszeichen …) lässt alle bisherigen Werte aktiv. Eine Karte meldet „Config ungültig, alte Werte bleiben“ mit Zeile und Spalte der Fehlerstelle. Solange die Datei kaputt ist, schreibt die Insel nicht hinein, dein Text bleibt unberührt.
@@ -59,6 +59,51 @@ Gezählt wird nur **aktive** Zeit (Eingabe in der letzten Minute). Mehr dazu in 
 `name` (Titel der Karte), `text` (die Anweisung), `seconds` (Dauer des Countdowns, `5`–`300`; kurze Übungen 10–20, aufwendige 30–60), `long` (`true` = aufwendige Übung). Einträge ohne Namen oder mit unlesbarer Dauer werden übersprungen; ist die Datei kaputt oder leer, gilt die Standardliste (deine Datei bleibt, wie sie ist).
 
 **Statistik:** `~/.local/share/linuxmos/island/stretch.json`, pro Tag erledigt, unbestätigt, später, übersprungen, verpasst; nur die letzten 30 Tage.
+
+## Werkzeuge
+
+Alle vier sind Handgriffe, im Leerlauf kostet keines etwas. Jedes hat einen Schalter; ist er aus, laufen dafür weder Handler noch Timer noch Sperren (im Log steht `clipactions: disabled`, `colorpicker: disabled`, `keepawake: disabled, no lock, no timer`, `pins: disabled, no handlers`).
+
+| Schlüssel | Standard | Bedeutung · gültige Werte |
+|---|---|---|
+| `clipactions_enabled` | `true` | **Zwischenablage-Aktionen** (Knopf „Aktionen“ am Verlaufseintrag, Hotkey `Ctrl+Alt+Shift+V` für den aktuellen Inhalt): Formatierung entfernen, Tracking aus Links, GROSS/klein/Titel, JSON, URL, Base64, Leerzeichen, Zeilen sortieren, doppelte Zeilen, QR-Code (nur mit `qrencode`). Das Ergebnis ersetzt die Zwischenablage erst nach dem Klick und steht als **neuer** Verlaufseintrag da, das Original bleibt. Als privat markierte Kopien (Passwort-Manager) werden nie verarbeitet |
+| `clipactions_tracking_params` | `[]` | Zusätzliche Link-Parameter, die „Tracking aus Links entfernen“ löscht: Namen (`"affil"`) oder Präfixe mit Stern (`"partner_*"`). Eingebaut sind `utm_*`, `fbclid`, `gclid`, `dclid`, `msclkid`, `yclid`, `twclid`, `ttclid`, `mc_eid`, `mc_cid`, `igshid`, `igsh`, `ref_src`, `ref_url`, `_hsenc`, `_hsmi`, `mkt_tok`, `vero_id`, `spm`, `si`, `pk_*`, `hsa_*`, `mtm_*` u. ä.; funktionale Parameter (`id`, `page`, `q`, `ref`, `v`, `t` …) bleiben immer |
+| `colorpicker_enabled` | `true` | **Farbpipette** (`Ctrl+Alt+C`, Knopf im Werkzeuge-Tab, Tray). Die Insel blendet sich aus, der Bildschirm wird einmal aufgenommen und als Standbild gezeigt; Klick wählt, `Esc` oder Rechtsklick bricht ab, das Mausrad ändert die Lupe (5–25 Pixel) |
+| `colorpicker_format` | `"hex"` | Format der kopierten Farbe: `hex`, `rgb`, `hsl`, `hsv` (andere Werte gelten als `hex`). Die Karte zeigt immer alle vier |
+| `colorpicker_history` | `20` | Wie viele der letzten Farben (`~/.local/share/linuxmos/island/colors.json`) bleiben: `1`–`200`; fixierte Farben zählen nicht mit |
+| `keepawake_enabled` | `true` | **Wach halten** (`Ctrl+Alt+K`, Schalter im Werkzeuge-Tab, Tray-Häkchen): kein Bildschirmschoner, keine Bildschirmabschaltung, kein automatischer Ruhezustand. Sperren und Ruhezustand von Hand gehen weiter. Wird nie über einen Neustart gemerkt |
+| `keepawake_minutes` | `60` | Nach so vielen Minuten schaltet es sich selbst aus (ein einziger Timer auf den Endzeitpunkt, kein Tick); `0` = bis du es ausschaltest: `0`–`1440` |
+| `pin_enabled` | `true` | **Fenster anpinnen** (`Ctrl+Alt+P`, Knopf im Werkzeuge-Tab, Tray): das aktive Fenster bleibt im Vordergrund. Nicht anpinnbar sind die Insel selbst, Schreibtisch, Panel/Dock, Menüs und Vollbild-Fenster (eine Karte sagt warum). Aus: alle Pins werden aufgehoben, es hängt kein Handler am Fensterverwalter |
+| `pin_release_on_exit` | `true` | Beim Beenden der Insel alle Pins aufheben; `false` lässt die Fenster angepinnt (die Insel merkt sich nichts davon) |
+
+## Hotkeys
+
+Cinnamon, nicht die Insel, lauscht auf die Tasten: `install.sh` legt für jede Funktion ein benutzerdefiniertes Kürzel an, das `linuxmos-island …` aufruft. Das Einstellungsfenster (Tab „Übersicht“, Klick auf das Kürzel) und der Abschnitt `hotkeys` ändern genau diese Kürzel – **sofort, ohne Neustart**.
+
+| Schlüssel | Standard | Bedeutung · gültige Werte |
+|---|---|---|
+| `hotkeys` | `{}` | Nur das, was vom Standard abweicht: `{"color-picker": "<Primary><Alt>b", "chat": ""}`. Schlüssel ist die ID der Funktion (`linuxmos-island --list-actions`), Wert eine Tastenkombination wie in Cinnamon (`<Primary><Alt>v`, auch `<Control>`, `<Super>`, `<Shift>`); `""` schaltet den Hotkey aus. Ein Eintrag, der verschwindet, setzt den Standard zurück. Ungültige Werte werden ignoriert |
+
+Konflikte (zwei Funktionen auf einer Taste, oder eine Taste, die Cinnamon/Mint schon belegen) meldet das Fenster beim Ändern in Rot mit dem Namen des anderen; speichern geht dann nur mit „Trotzdem speichern“. Prüfen aller Hotkeys auf einmal: `linuxmos-island --check-hotkeys` (Ausgabe 1, wenn es einen Konflikt gibt).
+
+## Gesten auf der Pille
+
+Wirken nur auf die **eingeklappte** Pille. Reine Ereignisbehandlung, kein Timer; mit `gestures_enabled: false` sind die Handler gar nicht erst verbunden (Log: `gestures: disabled, no handlers`). Ein einfacher Linksklick öffnet die Insel immer, er ist keine Geste.
+
+| Schlüssel | Standard | Bedeutung · gültige Werte |
+|---|---|---|
+| `gestures_enabled` | `true` | Hauptschalter. Aus: Mausrad, Mittel- und Rechtsklick auf der Pille tun nichts |
+| `gestures` | `{}` | Aktion je Geste, nur Abweichungen vom Standard. Gesten: `wheel` (Mausrad auf der Pille, Standard `volume_wheel` = Lautstärke ±5 %), `wheel_shift`, `wheel_ctrl`, `wheel_left`, `wheel_right` (Mausrad mit Umschalt/Strg, am linken/rechten Rand – Standard `default` = wie `wheel`), `click_middle` und `click_right` (Standard `expand` = Insel aufklappen), `click_double` (Standard `none`) |
+
+Aktionen: `none`, `default` (nur für die Mausrad-Varianten), `expand`, `volume_wheel`/`volume_up`/`volume_down`, `brightness_wheel`/`brightness_up`/`brightness_down`, `tab_wheel`/`tab_next`/`tab_prev`, `play_pause`, `track_wheel`/`track_next`/`track_prev`, `settings`, `tab:NAME` (z. B. `tab:clipboard`) und `function:ID` (eine Funktion aus dem Register, z. B. `function:keep-awake`). Die `*_wheel`-Aktionen lesen die Richtung des Mausrads und passen nur zu den Mausrad-Gesten, `*_up`/`*_down`/`*_next`/`*_prev` nur zu Klicks. Eine unbekannte oder unpassende Aktion gilt als nicht gesetzt (Standard). Der Doppelklick klappt die Insel mit dem ersten Klick wie immer auf und klappt sie für seine Aktion wieder zu. Wer länger als einen Moment auf der Pille verweilt, klappt sie per Hover auf – dann gehen die Gesten an den aufgeklappten Tab.
+
+## Einstellungsfenster
+
+| Schlüssel | Standard | Bedeutung · gültige Werte |
+|---|---|---|
+| `overview_intro_seen` | `false` | Die Karte „Neu: Übersicht der Funktionen“ wird einmal nach Installation oder Update gezeigt, danach setzt die Insel das auf `true`. Zum erneuten Zeigen auf `false` stellen |
+
+Fenstergröße und -position merkt sich `~/.config/linuxmos/island/settings-window.json` (getrennt von der `config.json`, damit das Speichern keine Neuladung der Insel auslöst).
 
 ## Zwischenablage, Screenshots, Aufnahmen
 
@@ -159,6 +204,10 @@ Keine Config-Schlüssel, sondern Kommandozeile (gelten nur für diesen Start):
 
 | Aufruf | Wirkung |
 |---|---|
+| `linuxmos-island --list-actions` | Alle Funktionen des Registers als Tabelle: ID, Name, Kategorie, Hotkey, Schalter, Aktion (mit laufender Insel auch der Status); `--markdown` gibt die Hotkey-Tabelle fürs README aus |
+| `linuxmos-island --action ID` | Löst eine Funktion aus dem Register aus (z. B. `color-picker`, `keep-awake`, `pin-window`, `clip-actions`); braucht die laufende Insel |
+| `linuxmos-island --check-hotkeys` | Konfliktbericht: Hotkeys untereinander und gegen Cinnamons Kürzel und die Mint-Standards (Ausgabe 1 bei Konflikt) |
+| `linuxmos-island --settings [--tab overview\|gestures\|functions]` | Einstellungsfenster (eigener Prozess, geht auch ohne laufende Insel) |
 | `linuxmos-island --stretch-now` | Zeigt sofort eine Dehn-Karte (auch bei laufender Insel) |
 | `linuxmos-island --stretch-test` | Intervall 1 Minute, Takt 5 s, Pause nach 20 s, Überspringen nach 40 s, „Später“ 10 s/6 s, Wiederkommen nach 15 s |
 | `linuxmos-island --force-idle` | Startet im Leerlauf (Maskottchen bzw. Augen-Modus ohne Warten); Hover oder Klick beendet es |

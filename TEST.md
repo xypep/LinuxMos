@@ -498,6 +498,40 @@ Beide mit Mint und dem aktuellen Stand. Auf dem Empfänger `openssh-server` inst
 
 ---
 
+## Paket 13 – Werkzeuge & Zentrale (Clipboard-Aktionen, Farbpipette, Wach halten, Fenster anpinnen, Einstellungsfenster, Gesten)
+
+Im Container getestet (Xvfb mit echtem Muffin, zwei Monitore, GDK_SCALE=2, ein **echter `cinnamon-session`** auf einem privaten Bus, die Cinnamon-Schemas); die Ergebnisse stehen in der README. Was nur **bei dir** geht: echte Tasten (Cinnamon hört darauf), echte Bildschirmabschaltung, Spiele/Videos im Vollbild, deine Programme.
+
+### AG. Hotkeys (Cinnamon)
+
+- [ ] **AG1** Nach `./update.sh` stehen in Cinnamon → Tastatur → Tastenkombinationen → Eigene Kürzel die neuen Einträge „MosIsland Einstellungen“, „… Zwischenablage-Aktionen“, „… Farbpipette“, „… Wach halten“, „… Fenster anpinnen“ mit `Ctrl+Alt+H`, `Ctrl+Alt+Shift+V`, `Ctrl+Alt+C`, `Ctrl+Alt+K`, `Ctrl+Alt+P`. Eine Taste, die du schon früher selbst geändert hast, ist unverändert
+- [ ] **AG2** `linuxmos-island --check-hotkeys` zeigt keinen Konflikt außer dem bekannten `Ctrl+Alt+Shift+R` (Cinnamons Bildschirmrekorder). Drücke `Ctrl+Alt+Shift+R`: Was passiert wirklich (Insel-Aufnahme, Cinnamons Rekorder, beides)? ______
+- [ ] **AG3** Einstellungsfenster → Übersicht → Klick auf ein Kürzel, neue Kombination drücken, speichern: **die neue Taste wirkt sofort**, die alte nicht mehr (ohne Abmelden). Ändern in Cinnamons Tastatureinstellungen zeigt dieselbe Taste dort
+- [ ] **AG4** Eine Taste, die Cinnamon schon belegt (z. B. `Ctrl+Alt+T`): rote Warnung mit dem Namen, Speichern nur mit „Trotzdem speichern“. „Zurücksetzen“ bringt den Standard zurück
+
+### AH. Zwischenablage-Aktionen, Farbpipette
+
+- [ ] **AH1** Text aus einer Webseite (mit Formatierung) kopieren, `Ctrl+Alt+Shift+V` → „Formatierung entfernen“ → in einen Rich-Text-Editor einfügen: reiner Text
+- [ ] **AH2** Einen Link mit `?utm_source=…&fbclid=…` kopieren → „Tracking aus Links entfernen“: Karte „Link bereinigt, 2 Parameter entfernt“, der bereinigte Link ist neu im Verlauf, der alte noch da
+- [ ] **AH3** KeePassXC: ein Passwort kopieren, `Ctrl+Alt+Shift+V` → „Als privat markiert“, kein Eintrag im Verlauf
+- [ ] **AH4** `sudo apt install qrencode`, Text → Aktion „QR-Code“ → mit dem Handy scannen
+- [ ] **AH5** `Ctrl+Alt+C` mit echtem Bildschirm (zwei Monitore, wenn vorhanden; HiDPI-Skalierung 200 % falls eingestellt): Lupe folgt der Maus ohne Ruckeln, der Wert stimmt mit einem Screenshot-Programm überein, `Esc` bricht ab, Insel und Overlay sind nicht im Bild. **Bruchteil-Skalierung (z. B. 150 %)**: stimmt die Farbe unter dem Mauszeiger? ______
+
+### AI. Wach halten, Fenster anpinnen
+
+- [ ] **AI1** `Ctrl+Alt+K`, Bildschirmschoner-Zeit im Cinnamon-Menü auf 1 Minute stellen und die Hände vom Rechner nehmen: kein Bildschirmschoner, kein Dunkelwerden. Aus: nach der Zeit schaltet er sich ein. `Ctrl+Alt+L` (Sperren) geht währenddessen
+- [ ] **AI2** Wach halten an, `kill -9` auf `linuxmos-island`, eine Minute warten: der Bildschirmschoner kommt wieder (die Sperre hängt nicht)
+- [ ] **AI3** `Ctrl+Alt+P` auf einem Browser/Terminal: bleibt über anderen Fenstern, auch über anderen Arbeitsflächen-Fenstern. Panel, Insel, Desktop: Karte „Lässt sich nicht anpinnen“. Vollbild-Video: bleibt nicht darüber (erwartet)
+- [ ] **AI4** Rechtsklick auf die Titelleiste → „Immer im Vordergrund“ wegnehmen: das Pin-Symbol in der Pille zählt herunter
+
+### AJ. Einstellungsfenster, Gesten, Leistung
+
+- [ ] **AJ1** `Ctrl+Alt+H` öffnet das Fenster auf „Übersicht“; Schließen beendet den Prozess (`pgrep -f island.settings` leer). Ein Klick auf „Screenshot vom Bereich“ blendet das Fenster aus, der Bereich lässt sich wählen, das Fenster kommt wieder
+- [ ] **AJ2** Gesten: Mausrad auf der Pille ändert die Lautstärke wie vorher; im Fenster umbelegen (z. B. Mittelklick = „Play/Pause“): wirkt sofort. Hauptschalter aus: nichts davon geht mehr
+- [ ] **AJ3** `linuxmos-perf`: CPU ______ % (Erwartung unverändert), RSS ______ MB (Erwartung: etwa +1 MB gegenüber 1.13.0), mit offenem Einstellungsfenster Insel-RSS ______ MB
+
+---
+
 ## Ergebnisse
 
 | Nr. | Ergebnis | Notiz |

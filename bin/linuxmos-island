@@ -14,6 +14,11 @@
 #   linuxmos-island --voice        Diktat: Aufnahme starten, nochmal aufrufen = Text erkennen
 #   linuxmos-island --set-key      API-Key für den KI-Chat im Schlüsselbund speichern
 #   linuxmos-island --clip-send    Zwischenablage an den Standard-Peer senden (Clip-Transfer, nur auf Aufruf)
+#   linuxmos-island --settings [--tab overview|gestures|functions]
+#                                  Einstellungen & Übersicht (eigenes Fenster, nur solange es offen ist)
+#   linuxmos-island --action ID    eine Funktion aus dem Register auslösen (Liste: --list-actions)
+#   linuxmos-island --list-actions Alle Funktionen als Tabelle (--markdown: Hotkey-Tabelle fürs README)
+#   linuxmos-island --check-hotkeys Hotkeys auf Konflikte prüfen (untereinander und mit Cinnamon)
 #   linuxmos-island --stretch-now  sofort eine Dehn-Karte zeigen (zum Ausprobieren)
 #   linuxmos-island --stretch-test starten mit 1 Minute Intervall und Leerlauf-Schwellen in Sekunden
 #   linuxmos-island --force-idle   starten im Leerlauf: Maskottchen bzw. Augen-Modus ohne Warten
@@ -69,6 +74,16 @@ case "${1:-}" in
   --clip-send)
     action clip-send "[]" && exit 0
     echo "MosIsland läuft nicht – Clip-Senden geht nur mit laufender Insel (oder: linuxmos-clip send)." >&2
+    exit 1 ;;
+  --settings)
+    # Eigener Prozess: braucht die Insel nicht (läuft sie nicht, zeigt das Fenster nur die Config)
+    shift
+    cd /
+    PYTHONPATH="${APP_DIR}" exec "${PYTHON}" -m island.settings "$@" ;;
+  --action)
+    [[ "${2:-}" =~ ^[a-z0-9-]+$ ]] || { echo "Usage: $(basename "$0") --action ID   (IDs: $(basename "$0") --list-actions)" >&2; exit 2; }
+    action run "[<'$2'>]" && exit 0
+    echo "MosIsland läuft nicht – Funktionen gehen nur mit laufender Insel (Liste: $(basename "$0") --list-actions)." >&2
     exit 1 ;;
   --stretch-now)
     action stretch-now "[]" && exit 0 ;;   # läuft sie nicht, startet die Insel damit und zeigt die Karte

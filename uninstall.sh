@@ -34,12 +34,13 @@ step "Dock, Widgets und Spotlight stoppen"
 [[ -x "${BIN_DIR}/linuxmos-island" ]] && "${BIN_DIR}/linuxmos-island" --quit
 pkill -u "$(id -u)" -x plank 2>/dev/null || true
 pkill -u "$(id -u)" -x linuxmos-island 2>/dev/null || true
+pkill -u "$(id -u)" -f 'island\.settings' 2>/dev/null || true
 rm -f "${CONFIG_DIR}/autostart/linuxmos-plank.desktop" \
       "${CONFIG_DIR}/autostart/linuxmos-widgets.desktop" \
       "${CONFIG_DIR}/autostart/linuxmos-island.desktop" \
       "${DATA_DIR}/applications/linuxmos-island.desktop" \
       "${BIN_DIR}/linuxmos-widgets" "${BIN_DIR}/linuxmos-spotlight" "${BIN_DIR}/linuxmos-perf" \
-      "${BIN_DIR}/linuxmos-island" "${BIN_DIR}/linuxmos-clip"
+      "${BIN_DIR}/linuxmos-island" "${BIN_DIR}/linuxmos-island-settings" "${BIN_DIR}/linuxmos-clip"
 rm -rf "${STATE_DIR}/island-app"
 rm -f "${STATE_DIR}/install.conf"
 # Die Töne der Dehn-Erinnerung (WAV) erzeugt die Insel selbst im Cache – die gehen immer mit
@@ -95,7 +96,7 @@ if (( PURGE )); then
          "${DATA_DIR}/backgrounds/linuxmos" \
          "${CACHE_DIR}" \
          "${STATE_DIR}/island" "${CONFIG_DIR}/linuxmos"
-  ok "Gelöscht (inkl. MosIsland-Daten: Notiz, Clipboard-Verlauf, Ablage, App-Zähler der Suche, Dehn-Statistik, Übungsliste, Clip-Eingang und gespeicherte Clip-Peers)"
+  ok "Gelöscht (inkl. MosIsland-Daten: Notiz, Clipboard-Verlauf, Ablage, App-Zähler der Suche, Dehn-Statistik, Übungsliste, Farbverlauf, Fensterposition der Einstellungen, Clip-Eingang und gespeicherte Clip-Peers)"
   # Der Clip-Schlüssel ist nur für LinuxMos gedacht (Name linuxmos_clip_*): mit --purge geht er mit
   if compgen -G "${HOME}/.ssh/linuxmos_clip_*" >/dev/null; then
     rm -f "${HOME}"/.ssh/linuxmos_clip_*

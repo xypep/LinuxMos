@@ -1,0 +1,24 @@
+/* The settings & overview window (its own process); the island's style.css is loaded first */
+window#island { background: #1c1c1e; }
+#island .sidebar { background: #161618; }
+#island .sidebar row { padding: 9px 14px; border-radius: 10px; margin: 2px 8px; }
+#island .sidebar row:selected { background: rgba(10, 132, 255, 0.55); }
+#island .page-title { font-size: 17pt; font-weight: 600; }
+#island .section-title { font-size: 12pt; font-weight: 600; }
+#island .cat-title { color: rgba(245, 245, 247, 0.5); font-size: 9pt; font-weight: 600; margin-top: 10px; }
+#island .function-row { padding: 6px 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+#island button.name-button { background: transparent; font-weight: 600; padding: 2px 6px; border-radius: 6px; }
+#island button.name-button:hover { background: rgba(255, 255, 255, 0.10); }
+#island button.hotkey { min-width: 128px; font-feature-settings: "tnum"; background: rgba(255, 255, 255, 0.06); }
+#island button.hotkey.editing { background: #0a84ff; }
+#island .warn { color: #ff453a; }
+#island .good { color: #30d158; }
+#island .running-dot { color: #30d158; }
+#island .stopped-dot { color: rgba(245, 245, 247, 0.25); }
+#island entry.invalid, #island spinbutton.invalid { box-shadow: inset 0 0 0 1px #ff453a; }
+#island .banner { background: rgba(255, 159, 10, 0.16); border-radius: 12px; padding: 10px 14px; }
+#island .banner.error { background: rgba(255, 69, 58, 0.18); }
+#island .editor { background: rgba(255, 255, 255, 0.06); border-radius: 12px; padding: 10px 12px; margin: 4px 0 8px 0; }
+#island .confirm { background: rgba(255, 69, 58, 0.14); border-radius: 12px; padding: 8px 12px; margin: 4px 0 8px 0; }
+#island comboboxtext, #island combobox { min-width: 220px; }
+#island linkbutton, #island linkbutton label { color: #64d2ff; }

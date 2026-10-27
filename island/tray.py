@@ -1,6 +1,5 @@
 """Tray icon (XApp status icon, shown by Cinnamon's panel) with the island's switches."""
 
-import shutil
 from pathlib import Path
 
 import gi
@@ -10,6 +9,7 @@ from island import __version__
 from island import mascots
 from island.i18n import LANGUAGES, _
 from island.services import finder, monitors, recorder, screenshot, system
+from island.storage import launcher_path
 
 try:
     gi.require_version("XApp", "1.0")
@@ -27,8 +27,7 @@ ICON, RECORDING_ICON = "view-app-grid-symbolic", "media-record"
 AUTODELETE_CHOICES = [(0, "Nie"), (15, "Nach 15 Minuten"), (60, "Nach 1 Stunde"), (1440, "Nach 24 Stunden")]
 
 
-def _launcher():
-    return shutil.which("linuxmos-island") or str(Path.home() / ".local" / "bin" / "linuxmos-island")
+_launcher = launcher_path
 
 
 class Tray:
@@ -67,6 +66,13 @@ class Tray:
             menu.append(mi)
 
         item(_("MosIsland öffnen"), lambda: self._open(self.island.expand))
+        item("Einstellungen & Übersicht", lambda: self.island.open_overview("overview"))
+        menu.append(Gtk.SeparatorMenuItem())
+        menu.append(self._flag("keepawake", self._with_hint("Wach halten", "keep-awake"),
+                               self.island.keepawake_active(),
+                               lambda on: None if on == self.island.keepawake_active() else self.island.toggle_keepawake()))
+        item(self._with_hint("Farbpipette starten", "color-picker"), self.island.pick_color)
+        item(self._with_hint("Aktives Fenster anpinnen", "pin-window"), self.island.toggle_pin_active)
         menu.append(Gtk.SeparatorMenuItem())
         check(_("Mit Cinnamon starten"), AUTOSTART.exists(), self._set_autostart)
         menu.append(self._mascot_menu(cfg))
@@ -86,7 +92,7 @@ class Tray:
         menu.append(self._monitors_menu())
         menu.append(self._language_menu(cfg.get("language", "auto")))
         menu.append(Gtk.SeparatorMenuItem())
-        item("Einstellungen öffnen", self.island.open_settings)
+        item("Config-Datei öffnen", self.island.open_settings)
         item(_("Über MosIsland"), self._about)
         item(_("Beenden"), lambda: self.island.get_application().quit())
         menu.show_all()
@@ -105,6 +111,15 @@ class Tray:
         self._checks[key] = mi
         return mi
 
+    def _with_hint(self, text, fid):
+        """'Wach halten  (Ctrl+Alt+K)': the hotkey the register knows for the function."""
+        hint = self.island.hotkey_hint(fid)
+        return f"{text}  ({hint})" if hint else text
+
+    def refresh_checks(self):
+        """A switch changed elsewhere (a hotkey, the tools tab, a card, an edited file): tick the right boxes."""
+        self.refresh_stretch()
+
     def refresh_stretch(self):
         """The reminder was switched on or off elsewhere (card button, tab, edited file): tick the right boxes."""
         if not self._checks:
@@ -112,7 +127,8 @@ class Tray:
         cfg = self.island.config
         values = {"stretch_enabled": cfg.flag("stretch_enabled"),
                   "stretch_today": cfg.get("stretch_off_date") == self.island.stretch.env.today(),
-                  "eye_mode": cfg.flag("eye_mode")}
+                  "eye_mode": cfg.flag("eye_mode"),
+                  "keepawake": self.island.keepawake_active()}
         self._syncing = True
         try:
             for key, value in values.items():

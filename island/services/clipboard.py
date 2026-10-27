@@ -127,6 +127,10 @@ class ClipboardHistory:
         self._clipboard.store()
         return True
 
+    def full_text(self, item):
+        """The whole text of an entry (the history keeps MAX_TEXT characters of it)."""
+        return self._full_text(item)
+
     @staticmethod
     def _full_text(item):
         """The history keeps MAX_TEXT characters; a received text may be longer and is still in the inbox."""

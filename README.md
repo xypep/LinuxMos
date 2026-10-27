@@ -8,7 +8,7 @@
 
 Macht Linux Mint Cinnamon zum leichtgewichtigen macOS-Look-alike – mit Dock, Top Bar, Widgets, Spotlight und optional einer Dynamic Island – ohne dass der Desktop im Leerlauf CPU frisst.
 
-![MosIsland](https://img.shields.io/badge/MosIsland-1.13.0-blue)
+![MosIsland](https://img.shields.io/badge/MosIsland-1.14.0-blue)
 ![Platform](https://img.shields.io/badge/platform-Linux%20Mint%2022%20Cinnamon-87CF3E)
 ![Display server](https://img.shields.io/badge/display-X11-lightgrey)
 
@@ -34,6 +34,7 @@ Macht Linux Mint Cinnamon zum leichtgewichtigen macOS-Look-alike – mit Dock, T
 - [Konfiguration](#konfiguration)
 - [Dehn-Erinnerung](#dehn-erinnerung)
 - [Clip-Transfer](#clip-transfer)
+- [Werkzeuge & Zentrale](#werkzeuge--zentrale)
 - [Tests](#tests)
 - [Bekannte Probleme](#bekannte-probleme)
 - [Roadmap](#roadmap)
@@ -81,8 +82,13 @@ Macht Linux Mint Cinnamon zum leichtgewichtigen macOS-Look-alike – mit Dock, T
 - **Maskottchen** – im Leerlauf Augen, Katze, Roboter oder Blob; sie dösen ein und winken, wenn du zurückkommst
 - **Augen-Modus** – im Leerlauf wächst die Pille, die Figur wird 1,5- bis 3-mal so groß (`eye_mode_scale`), Temperatur und Akku verschwinden; Hover, Klick oder Eingabe bringen alles in ca. 250 ms zurück. Warnungen, Musik, Timer und die Dehn-Karte gehen vor. Setzt eingeschaltetes Maskottchen voraus (`mascot`), sonst bewirkt er nichts
 - **Dehn-Erinnerung** – nach 45 Minuten *aktiver* Zeit am Rechner (Eingabe in der letzten Minute) zeigt die Insel eine Karte mit einer Übung und einem weichen Doppelton. „Start“ lässt einen Countdown mit Ring in der Pille laufen, **„Erledigt“ zählt nur, wenn du in der Zeit wirklich nicht getippt hast.** Eine echte Pause (5 min ohne Eingabe) ersetzt das Dehnen, bei Vollbild und während eines Fokus-Timers wartet die Karte. Später, Heute aus, Aus, Statistik pro Tag, eigene Übungen → [Details](#dehn-erinnerung)
-- **Einstellungs-Zahnrad** – das Zahnrad oben rechts in der aufgeklappten Insel öffnet `config.json` im Editor, alle Optionen stehen dann drin. Änderungen gelten sofort (inotify, kostet nichts); ein Tippfehler lässt die alten Werte aktiv und meldet die Fehlerstelle auf einer Karte
-- **Tray-Menü** – Autostart, Maskottchen (Figur wählen, Augen-Modus), Dehnen (Erinnerung, Heute aus, Jetzt dehnen, Übungen), Minimal-Notch, OSD, Zwischenablage automatisch leeren, Clip-Transfer (Senden, Empfang), Suche (Dateien, Währungen, Suchmaschine), Screenshot, Text & QR, Bildschirmaufnahme (Format, Ton), KI (Chat, Diktat, Verbindung & API-Key), Benachrichtigungen (an/aus, Nicht stören, Apps ausblenden), Live-Hinweise (Mikro & Kamera, VPN, Downloads), Monitor, Sprache, Einstellungen öffnen, Beenden
+- **Zwischenablage-Aktionen** – an jedem Verlaufseintrag (Knopf „Aktionen“) und per `Ctrl+Alt+Shift+V` für den aktuellen Inhalt: Formatierung entfernen, Tracking-Parameter aus Links löschen (`utm_*`, `fbclid`, `gclid` …), GROSS/klein/Titel, JSON formatieren oder zusammenfassen, URL und Base64 kodieren/dekodieren, Leerzeichen bereinigen, Zeilen sortieren, doppelte Zeilen entfernen, QR-Code (wenn `qrencode` da ist). Das Ergebnis erscheint als **neuer** Verlaufseintrag, das Original bleibt; als privat markierte Kopien (Passwort-Manager) fasst nichts davon an → [Details](#werkzeuge--zentrale)
+- **Farbpipette** – `Ctrl+Alt+C`: Bildschirm einfrieren, Lupe (11×11 Pixel, 10-fach) mit Hex-Wert am Mauszeiger, Klick wählt. Hex, RGB, HSL oder HSV in die Zwischenablage, Karte mit allen Formaten, die letzten 20 Farben als Farbfelder (fixierbar)
+- **Wach halten** – `Ctrl+Alt+K` oder Tray-Häkchen: kein Bildschirmschoner, keine Bildschirmabschaltung, kein automatischer Ruhezustand; Kaffeetasse in der Pille, schaltet sich nach 60 Minuten selbst aus. Die Sperre hängt an der D-Bus-Verbindung der Insel – stürzt sie ab, ist sie weg
+- **Fenster anpinnen** – `Ctrl+Alt+P`: das aktive Fenster bleibt immer im Vordergrund (Pin mit Anzahl in der Pille, Liste mit „Aufheben“ im Werkzeuge-Tab)
+- **Einstellungen & Übersicht** – `Ctrl+Alt+H`, das Zahnrad oder der Tray-Eintrag öffnen ein eigenes Fenster (eigener Prozess, nur solange es offen ist): **alle Funktionen** mit Hotkey, Schalter und Status, Suchfeld, ein Klick auf den Namen startet die Funktion, ein Klick auf das Kürzel ändert den Hotkey (mit Konfliktwarnung, sofort wirksam), „Was läuft gerade“ mit CPU und RAM der Insel, die **Gesten** auf der Pille (Mausrad, Mittel-/Rechts-/Doppelklick … frei belegbar) und alle Einstellungen mit geprüften Eingabefeldern → [Details](#werkzeuge--zentrale)
+- **Config-Neuladen** – Änderungen an `config.json` gelten sofort (inotify, kostet nichts); ein Tippfehler lässt die alten Werte aktiv und meldet die Fehlerstelle auf einer Karte. Als Datei öffnest du sie im Einstellungsfenster („Config als Datei öffnen“) oder über Tray → „Config-Datei öffnen“
+- **Tray-Menü** – Einstellungen & Übersicht, Wach halten (Häkchen), Farbpipette, aktives Fenster anpinnen, Autostart, Maskottchen (Figur wählen, Augen-Modus), Dehnen (Erinnerung, Heute aus, Jetzt dehnen, Übungen), Minimal-Notch, OSD, Zwischenablage automatisch leeren, Clip-Transfer (Senden, Empfang), Suche (Dateien, Währungen, Suchmaschine), Screenshot, Text & QR, Bildschirmaufnahme (Format, Ton), KI (Chat, Diktat, Verbindung & API-Key), Benachrichtigungen (an/aus, Nicht stören, Apps ausblenden), Live-Hinweise (Mikro & Kamera, VPN, Downloads), Monitor, Sprache, Config-Datei öffnen, Beenden
 - **Deutsch oder Englisch** – folgt automatisch der Systemsprache, umschaltbar im Tray-Menü (`Sprache / Language`)
 
 **Leichtgewichtig** – gemessen: Conky-Widgets ~0,03 % CPU, MosIsland ~0,1 % CPU (unter Cinnamon 6, Musik läuft) und ~60 MB RAM. Kein Blur-Compositor, keine Polling-Schleifen.
@@ -124,6 +130,21 @@ Das Paket kostet etwa 0,6 MB RAM. Die CPU-Werte sind in dieser Umgebung (Softwar
 
 „Ticks“ sind CPU-Zeit in Hundertstelsekunden während der 60 s (13 Ticks = 0,13 s). Das Paket kostet im Leerlauf 0,2 bis 0,6 MB RAM (mit empfangenen Inhalten und geöffnetem Tab 0,7 MB mehr als vorher), die CPU-Last ändert sich nicht messbar. Aus heißt aus: Sind Senden und Empfang aus, wird das Modul nicht einmal importiert (im Log steht `clip: disabled, no monitors`). Ein erster Entwurf kostete 4 MB, weil `dataclasses`, `secrets` (→ OpenSSL) und `subprocess` im Speicher blieben; der Kern nimmt jetzt nur noch Standardmodule, die die Insel schon geladen hat. Kein Daemon, kein Polling, keine dauerhafte SSH-Verbindung: Pro Clip startet ein `ssh`-Prozess, der danach endet.
 
+**Paket „Werkzeuge & Zentrale“ (1.14.0)** – gemessen wie oben, jede Zeile ein eigener Start mit frischem Profil, 12 s nach dem Start, `linuxmos-perf 60`; „Ticks“ sind CPU-Zeit in Hundertstelsekunden während der 60 s. Damit vorher und nachher denselben Zustand haben, mit `--force-idle` (Maskottchen von Anfang an, das blinzelt – der teuerste Leerlauf-Zustand):
+
+| MosIsland                                              | RSS     | PSS     | CPU (60 s)       |
+|--------------------------------------------------------|---------|---------|------------------|
+| vorher (1.13.0), Lauf 1                                | 59 MB   | 39 MB   | 0,8 % (49 Ticks) |
+| vorher (1.13.0), Lauf 2                                | 59 MB   | 39 MB   | 0,8 % (49 Ticks) |
+| nachher (1.14.0), Lauf 1                               | 60 MB   | 40 MB   | 0,8 % (47 Ticks) |
+| nachher (1.14.0), Lauf 2                               | 59 MB   | 40 MB   | 0,8 % (51 Ticks) |
+| nachher, alle neuen Funktionen aus                     | 59 MB   | 40 MB   | 0,7 % (42 Ticks) |
+| nachher, Wach halten an + ein Fenster angepinnt (ohne `--force-idle`) | 61 MB | 34 MB | 0,7 % (41 Ticks) |
+| nachher, Tab „Werkzeuge“ geöffnet, Farbpipette 3× benutzt (ohne `--force-idle`) | 62 MB | 37 MB | 0,4 % (26 Ticks) |
+| nachher, Einstellungsfenster offen                     | Insel 60 MB, Fenster (eigener Prozess) 63 MB | – | 0,7 % (44 Ticks) |
+
+Das Paket kostet im Leerlauf **etwa 0,5 bis 1 MB RAM** (neue Module, das Register mit 41 Einträgen, das D-Bus-Objekt), die CPU-Last ändert sich nicht messbar: Es gibt keinen neuen Timer, keinen Tick, kein Polling. Wach halten ist eine Sperre ohne Tick (ein Timer auf den Endzeitpunkt), Pins hängen nur ein Signal an den Bildschirm, solange ein Fenster angepinnt ist. Ohne `--force-idle` bestimmt der Zustand die Zahl, nicht die Version: war eben Eingabe (Pille zeigt die Uhr), sind es etwa 25 Ticks, nach einer Minute Ruhe (blinzelndes Maskottchen) etwa 40 bis 47 – gemessen bei 1.13.0 genauso (25 und 47 Ticks in zwei Läufen). PSS hängt davon ab, wie viele andere Prozesse dieselben Seiten teilen, und schwankt deshalb zwischen 34 und 41 MB. **Die Farbpipette** braucht, solange sie offen ist, 15 MB mehr (das Standbild), 60,6 MB → 75 MB → **61,0 MB** nach dem Schließen, auch nach dem dritten Mal; ein erster Entwurf, der den Bildschirm über GDK las, behielt 15 MB für immer (GDK hängt ein Shared-Memory-Bild dauerhaft an), deshalb nimmt jetzt `maim` das Bild auf. **Das Einstellungsfenster** ist ein eigener Prozess (63 MB, solange es offen ist) und danach weg: `pgrep -f island.settings` ist leer.
+
 ---
 
 ## Voraussetzungen
@@ -133,7 +154,7 @@ Das Paket kostet etwa 0,6 MB RAM. Die CPU-Werte sind in dieser Umgebung (Softwar
 - Internetverbindung (apt-Pakete und WhiteSur-Themes von GitHub)
 - Optional: **Timeshift** eingerichtet (für den Snapshot vor der Installation)
 
-Alle Pakete installiert `install.sh` selbst, u. a. `plank`, `conky-std`, `rofi`, `fonts-inter`, `sassc`; mit `--island` zusätzlich `python3-gi`, `gir1.2-gtk-3.0`, `gir1.2-wnck-3.0`, `gir1.2-xapp-1.0`, `xdotool`, `pulseaudio-utils`, `iso-codes`, `ffmpeg` (Aufnahme, Diktat) und `libsecret-tools` (API-Key im Schlüsselbund).
+Alle Pakete installiert `install.sh` selbst, u. a. `plank`, `conky-std`, `rofi`, `fonts-inter`, `sassc`; mit `--island` zusätzlich `python3-gi`, `gir1.2-gtk-3.0`, `gir1.2-wnck-3.0`, `gir1.2-xapp-1.0`, `xdotool`, `pulseaudio-utils`, `iso-codes`, `ffmpeg` (Aufnahme, Diktat) und `libsecret-tools` (API-Key im Schlüsselbund). **Optional, nicht automatisch installiert:** `qrencode` (`sudo apt install qrencode`) für die Aktion „QR-Code“ der Zwischenablage.
 
 ---
 
@@ -206,6 +227,10 @@ linuxmos-island --clip-send  # Zwischenablage an den Standard-Peer senden (Clip-
 linuxmos-clip setup          # Clip-Transfer einrichten: Schlüssel, Peer, Fingerabdruck bestätigen
 linuxmos-clip doctor         # Clip-Transfer prüfen (ssh, Schlüssel, Peer, sshd, Eingang)
 echo hallo | linuxmos-clip send --peer Laptop   # Text/Datei von der Kommandozeile senden
+linuxmos-island --settings   # Einstellungen & Übersicht (eigenes Fenster), --tab overview|gestures|functions
+linuxmos-island --action ID  # eine Funktion aus dem Register auslösen, z. B. color-picker, keep-awake, pin-window, clip-actions
+linuxmos-island --list-actions  # alle Funktionen als Tabelle (--markdown: Hotkey-Tabelle fürs README)
+linuxmos-island --check-hotkeys # Hotkeys auf Konflikte prüfen (untereinander und mit Cinnamon/Mint)
 linuxmos-island --stretch-now   # sofort eine Dehn-Karte zeigen (auch bei laufender Insel)
 linuxmos-island --stretch-test  # Test: Intervall 1 Minute, Leerlauf-Schwellen in Sekunden (nur beim Start)
 linuxmos-island --force-idle    # Test: Maskottchen/Augen-Modus ohne Warten, Hover beendet es (nur beim Start)
@@ -230,9 +255,16 @@ LINUXMOS_LOG=debug linuxmos-island   # Log mit jeder Messung (Standard: info)
 | `Ctrl+Alt+A`     | KI-Chat öffnen (mit `ai_chat`)                              |
 | `Ctrl+Alt+M`     | Diktat: aufnehmen, nochmal drücken = Text erkennen und einfügen (mit `ai_voice`) |
 | `Ctrl+Alt+Shift+T` | Zwischenablage an den Standard-Peer senden (mit „Clip-Senden“; `Ctrl+Alt+T` ist in Cinnamon das Terminal) |
+| `Ctrl+Alt+Shift+V` | Aktionen für den Inhalt der Zwischenablage (Formatierung, Links, JSON, Base64 …) |
+| `Ctrl+Alt+C`     | Farbpipette: Lupe am Mauszeiger, Klick wählt, `Esc` bricht ab, Mausrad ändert die Lupe |
+| `Ctrl+Alt+K`     | Wach halten ein/aus                                         |
+| `Ctrl+Alt+P`     | Aktives Fenster anpinnen / wieder lösen                     |
+| `Ctrl+Alt+H`     | Einstellungen & Übersicht (Tab „Übersicht“)                 |
 | Im Editor        | `A` Pfeil · `R` Rechteck · `M` Marker · `T` Text · `B` Verpixeln · `O` Text erkennen · `1`–`6` Farbe · `Ctrl+Z` · `Ctrl+C` · `Ctrl+S` = Fertig |
 | `Esc`            | MosIsland zuklappen                                         |
-| Mausrad auf der Pille | Lautstärke ±5 %                                        |
+| Mausrad auf der Pille | Lautstärke ±5 % (umbelegbar, siehe [Gesten](#werkzeuge--zentrale)) |
+
+Alle Tasten sind im Einstellungsfenster änderbar (Tab „Übersicht“, Klick auf das Kürzel) und stehen in der Config unter `hotkeys`. Die Tabelle oben entspricht dem Register der Insel; `linuxmos-island --list-actions` zeigt es mit den **echten** Werten, `--check-hotkeys` prüft auf Konflikte.
 
 ---
 
@@ -341,11 +373,24 @@ MosIsland: `~/.config/linuxmos/island/config.json` – die meisten Schalter gibt
   "stretch_volume": 0.5,
   "stretch_off_date": "",
   "eye_mode": true,
-  "eye_mode_scale": 2.0
+  "eye_mode_scale": 2.0,
+  "clipactions_enabled": true,
+  "clipactions_tracking_params": [],
+  "colorpicker_enabled": true,
+  "colorpicker_format": "hex",
+  "colorpicker_history": 20,
+  "keepawake_enabled": true,
+  "keepawake_minutes": 60,
+  "pin_enabled": true,
+  "pin_release_on_exit": true,
+  "hotkeys": {},
+  "gestures_enabled": true,
+  "gestures": {},
+  "overview_intro_seen": false
 }
 ```
 
-Am bequemsten über das **Zahnrad** oben rechts in der aufgeklappten Insel (oder Tray → „Einstellungen öffnen“): Es trägt fehlende Schlüssel mit ihren Standardwerten ein und öffnet die Datei per `xdg-open` (sonst `gio open`, sonst `xed`) – also im Standardprogramm für `.json`-Dateien. Gespeichert gilt sofort, ohne Neustart. Ist das JSON ungültig, bleiben die alten Werte aktiv, eine Karte meldet „Config ungültig, alte Werte bleiben“ mit Zeile und Spalte, und die Insel schreibt nicht in die Datei, bis sie wieder stimmt. Unbekannte Schlüssel bleiben erhalten, Werte außerhalb des gültigen Bereichs werden auf die Grenze gesetzt. **Alle Schlüssel mit Standardwert, Bedeutung und Bereich: [docs/CONFIG.md](docs/CONFIG.md).**
+Am bequemsten im **Einstellungsfenster** (Zahnrad oben rechts in der aufgeklappten Insel, `Ctrl+Alt+H`, Tray → „Einstellungen & Übersicht“): Der Tab „Funktionen“ hat zu jedem Schlüssel ein Eingabefeld, das den Wert prüft. Als Datei: Link „Config als Datei öffnen“ im Fenster oder Tray → „Config-Datei öffnen“ – das trägt fehlende Schlüssel mit ihren Standardwerten ein und öffnet die Datei per `xdg-open` (sonst `gio open`, sonst `xed`), also im Standardprogramm für `.json`-Dateien. Gespeichert gilt sofort, ohne Neustart. Ist das JSON ungültig, bleiben die alten Werte aktiv, eine Karte meldet „Config ungültig, alte Werte bleiben“ mit Zeile und Spalte, und die Insel schreibt nicht in die Datei, bis sie wieder stimmt. Unbekannte Schlüssel bleiben erhalten, Werte außerhalb des gültigen Bereichs werden auf die Grenze gesetzt. **Alle Schlüssel mit Standardwert, Bedeutung und Bereich: [docs/CONFIG.md](docs/CONFIG.md).**
 
 `language`: `auto` (Systemsprache: Deutsch bei `de_*`, sonst Englisch), `de` oder `en`. Beim Umschalten im Tray-Menü startet die MosIsland kurz neu (ein laufender Timer geht dabei verloren).
 
@@ -436,9 +481,56 @@ Text, Bilder und Dateien per SSH zwischen PCs – Linux ↔ Linux im Container g
 
 ---
 
+## Werkzeuge & Zentrale
+
+Paket „Werkzeuge & Zentrale“ (1.14.0). Alles ist einzeln abschaltbar (Einstellungsfenster, `config.json`); aus heißt aus: keine Handler, keine Timer, keine Sperren – das Log sagt es (`keepawake: disabled, no lock, no timer`, `pins: disabled, no handlers`, `gestures: disabled, no handlers` …). Texte dieses Pakets gibt es nur auf Deutsch.
+
+### Zwischenablage-Aktionen
+
+Am Verlaufseintrag der Knopf **Aktionen** (die drei Punkte), oder `Ctrl+Alt+Shift+V` für das, was gerade in der Zwischenablage ist. Die Aktionen stehen als Knöpfe da, ein Klick führt aus:
+
+| Aktion | Was passiert |
+|---|---|
+| Formatierung entfernen | Es bleibt reiner Text (HTML/RTF fliegt aus der Zwischenablage) |
+| Tracking aus Links entfernen | `utm_*`, `fbclid`, `gclid`, `msclkid`, `mc_eid`, `igshid`, `ref_src` u. ä. verschwinden aus allen Links im Text, funktionale Parameter (`id`, `page`, `q`, `ref`, `v` …) und der Rest bleiben Zeichen für Zeichen. Weitere Namen in `clipactions_tracking_params` („Link bereinigt, 3 Parameter entfernt“) |
+| GROSS · klein · Titel-Schreibweise | `don't` wird `Don't`, nicht `Don'T` |
+| JSON formatieren / zusammenfassen | Reihenfolge und Umlaute bleiben; kaputtes JSON: Karte mit Zeile und Spalte, die Zwischenablage bleibt, wie sie war |
+| URL kodieren / dekodieren · Base64 kodieren / dekodieren | Base64 nimmt auch das URL-sichere Alphabet und fehlende `=`; Binärdaten werden abgelehnt |
+| Leerzeichen bereinigen | Doppelte Leerzeichen, Leerzeichen am Zeilenende, mehr als eine Leerzeile, Enden |
+| Zeilen sortieren · Doppelte Zeilen entfernen | Ohne Rücksicht auf Groß/klein sortiert; beim Entfernen bleibt die erste |
+| QR-Code | Nur, wenn `qrencode` installiert ist (sonst fehlt der Knopf): Karte mit dem Code, „Als Bild kopieren“ |
+
+Das Ergebnis ersetzt die Zwischenablage erst nach dem Klick und steht als **neuer Verlauf-Eintrag** da – das Original bleibt. Die Karte bietet „Original zurück“ und „Einfügen“. **Als privat markierte Kopien (KeePassXC & Co.) werden nie verarbeitet** (Karte „Als privat markiert“; sie stehen auch nie im Verlauf). Ohne Änderung („Nichts zu ändern“) bleibt alles, wie es ist. Reine Textfunktionen: im Leerlauf läuft nichts.
+
+### Farbpipette
+
+`Ctrl+Alt+C`, der Knopf im Tab „Werkzeuge“ oder Tray → „Farbpipette starten“. Die Insel blendet sich aus, der gesamte Bildschirm (alle Monitore, auch mit HiDPI-Skalierung) wird **einmal** aufgenommen und als Standbild über den Bildschirm gelegt – so sind weder Insel noch Overlay im Bild. Am Mauszeiger eine Lupe (11×11 Pixel, 10-fach, die Mitte markiert) mit dem Hex-Wert, aktualisiert nur bei Mausbewegung. **Klick** wählt, **`Esc`** oder Rechtsklick bricht ab, das **Mausrad** ändert die Lupe (5 bis 25 Pixel). Danach liegt die Farbe im Format `colorpicker_format` (`hex`, `rgb`, `hsl`, `hsv`) in der Zwischenablage, die Karte zeigt ein Farbfeld und alle vier Formate (ein Klick auf HEX/RGB/HSL/HSV kopiert dieses). Die letzten 20 Farben (`colorpicker_history`, `~/.local/share/linuxmos/island/colors.json`) stehen im Tab „Werkzeuge“ als kleine Farbfelder: Klick kopiert, Rechtsklick fixiert (gelber Rand, fixierte zählen nicht gegen das Limit). Das Standbild wird sofort wieder freigegeben (Messwert unten). Die Aufnahme macht `maim`, das für die Screenshots ohnehin da ist.
+
+### Wach halten
+
+`Ctrl+Alt+K`, Schalter im Tab „Werkzeuge“ oder das Tray-Häkchen. Solange es an ist: Kaffeetasse in der Pille, kein Bildschirmschoner, keine Bildschirmabschaltung, kein automatischer Ruhezustand; Sperren und Ruhezustand **von Hand** gehen weiter. Nach `keepawake_minutes` (Standard 60, `0` = nie) schaltet es sich selbst aus – ein einziger Timer auf den Endzeitpunkt, kein Tick. Nach einem Neustart ist es immer aus.
+
+**Technik:** `org.gnome.SessionManager.Inhibit` mit den Flags „Ruhezustand“ und „Leerlauf“. Das ist der Sitzungsmanager von Cinnamon (`cinnamon-session`): Er reicht den Leerlauf-Zustand an den Bildschirmschoner und an `cinnamon-settings-daemon` weiter, das Bildschirmabschaltung und automatischen Ruhezustand macht – beide halten still. Hilfsweise `org.freedesktop.ScreenSaver.Inhibit` (das nimmt `csd-screensaver-proxy` an und gibt es an den Sitzungsmanager weiter), zuletzt `systemd-inhibit`. **Die Sperre gehört der D-Bus-Verbindung der Insel:** Wird die Insel beendet oder stürzt sie ab (auch `kill -9`), nimmt `cinnamon-session` die Sperre zurück – bei `systemd-inhibit` hängt sie an einem Kindprozess, der endet, sobald die Insel weg ist. Gegen den echten `cinnamon-session` getestet (siehe Tests).
+
+### Fenster anpinnen
+
+`Ctrl+Alt+P` schaltet das aktive Fenster um (`Wnck.Window.make_above()` / `unmake_above()`); der Knopf im Tab „Werkzeuge“ zeigt die angepinnten Fenster mit „Aufheben“. Solange eines angepinnt ist, sitzt ein Pin mit der Anzahl in der Pille. Nicht anpinnbar sind die Insel selbst, Schreibtisch, Panel und Dock sowie Menüs; bei Vollbild-Fenstern und solchen, die der Fenstermanager nicht erlaubt, sagt eine Karte warum. Die Insel merkt sich die Pins nur für die laufende Sitzung: schließt du ein Fenster (das `window-closed`-Signal von libwnck – ein einzelnes Wnck-Fenster hat kein `closed`), fällt es aus der Liste; nimmst du „Immer im Vordergrund“ im Fenstermenü weg, bemerkt das `state-changed`. Beim Beenden der Insel werden alle Pins aufgehoben (`pin_release_on_exit`). **Vollbild-Spiele und -Videos lassen sich nicht überlagern** – das entscheidet der Fenstermanager, nicht die Insel.
+
+### Einstellungen & Übersicht
+
+`Ctrl+Alt+H`, das Zahnrad oder Tray → „Einstellungen & Übersicht“ (auch `linuxmos-island --settings [--tab …]`). Ein **eigenes Programm** (`linuxmos-island-settings`): Es startet nur, wenn du es öffnest, und ist beim Schließen weg – im Leerlauf kostet es nichts. Es fragt die laufende Insel über D-Bus (nur dein Benutzer, kein Netzwerk) nach Register und Status; läuft die Insel nicht, zeigt es die Config und einen Hinweis. Größe und Position merkt es sich.
+
+- **Übersicht:** Suchfeld oben. Alle Funktionen nach Kategorien mit Beschreibung, **Hotkey**, **Schalter** und **Status**. Ein Klick auf den **Namen** löst die Funktion aus (bei Screenshot, Aufnahme, OCR, QR und Farbpipette tritt das Fenster vorher zur Seite und kommt danach wieder; Funktionen ohne Aktion öffnen ihren Tab, Neustart und Ausschalten fragen nach). Ein Klick auf das **Kürzel** ändert den Hotkey: Kombination drücken, bei Konflikt rote Warnung mit dem Namen der anderen Funktion (Speichern dann nur mit „Trotzdem speichern“), „Zurücksetzen“ pro Hotkey, „Entfernen“. Die Änderung gilt sofort. Oben „Was läuft gerade“ (laufende und ausgeschaltete Funktionen, CPU und RAM der Insel – einmal gelesen, „Aktualisieren“ liest neu, kein Timer), unten die Gesten und der Inhalt des Tray-Menüs.
+- **Gesten:** Hauptschalter und eine Auswahl je Geste. Auf der **eingeklappten** Pille: Mausrad, Mausrad mit Umschalt oder Strg, Mausrad am linken oder rechten Rand, Mittelklick, Rechtsklick, Doppelklick. Aktionen: Lautstärke ±, Helligkeit ±, nächster/vorheriger Tab, Play/Pause, nächster/vorheriger Titel, Tab öffnen, Funktion aus dem Register, Einstellungen, Insel aufklappen, nichts. **Die Standardwerte sind das alte Verhalten** (Mausrad = Lautstärke ±5 %, Mittel- und Rechtsklick klappen auf). Reine Ereignisbehandlung; mit dem Hauptschalter aus sind die Handler nicht einmal verbunden. Wer länger als einen Moment auf der Pille verweilt, klappt sie per Hover auf – dann gehören Mausrad und Klicks dem aufgeklappten Tab.
+- **Funktionen:** jeder Config-Schlüssel mit passendem Feld (Schalter, Zahl, Auswahl, Text). Ungültiges wird rot markiert und nicht gespeichert, die Config bleibt gültig.
+
+Einmal nach Installation oder Update zeigt die Insel die Karte „Neu: Übersicht der Funktionen“ mit einem Knopf zum Öffnen.
+
+**Hotkeys und Cinnamon:** Auf die Tasten hört Cinnamon (benutzerdefinierte Kürzel, die `install.sh` anlegt). Das Fenster schreibt Änderungen in genau diese Kürzel und in `hotkeys` der Config; ein von Hand geänderter `hotkeys`-Abschnitt wird von der laufenden Insel in die Kürzel übernommen. Hinweis: Cinnamon belegt `Ctrl+Alt+Shift+R` schon selbst (Bildschirmrekorder) – das ist dieselbe Taste wie „Aufnahme vom Bildschirm“ (`linuxmos-island --check-hotkeys` zeigt es); ändere eine der beiden.
+
 ## Tests
 
-Im Container getestet, ohne echte Hardware: Xvfb mit echtem **Muffin** (Leerlaufzeit, Fenster, Vollbild) und privatem D-Bus, die Regeln der Erinnerung zusätzlich mit einer künstlichen Uhr (`python3 -m unittest discover -s tests -t .`, 84 Tests, brauchen nur Python; der Loopback-Test des Clip-Transfers startet einen eigenen `sshd` auf 127.0.0.1 und wird übersprungen, wo `sshd` fehlt). Was damit nicht geht (Ohren, echter Bildschirm, deine Standard-Programme, zwei echte PCs, Windows), steht in [TEST.md](TEST.md) unter „Paket 11“ und „Paket 12“.
+Im Container getestet, ohne echte Hardware: Xvfb mit echtem **Muffin** (Leerlaufzeit, Fenster, Vollbild) und privatem D-Bus, die Regeln der Erinnerung zusätzlich mit einer künstlichen Uhr (`python3 -m unittest discover -s tests -t .`, 198 Tests; die meisten brauchen nur Python, die zu Wach halten, Hotkeys und Pins brauchen PyGObject bzw. `dbus-daemon` und werden sonst übersprungen; der Loopback-Test des Clip-Transfers startet einen eigenen `sshd` auf 127.0.0.1 und wird übersprungen, wo `sshd` fehlt). Was damit nicht geht (Ohren, echter Bildschirm, deine Standard-Programme, zwei echte PCs, Windows, echte Tasten), steht in [TEST.md](TEST.md) unter „Paket 11“ bis „Paket 13“.
 
 Hilfen zum Ausprobieren: `linuxmos-island --stretch-now` (Karte sofort), `--stretch-test` (Intervall 1 Minute; Takt 5 s, Pause nach 20 s, Überspringen nach 40 s, „Später“ 10 s/6 s, Wiederkommen nach 15 s), `--force-idle` (Augen-Modus ohne Warten).
 
@@ -478,6 +570,28 @@ Hilfen zum Ausprobieren: `linuxmos-island --stretch-now` (Karte sofort), `--stre
 | `uninstall.sh` | ✅ ohne `--purge` ist `linuxmos-clip` weg, Eingang, Peers, Schlüssel und empfangene Dateien bleiben; mit `--purge` sind Eingang, Peers und `~/.ssh/linuxmos_clip_*` weg (andere Schlüssel nicht), empfangene Dateien bleiben |
 | Windows (Senden nach Linux, Empfang unter Windows, AutoHotkey, PowerShell-Script) | ❌ **nicht getestet** (kein Windows verfügbar): [docs/CLIP-WINDOWS.md](docs/CLIP-WINDOWS.md), Scripts in `docs/windows/` |
 
+**Werkzeuge & Zentrale (Paket 13)** – im Container mit Xvfb und echtem Muffin, einem **echten `cinnamon-session`** auf einem privaten D-Bus (`--session` mit einer leeren Komponentenliste; er stellt `org.gnome.SessionManager` bereit), den installierten Cinnamon-Schemas (gsettings-Backend `keyfile`, damit zwei Prozesse dasselbe sehen), zwei Monitoren (`xrandr --setmonitor`, 3840×1080) und `GDK_SCALE=2`; die Bildschirmfotos der Karten, der Lupe und der Fenster wurden angesehen:
+
+| Test | Ergebnis |
+|---|---|
+| Debug-Hilfen | ✅ `--list-actions` (41 Funktionen; ohne Insel aus den Definitionen und der Config, mit Insel mit Status, `--markdown` für die Hotkey-Tabelle), `--action ID` (bei laufender Insel per D-Bus, ohne sie Hinweis und Exit 1), `--check-hotkeys` (Exit 1 bei Konflikt). Der Bericht fand einen **echten** Konflikt: `Ctrl+Alt+Shift+R` („Aufnahme vom Bildschirm“) ist auch Cinnamons `toggle-recording` |
+| Idle-CPU und RAM vorher/nachher | ✅ siehe Tabelle oben: +0,5 bis 1 MB RSS, CPU unverändert (49/49 Ticks vorher, 47/51 nachher); mit allen neuen Funktionen aus 42. Ist das Einstellungsfenster geschlossen, läuft kein Prozess dafür (`pgrep -f island.settings` leer) |
+| Alle Funktionen aus | ✅ Log: `clipactions: disabled`, `colorpicker: disabled`, `keepawake: disabled, no lock, no timer`, `pins: disabled, no handlers`, `gestures: disabled, no handlers`; die Hotkeys zeigen „… ist aus · Einstellungen & Übersicht“; Mausrad und Mittelklick tun nichts (kein `scroll-event`-Handler verbunden), ein Linksklick öffnet weiter. Zur Laufzeit ausgeschaltet (Config geändert): eine laufende Wach-halten-Sperre wird freigegeben (`off (disabled)`), Pins werden aufgehoben, der Wheel-Handler abgehängt; wieder eingeschaltet geht es ohne Neustart |
+| Zwischenablage-Aktionen | ✅ jede Aktion mit Beispieltext als Unit-Test (Tracking: 9 Fälle inkl. Satzzeichen hinter Links, Klammern in Links, kodierte Namen, eigene Liste; kaputtes JSON mit Zeile und Spalte; Base64 mit URL-Alphabet, ohne Padding, Binärdaten abgelehnt). In der Insel: Knopf am Eintrag und Hotkey; „Tracking aus Links entfernen“ → Karte „Link bereinigt, 1 Parameter entfernt“, das Ergebnis steht **neu** oben im Verlauf, das Original darunter. QR-Code: Karte, `zbarimg` liest den Link zurück |
+| Als privat markierte Kopie | ⚠️ ein Programm, das Text **und** `x-kde-passwordManagerHint` anbietet, simuliert: nicht im Verlauf, `Ctrl+Alt+Shift+V` → Karte „Als privat markiert“, nichts verarbeitet. Mit dem echten KeePassXC nicht probiert (TEST.md AH3) |
+| Farbpipette | ✅ pixelgenau (Streifenbild, jedes Pixel eine andere Farbe) bei Skalierung 100 % über zwei Monitore (x = 100, 301, 1919, 2500, 3839) und bei `GDK_SCALE=2` (x = 101, 300, 1000, 1919); Lupe 11×11, Mausrad 5–25, `Esc` und Rechtsklick brechen ab (Zwischenablage bleibt), Verlauf mit fixierter Farbe, Klick im Tab kopiert. Insel nicht im Bild (das Pixel unter der schwarzen Pille ist weiß), RAM 60,6 → 75 → **61,0 MB**, drei Läufe hintereinander. ⚠️ **150 %** nicht prüfbar (GDK kennt nur ganze Faktoren; die Bruchteil-Skalierung von Cinnamon per `xrandr` hat Xvfb nicht); Pixel genau am Monitorrand (x = 1920) war vom Fensterschatten meiner Testfenster verfälscht |
+| Wach halten | ✅ gegen den **echten `cinnamon-session`**: die Sperre erscheint (`GetInhibitors`, Flags 12 = Ruhezustand + Leerlauf, `IsInhibited(8)` = wahr), Auto-Aus nach 1 Minute (Log `off (time is up)`, Liste leer), frei nach Ausschalten, `--quit`, `SIGTERM` und **`kill -9`** der Insel (die Sperre ist mit der D-Bus-Verbindung weg). Die Rückfälle (`org.freedesktop.ScreenSaver`, `systemd-inhibit` mit einem Stellvertreter-Skript: sein Kindprozess endet mit der Insel) als Tests mit Stellvertretern; kein Dienst erreichbar → Karte „Wach halten nicht möglich“. ⚠️ ob der Bildschirm wirklich nicht abschaltet, lässt sich ohne echte Hardware nicht sehen (TEST.md AI1) |
+| Fenster anpinnen | ✅ unter Muffin: anpinnen und aufheben per Hotkey-Aufruf (`_NET_WM_STATE_ABOVE`), zwei Fenster („2 Fenster angepinnt“), Fenster schließen (`window-closed`) und Änderung über das Fenstermenü (`set_keep_above(False)` aus einer App erzeugt dieselbe Nachricht wie das Menü) werden erkannt, Pins nach Beenden aufgehoben, mit `pin_release_on_exit: false` bleiben sie, zur Laufzeit ausgeschaltet → alle aufgehoben. Panel/Dock-Fenster: Karte „Panel und Dock lassen sich nicht anpinnen“. Die Regeln (Insel selbst, Schreibtisch, Menü, Vollbild, vom Fenstermanager nicht erlaubt) als Unit-Tests mit einem Wnck-Stellvertreter; Pin mit Anzahl und Kaffeetasse in der Pille angesehen. ⚠️ echtes Vollbild und das echte Cinnamon-Panel nicht probiert |
+| Register | ✅ 41 Funktionen; alle 13 bestehenden Hotkeys erscheinen mit den **echten** Werten (auch eine in Cinnamon geänderte Taste, z. B. `Super+V`); Konfliktwarnung getestet mit einem absichtlichen Doppel (`Ctrl+Alt+V` für zwei Funktionen), mit einer Cinnamon-Taste (`Ctrl+Alt+T`) und mit dem echten Fund oben |
+| Klick auf den Funktionsnamen | ✅ Wach halten startet in der Insel; Funktion ohne Aktion (Wasser) öffnet ihren Tab; Farbpipette, Screenshot, OCR: das Fenster tritt vorher zur Seite (nicht im Bild) und **kommt zurück**, sobald die Insel das Ende meldet; Neustart fragt nach („Abbrechen“ führt nichts aus, „Ja“ ruft `systemctl reboot` – ein Stellvertreter, **nicht** das echte) |
+| Hotkey ändern, übernehmen, zurücksetzen | ✅ Taste drücken (mit Tastatur-Grab, damit Cinnamons eigene Kürzel sie nicht schlucken), Konflikt rot, ohne Strg/Alt/Super abgelehnt, `Esc`, „Trotzdem speichern“, „Zurücksetzen“, „Entfernen“; geschrieben werden `config.json` und das Cinnamon-Kürzel (gsettings), eine von Hand geänderte `hotkeys`-Sektion übernimmt die laufende Insel sofort. ⚠️ dass **echtes** Cinnamon die Taste sofort neu liest, ließ sich ohne Cinnamon nicht sehen (TEST.md AG3) |
+| Gesten | ✅ Standard = altes Verhalten: Mittel- und Rechtsklick klappen auf (xdotool), „Mausrad = Lautstärke ±5 %“ ist als Standardwert geprüft (Unit-Test) – die Lautstärke selbst nicht, im Container fehlt `pactl`. Umbelegt wirkt sofort: Mausrad → Funktion „Wach halten“, Umschalt → nichts, Strg → „wie Mausrad“, Rechtsklick → nichts, Doppelklick → Funktion (klappt die vom ersten Klick geöffnete Insel wieder zu). Der linke und rechte Rand als Klassifizierung im Unit-Test, mit der Aktion „Fenster anpinnen“ ohne aktives Fenster nur als Karte gesehen. Hauptschalter aus → keine Gesten, Linksklick öffnet weiter |
+| Insel läuft nicht | ✅ Fenster zeigt den Hinweis und die Config, Klick auf eine Funktion sagt, dass die Insel fehlt, Werte lassen sich ändern und gelten beim nächsten Start |
+| Ungültige Werte | ✅ `9999` bei „Abstand zur Top Bar“ und `99:99` bei der Uhrzeit: rot, Meldung, **nicht gespeichert** (Datei unverändert, gültiges JSON); eine kaputte Config-Datei wird nie überschrieben. Jeder Standardwert besteht seine eigene Prüfung (Test) |
+| `update.sh` auf bestehender Installation | ⚠️ das echte Script lief als gewöhnlicher Benutzer mit Stellvertretern für `apt` und `dpkg` (`--pulled --no-themes`, ohne Git/Themes, ohne Bildschirm) über einer „1.13.0-Installation“: `config.json` **byte-identisch**, eigene und unbekannte Schlüssel bleiben, neue kommen mit Standardwerten; ein selbst geändertes Kürzel (`Super+V`) bleibt, die fünf neuen Kürzel kommen dazu; `linuxmos-island-settings` und die neuen Module liegen da, `--list-actions` aus dem installierten Ordner zeigt `Super+V`. `git pull` und Themes nicht |
+| `uninstall.sh` | ✅ ohne `--purge` ist `linuxmos-island-settings` weg, Farbverlauf und Config bleiben; mit `--purge` sind Farbverlauf, Fensterposition und Cache weg |
+| Absturz beim Schließen eines gemerkten Fensters | ✅ beim Testen gefunden und behoben: Die Insel merkte sich das Fenster, aus dem sie geöffnet wurde, als libwnck-Objekt; war es inzwischen geschlossen (z. B. das kurzlebige Einstellungsfenster), stürzte libwnck beim Loslassen ab (Segfault, davor nur eine GLib-Warnung). Jetzt wird nur die Fenster-ID gemerkt und bei Bedarf aufgelöst; drei Durchläufe ohne Absturz |
+
 ---
 
 ## Bekannte Probleme
@@ -504,6 +618,7 @@ Hilfen zum Ausprobieren: `linuxmos-island --stretch-now` (Karte sofort), `--stre
 - **Augen-Modus:** Läuft sonst nichts in der Pille, ersetzt er die normale Maskottchen-Pille; Mikrofon-/Kamerapunkte und Download-Ring bleiben daneben sichtbar. Ohne Maskottchen (`mascot: false`) bewirkt er nichts.
 - **Zahnrad:** Die Datei öffnet sich im Standardprogramm für `.json` (`xdg-open`). Ist das bei dir der Browser, per `xdg-mime default xed.desktop application/json` ändern. Ein Neustart ist nur für `language` nötig; offene, schon gebaute Tabs zeigen geänderte Werte erst beim nächsten Öffnen der Insel.
 - **Clip-Transfer:** Die **Windows-Seite ist ungetestet** (Best Effort); die Windows-Island gibt es noch nicht und soll später (V2.1) einen eigenen Sender und Empfänger bekommen. Der Empfänger braucht einen laufenden SSH-Server (nicht automatisch installiert). Der Zwangsbefehl in `authorized_keys` nutzt `~/.local/bin/linuxmos-clip`, weil sshd ihn ohne dein `PATH` startet. Der Absender eines Clips ist nur die Adresse, von der er kam (`ip` im Peer-Eintrag, damit die Karte den Namen nennt). Der Verlauf kürzt Texte auf 20 000 Zeichen (der Hotkey sendet die volle Zwischenablage). Der Hotkey sendet eine einzelne Datei, mehrere nur einzeln aus der Ablage; Ordner werden nicht gesendet. Die Texte des Clip-Transfers gibt es nur auf Deutsch.
+- **Werkzeuge & Zentrale:** Cinnamon belegt `Ctrl+Alt+Shift+R` selbst (Bildschirmrekorder) – dieselbe Taste wie „Aufnahme vom Bildschirm“; `linuxmos-island --check-hotkeys` zeigt es, im Einstellungsfenster lässt sich eine der beiden ändern. **Wach halten** verhindert Bildschirmschoner, Abschaltung und automatischen Ruhezustand über den Sitzungsmanager; Programme, die selbst dagegen arbeiten, und ein Ruhezustand per Deckel (Laptop zuklappen) bleiben unberührt. **Fenster anpinnen** geht nicht über Vollbild-Spiele/-Videos, Fenster, die du selbst über das Fenstermenü anpinnst, zählt die Insel nicht (sie sieht nur die, die sie angepinnt hat). Die **Farbpipette** liest den Bildschirm so, wie X11 ihn liefert: bei Bruchteil-Skalierung (xrandr) die Pixel vor dem Herunterskalieren, nicht den fertigen Bildschirm; unter Wayland geht sie nicht. Das Mausrad auf der Pille wirkt nur, solange die Pille noch zu ist – wer länger als einen Moment darauf bleibt, klappt sie auf. Die Texte des Pakets (Zwischenablage-Aktionen, Werkzeuge, Einstellungsfenster) gibt es nur auf Deutsch. Die Hotkey-Änderung im Fenster schreibt Cinnamons Kürzel und setzt voraus, dass Cinnamon sie live neu liest; ob das auf deinem Mint so ist, prüft [TEST.md](TEST.md) Paket 13 (AG3).
 - **Screenshot-Bild in der Zwischenablage** hält ein kleiner `xclip`-Prozess im Hintergrund, bis du etwas anderes kopierst (so überlebt das Bild auch ein Beenden der Insel).
 
 Weitere Lösungen: [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.md#troubleshooting)
@@ -535,6 +650,8 @@ Weitere Lösungen: [docs/ANLEITUNG.md → Troubleshooting](docs/ANLEITUNG.md#tro
 - [ ] Dehn-Erinnerung und Augen-Modus auf echtem Mint prüfen (Ton, Sperrbildschirm, echtes Vollbild)
 - [x] Clip-Transfer: Text, Bilder, Dateien per SSH, nur manuell (`clip_*`, `Ctrl+Alt+Shift+T`, `linuxmos-clip`), siehe [docs/CLIP.md](docs/CLIP.md)
 - [ ] Clip-Transfer auf zwei echten PCs und mit Windows prüfen ([TEST.md](TEST.md) Paket 12, [docs/CLIP-WINDOWS.md](docs/CLIP-WINDOWS.md))
+- [x] Werkzeuge & Zentrale: Zwischenablage-Aktionen, Farbpipette, Wach halten, Fenster anpinnen, Einstellungsfenster mit Hotkey-Übersicht und Gesten (`Ctrl+Alt+Shift+V`, `Ctrl+Alt+C`, `Ctrl+Alt+K`, `Ctrl+Alt+P`, `Ctrl+Alt+H`)
+- [ ] Werkzeuge & Zentrale auf echtem Mint prüfen: echte Tasten, Bildschirmabschaltung, Bruchteil-Skalierung ([TEST.md](TEST.md) Paket 13)
 - [ ] Windows-Island (V2.1) mit eigenem Clip-Sender und -Empfänger
 
 ---

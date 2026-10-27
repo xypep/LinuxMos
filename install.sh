@@ -530,6 +530,8 @@ setup_island() {
   cp -r "${REPO_DIR}/island" "${app_dir}/"
   find "${app_dir}" -name __pycache__ -prune -exec rm -rf {} +
   install -m 755 "${REPO_DIR}/bin/linuxmos-island" "${BIN_DIR}/linuxmos-island"
+  # Einstellungen & Übersicht: eigenes Fenster, läuft nur, solange es offen ist
+  install -m 755 "${REPO_DIR}/bin/linuxmos-island-settings" "${BIN_DIR}/linuxmos-island-settings"
   # Clip-Transfer (Text, Bilder, Dateien per SSH): reines Python, braucht nur den ssh-Client
   install -m 755 "${REPO_DIR}/bin/linuxmos-clip" "${BIN_DIR}/linuxmos-clip"
 
@@ -593,8 +595,21 @@ EOF
   python3 "${TWEAKS}" add-keybinding "MosIsland Clip senden (LinuxMos)" \
     "${BIN_DIR}/linuxmos-island --clip-send" "<Primary><Alt><Shift>t"
 
+  # Werkzeuge & Übersicht (die Namen stehen auch in island/registry.py: darüber ändert die Insel die Tasten live;
+  # eine schon geänderte Taste bleibt bei einem Update erhalten)
+  python3 "${TWEAKS}" add-keybinding "MosIsland Einstellungen (LinuxMos)" \
+    "${BIN_DIR}/linuxmos-island --settings --tab overview" "<Primary><Alt>h"
+  python3 "${TWEAKS}" add-keybinding "MosIsland Zwischenablage-Aktionen (LinuxMos)" \
+    "${BIN_DIR}/linuxmos-island --action clip-actions" "<Primary><Alt><Shift>v"
+  python3 "${TWEAKS}" add-keybinding "MosIsland Farbpipette (LinuxMos)" \
+    "${BIN_DIR}/linuxmos-island --action color-picker" "<Primary><Alt>c"
+  python3 "${TWEAKS}" add-keybinding "MosIsland Wach halten (LinuxMos)" \
+    "${BIN_DIR}/linuxmos-island --action keep-awake" "<Primary><Alt>k"
+  python3 "${TWEAKS}" add-keybinding "MosIsland Fenster anpinnen (LinuxMos)" \
+    "${BIN_DIR}/linuxmos-island --action pin-window" "<Primary><Alt>p"
+
   setsid "${BIN_DIR}/linuxmos-island" >/dev/null 2>&1 < /dev/null &
-  ok "MosIsland läuft (Ctrl+Alt+I öffnen, Ctrl+Alt+Space Suche, Ctrl+Alt+V Zwischenablage, Ctrl+Alt+S Screenshot, Ctrl+Alt+O Text, Ctrl+Alt+R Aufnahme, Ctrl+Alt+A KI-Chat, Ctrl+Alt+M Diktat, Ctrl+Alt+Shift+T Clip senden, Tray-Icon für Einstellungen)"
+  ok "MosIsland läuft (Ctrl+Alt+I öffnen, Ctrl+Alt+Space Suche, Ctrl+Alt+V Zwischenablage, Ctrl+Alt+S Screenshot, Ctrl+Alt+O Text, Ctrl+Alt+R Aufnahme, Ctrl+Alt+A KI-Chat, Ctrl+Alt+M Diktat, Ctrl+Alt+Shift+T Clip senden, Ctrl+Alt+C Farbpipette, Ctrl+Alt+K Wach halten, Ctrl+Alt+P Fenster anpinnen, Ctrl+Alt+H Einstellungen & Übersicht, Tray-Icon)"
 }
 
 install_tools() {

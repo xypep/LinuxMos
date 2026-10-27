@@ -4,6 +4,7 @@ import json
 import logging
 import math
 import os
+import shutil
 from pathlib import Path
 
 log = logging.getLogger("mosisland.config")
@@ -134,7 +135,36 @@ DEFAULT_CONFIG = {
     # Big eyes in the idle island: the mascot grows by eye_mode_scale (1.5-3.0), temperature and battery go
     "eye_mode": True,
     "eye_mode_scale": 2.0,
+    # Clipboard actions on a history entry or the current clipboard (strip formatting, clean links, case,
+    # JSON, URL/Base64, lines, QR). clipactions_tracking_params extends the built-in list of link parameters to
+    # drop (names; "utm_*" style prefixes with a trailing *). Results only replace the clipboard on a click.
+    "clipactions_enabled": True,
+    "clipactions_tracking_params": [],
+    # Colour picker (Ctrl+Alt+C): format of the copied colour hex | rgb | hsl | hsv, length of the history
+    "colorpicker_enabled": True,
+    "colorpicker_format": "hex",
+    "colorpicker_history": 20,
+    # Keep awake (Ctrl+Alt+K): no screen saver, screen off or automatic suspend; 0 = until switched off.
+    # Never remembered across restarts.
+    "keepawake_enabled": True,
+    "keepawake_minutes": 60,
+    # Always on top for any window (Ctrl+Alt+P); the pins end when the island quits (pin_release_on_exit)
+    "pin_enabled": True,
+    "pin_release_on_exit": True,
+    # Hotkeys by function id (see `linuxmos-island --list-actions`): only the ones changed from the default,
+    # "<Primary><Alt>v" style; "" switches a hotkey off. The island writes them into Cinnamon's custom shortcuts.
+    "hotkeys": {},
+    # Mouse gestures on the folded pill: the master switch and the action per gesture (see island/gestures.py)
+    "gestures_enabled": True,
+    "gestures": {},
+    # The "New: overview of the functions" card was shown once
+    "overview_intro_seen": False,
 }
+
+
+def launcher_path():
+    """The `linuxmos-island` program: the one on PATH, else the usual place of `install.sh`."""
+    return shutil.which("linuxmos-island") or str(Path.home() / ".local" / "bin" / "linuxmos-island")
 
 
 def load_json(path, default):
@@ -257,6 +287,21 @@ class Config(dict):
     def flag(self, key):
         value = self.get(key, DEFAULT_CONFIG.get(key, False))
         return value if isinstance(value, bool) else bool(DEFAULT_CONFIG.get(key, False))
+
+    def section(self, key):
+        """A dict-valued key (hotkeys, gestures) as a copy; a wrong type in the file counts as empty."""
+        value = self.get(key)
+        return dict(value) if isinstance(value, dict) else {}
+
+    def set_in_section(self, key, name, value):
+        """section[name] = value (None removes it). Replaces the whole dict: save() compares by value and the
+        defaults' dicts are shared between instances, so a dict must never be changed in place."""
+        section = self.section(key)
+        if value is None:
+            section.pop(name, None)
+        else:
+            section[name] = value
+        self[key] = section
 
 
 _MISSING = object()
