@@ -4,18 +4,15 @@ Only the song title, artist, album and length are sent, and only while the
 lyrics are actually shown (lyrics view open or lyrics-in-pill enabled).
 """
 
-import hashlib
 import json
 import re
-import threading
 import urllib.parse
-import urllib.request
 
 from gi.repository import GLib
 
+from island.services import http
 from island.storage import CACHE_DIR
 
-USER_AGENT = "LinuxMos-Island/1.1 (+https://github.com/xypep/LinuxMos)"
 API = "https://lrclib.net/api/get?"
 LYRICS_DIR = CACHE_DIR / "lyrics"
 _LINE = re.compile(r"\[(\d+):(\d+(?:\.\d+)?)\](.*)")
@@ -57,7 +54,9 @@ class LyricsFetcher:
 
     @staticmethod
     def key(track):
-        return hashlib.sha1(f"{track.artist}|{track.title}|{track.length_us // 1_000_000}".encode()).hexdigest()
+        # GLib's SHA-1 (same names as hashlib's): hashlib would load OpenSSL's libcrypto
+        return GLib.compute_checksum_for_string(GLib.ChecksumType.SHA1,
+                                                f"{track.artist}|{track.title}|{track.length_us // 1_000_000}", -1)
 
     def get(self, track, callback):
         """callback(lines or [], plain_text_or_None) on the main loop."""
@@ -68,38 +67,40 @@ class LyricsFetcher:
         if key in self._pending:
             return
         self._pending.add(key)
-        threading.Thread(target=self._worker, args=(track, key, callback), daemon=True).start()
-
-    def _worker(self, track, key, callback):
         path = LYRICS_DIR / f"{key}.json"
-        data = None
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
-            try:
-                query = {"track_name": track.title, "artist_name": track.artist}
-                if track.length_us:
-                    query["duration"] = round(track.length_us / 1_000_000)
-                req = urllib.request.Request(API + urllib.parse.urlencode(query),
-                                             headers={"User-Agent": USER_AGENT})
-                with urllib.request.urlopen(req, timeout=8) as resp:
-                    found = json.load(resp)
+            data = None
+        if isinstance(data, dict):
+            self._deliver(key, data, callback)
+            return
+        query = {"track_name": track.title, "artist_name": track.artist}
+        if track.length_us:
+            query["duration"] = round(track.length_us / 1_000_000)
+
+        def done(status, found):
+            if status == 404:
+                data = {"synced": "", "plain": ""}   # LRCLIB doesn't know the song
+            elif status == 200 and isinstance(found, dict):
                 data = {"synced": found.get("syncedLyrics") or "", "plain": found.get("plainLyrics") or ""}
-            except urllib.error.HTTPError as exc:
-                data = {"synced": "", "plain": ""} if exc.code == 404 else None
-            except (OSError, ValueError):
-                data = None  # offline: don't cache, try again next time
+            else:
+                data = None   # offline: don't cache, try again next time
             if data is not None:
-                LYRICS_DIR.mkdir(parents=True, exist_ok=True)
-                path.write_text(json.dumps(data), encoding="utf-8")
-        GLib.idle_add(self._deliver, key, data, callback)
+                try:
+                    LYRICS_DIR.mkdir(parents=True, exist_ok=True)
+                    path.write_text(json.dumps(data), encoding="utf-8")
+                except OSError:
+                    pass
+            self._deliver(key, data, callback)
+
+        http.get_json(API + urllib.parse.urlencode(query), done, timeout=8)
 
     def _deliver(self, key, data, callback):
         self._pending.discard(key)
         if data is None:
             callback([], None)
         else:
-            result = (parse_lrc(data["synced"]), data["plain"] or None)
+            result = (parse_lrc(data.get("synced")), data.get("plain") or None)
             self._memory[key] = result
             callback(*result)
-        return GLib.SOURCE_REMOVE

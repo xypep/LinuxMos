@@ -1,4 +1,4 @@
-/* LinuxMos Island – black, Apple-like and independent of the GTK theme */
+/* MosIsland (LinuxMos) – black, Apple-like and independent of the GTK theme */
 
 #island,
 #island * {
@@ -53,6 +53,10 @@
 #island button.mini { background: transparent; padding: 3px; border-radius: 6px; }
 #island button.mini:hover { background: rgba(255, 255, 255, 0.14); }
 #island button.mini.pinned image { color: #ffd60a; }
+#island button.live-mic image { color: #ff9f0a; }
+#island button.live-mic.muted image { color: rgba(245, 245, 247, 0.55); }
+#island .live-cam { color: #30d158; }
+#island button.live-download label { font-size: 9pt; font-feature-settings: "tnum"; }
 #island button.tile-close { opacity: 0; }
 #island overlay:hover button.tile-close { opacity: 1; }
 
@@ -60,6 +64,8 @@
 #island button.tile-button { padding: 10px 12px; }
 
 /* ---- cards ------------------------------------------------------------ */
+/* The folded island as a card (recognised text, QR code) */
+#island .card-body { font-size: 10pt; color: rgba(245, 245, 247, 0.85); }
 #island .card {
     background: rgba(255, 255, 255, 0.07);
     border-radius: 16px;
@@ -112,6 +118,7 @@
 }
 #island textview,
 #island textview text { background: transparent; }
+#island entry.command { font-size: 15px; min-height: 34px; padding: 0 12px; }
 #island spinbutton button { background: transparent; padding: 4px; }
 #island selection { background: #0a84ff; color: #ffffff; }
 
@@ -161,3 +168,17 @@
 
 #island tooltip,
 #island tooltip * { background: #1c1c1e; color: #f5f5f7; border-radius: 8px; }
+
+/* ---- chat ------------------------------------------------------------- */
+#island .chat-bubble { border-radius: 14px; padding: 7px 11px; }
+#island .chat-user { background: #0a84ff; color: #ffffff; }
+#island .chat-bot { background: rgba(255, 255, 255, 0.10); }
+#island .chat-bubble.chat-error { background: rgba(255, 69, 58, 0.22); }
+
+/* ---- stretch reminder, settings gear ------------------------------------- */
+/* The card that comes back bigger when it was ignored */
+#island .card-big .title { font-size: 13pt; }
+#island .card-big .card-body { font-size: 12pt; }
+/* The gear in the opened island's header: quiet until you point at it */
+#island button.settings image { color: rgba(245, 245, 247, 0.38); }
+#island button.settings:hover image { color: rgba(245, 245, 247, 0.95); }

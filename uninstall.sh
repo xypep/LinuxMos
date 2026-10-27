@@ -42,7 +42,15 @@ rm -f "${CONFIG_DIR}/autostart/linuxmos-plank.desktop" \
       "${BIN_DIR}/linuxmos-island"
 rm -rf "${STATE_DIR}/island-app"
 rm -f "${STATE_DIR}/install.conf"
-# Die Island-Einstellungen (Wetter-Ort) bleiben, nur Widget- und Spotlight-Configs gehen
+# Die Töne der Dehn-Erinnerung (WAV) erzeugt die Insel selbst im Cache – die gehen immer mit
+rm -f "${CACHE_DIR}"/island/stretch-*.wav "${CACHE_DIR}"/island/stretch-*.wav.tmp
+# Die MosIsland schaltet Cinnamons Benachrichtigungs-Banner ab, solange sie die Karten zeigt,
+# und beim Beenden wieder an. Ist sie vorher abgestürzt, hier nachholen.
+if grep -qs '"banners_hidden": true' "${STATE_DIR}/island/notifications.json"; then
+  gsettings set org.cinnamon.desktop.notifications display-notifications true 2>/dev/null || true
+  sed -i 's/"banners_hidden": true/"banners_hidden": false/' "${STATE_DIR}/island/notifications.json"
+fi
+# Die MosIsland-Einstellungen (Wetter-Ort) bleiben, nur Widget- und Spotlight-Configs gehen
 rm -rf "${CONFIG_DIR}/linuxmos/conky" "${CONFIG_DIR}/linuxmos/rofi"
 ok "Gestoppt und Autostart entfernt"
 
@@ -87,16 +95,43 @@ if (( PURGE )); then
          "${DATA_DIR}/backgrounds/linuxmos" \
          "${CACHE_DIR}" \
          "${STATE_DIR}/island" "${CONFIG_DIR}/linuxmos"
-  ok "Gelöscht (inkl. Island-Daten: Notiz, Clipboard-Verlauf, Ablage)"
+  ok "Gelöscht (inkl. MosIsland-Daten: Notiz, Clipboard-Verlauf, Ablage, App-Zähler der Suche, Dehn-Statistik und Übungsliste)"
+  # API-Key des KI-Chats aus dem Schlüsselbund
+  if command -v secret-tool >/dev/null 2>&1; then
+    secret-tool clear service linuxmos-island account ai-api-key 2>/dev/null || true
+    ok "API-Key des KI-Chats aus dem Schlüsselbund entfernt"
+  fi
   echo
   echo "    Pakete bei Bedarf manuell entfernen:"
   echo "      sudo apt remove plank conky-std rofi fonts-inter"
+  echo "      sudo apt remove maim slop xclip          # MosIsland-Screenshots"
+  echo "      sudo apt remove tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng zbar-tools   # Text & QR"
+  echo "      sudo apt remove ffmpeg libsecret-tools    # Aufnahme, Diktat, KI-Chat-Schlüssel"
+  # iso-codes (Ländernamen im VPN-Hinweis) bewusst nicht: viele Systempakete hängen davon ab.
+  # Die Live-Hinweise (Mikro/Kamera, VPN, Downloads) hinterlassen keine eigenen Dateien.
+  # Die Command Bar braucht keine Pakete; ihre Wechselkurse liegen in ~/.cache/linuxmos (oben gelöscht).
+fi
+
+# Screenshots und Aufnahmen gehören dem Nutzer: nie löschen, nur sagen, wo sie liegen
+SHOT_DIR="$(xdg-user-dir PICTURES 2>/dev/null || echo "$HOME/Pictures")/LinuxMos"
+if [[ -d "${SHOT_DIR}" ]]; then
+  echo
+  echo "    Deine Screenshots bleiben in ${SHOT_DIR}"
+fi
+
+# Aufnahmen auch nicht
+REC_DIR="$(xdg-user-dir VIDEOS 2>/dev/null || echo "$HOME/Videos")/LinuxMos"
+if [[ -d "${REC_DIR}" ]]; then
+  echo "    Deine Bildschirmaufnahmen bleiben in ${REC_DIR}"
+fi
+if (( ! PURGE )) && command -v secret-tool >/dev/null 2>&1 && secret-tool lookup service linuxmos-island account ai-api-key >/dev/null 2>&1; then
+  echo "    Dein KI-API-Key bleibt im Schlüsselbund – entfernen mit: ./uninstall.sh --purge"
 fi
 
 if (( ! PURGE )) && [[ -d "${STATE_DIR}/island" ]]; then
   echo
-  echo "    Island-Daten (Notiz, Clipboard-Verlauf, Ablage) bleiben in ${STATE_DIR}/island"
-  echo "    – löschen mit: ./uninstall.sh --purge"
+  echo "    MosIsland-Daten (Notiz, Clipboard-Verlauf, Ablage, Dehn-Statistik) bleiben in ${STATE_DIR}/island"
+  echo "    – löschen mit: ./uninstall.sh --purge (auch deine config.json und stretch_exercises.json in ${CONFIG_DIR}/linuxmos/island)"
 fi
 
 step "Fertig – einmal ab- und wieder anmelden."

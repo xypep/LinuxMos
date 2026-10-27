@@ -1,23 +1,22 @@
 """Weather from MET Norway (no API key) with the city geocoded via OpenStreetMap.
 
-Network work happens in a thread; results are delivered on the main loop.
+Requests go through curl (services/http.py), the main loop never waits.
 The forecast is refreshed every 30 minutes, as MET Norway's terms ask.
 """
 
-import json
-import threading
 import urllib.parse
-import urllib.request
 from datetime import datetime
 
 from gi.repository import GLib
 
-USER_AGENT = "LinuxMos-Island/1.0 (+https://github.com/xypep/LinuxMos)"
+from island.i18n import _, weekday
+from island.services import http
+
 FORECAST_URL = "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat={lat:.4f}&lon={lon:.4f}"
 GEOCODE_URL = "https://nominatim.openstreetmap.org/search?format=json&limit=1&q={q}"
 REFRESH_SECONDS = 30 * 60
 
-# MET symbol code prefix -> (symbolic icon, German description)
+# MET symbol code prefix -> (symbolic icon, description as German source string)
 SYMBOLS = [
     ("clearsky", "weather-clear", "Klar"),
     ("fair", "weather-few-clouds", "Heiter"),
@@ -43,20 +42,21 @@ def describe(symbol_code):
     night = code.endswith("_night")
     base = code.split("_")[0]
     if "thunder" in base:
-        return "weather-storm-symbolic", "Gewitter"
+        return "weather-storm-symbolic", _("Gewitter")
     # Longest matching prefix wins (e.g. "lightrainshowers" before "rain")
     for prefix, icon, text in sorted(SYMBOLS, key=lambda s: -len(s[0])):
         if base.startswith(prefix):
             if night and icon in ("weather-clear", "weather-few-clouds"):
                 icon += "-night"
-            return f"{icon}-symbolic", text
+            return f"{icon}-symbolic", _(text)
     return "weather-overcast-symbolic", "–"
 
 
-def _get_json(url):
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        return json.load(resp)
+def _failure(status):
+    """Error text for a request that brought no usable answer."""
+    if status == 0:
+        return _("Keine Verbindung")
+    return f"HTTP {status}" if status != 200 else _("Antwort nicht lesbar")
 
 
 class Weather:
@@ -91,23 +91,35 @@ class Weather:
         if self._busy or not self.configured:
             return
         self._busy = True
-        threading.Thread(target=self._worker, daemon=True).start()
+        lat, lon = self.config.get("latitude"), self.config.get("longitude")
+        if lat is None or lon is None:
+            city = self.config["city"]
+            http.get_json(GEOCODE_URL.format(q=urllib.parse.quote(city)), lambda st, d: self._on_geocode(city, st, d))
+        else:
+            self._fetch(lat, lon)
 
-    # ---- worker thread -----------------------------------------------------
-    def _worker(self):
+    def _on_geocode(self, city, status, hits):
+        if not isinstance(hits, list):
+            self._apply(None, _failure(status))
+            return
         try:
-            lat, lon = self.config.get("latitude"), self.config.get("longitude")
-            if lat is None or lon is None:
-                hits = _get_json(GEOCODE_URL.format(q=urllib.parse.quote(self.config["city"])))
-                if not hits:
-                    raise LookupError(f"Ort „{self.config['city']}“ nicht gefunden")
-                lat, lon = float(hits[0]["lat"]), float(hits[0]["lon"])
-                GLib.idle_add(self._store_coords, lat, lon)
-            data = _get_json(FORECAST_URL.format(lat=lat, lon=lon))
-            result = self._parse(data["properties"]["timeseries"])
-            GLib.idle_add(self._apply, result, None)
-        except Exception as exc:  # network, JSON, lookup: all end up as "unavailable"
-            GLib.idle_add(self._apply, None, str(exc))
+            lat, lon = float(hits[0]["lat"]), float(hits[0]["lon"])
+        except (IndexError, KeyError, TypeError, ValueError):
+            self._apply(None, _("Ort „{city}“ nicht gefunden").format(city=city))
+            return
+        self.config.update(latitude=lat, longitude=lon)
+        self.config.save()
+        self._fetch(lat, lon)
+
+    def _fetch(self, lat, lon):
+        def done(status, data):
+            try:
+                result = self._parse(data["properties"]["timeseries"])
+            except (KeyError, IndexError, TypeError, ValueError):
+                result = None   # no answer, an error page or a changed format: all "unavailable"
+            self._apply(result, None if result else _failure(status))
+
+        http.get_json(FORECAST_URL.format(lat=lat, lon=lon), done)
 
     @staticmethod
     def _parse(series):
@@ -146,18 +158,13 @@ class Weather:
                 day.update(symbol=symbol(entry), dist=dist)
         daily = []
         for date, day in sorted(days.items())[:7]:
-            daily.append({"day": date.strftime("%a"), "min": round(min(day["temps"])),
+            daily.append({"day": weekday(date.weekday()), "min": round(min(day["temps"])),
                           "max": round(max(day["temps"])), "icon": describe(day["symbol"])[0]})
 
         rain_soon = rain(now) < 0.1 and len(series) > 1 and rain(series[1]) >= 0.2
         return {"current": current, "hourly": hourly, "daily": daily, "rain_soon": rain_soon}
 
-    # ---- main loop ---------------------------------------------------------
-    def _store_coords(self, lat, lon):
-        self.config.update(latitude=lat, longitude=lon)
-        self.config.save()
-        return GLib.SOURCE_REMOVE
-
+    # ---- results -----------------------------------------------------------
     def _apply(self, result, error):
         self._busy = False
         self.error = error
@@ -168,4 +175,3 @@ class Weather:
             rain_started = result["rain_soon"] and not self.rain_soon
             self.rain_soon = result["rain_soon"]
         self._on_change(self, rain_started)
-        return GLib.SOURCE_REMOVE

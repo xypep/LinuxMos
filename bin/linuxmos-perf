@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Misst die CPU-Last der Desktop-Komponenten über ein paar Sekunden.
+# Misst die CPU-Last der Desktop-Komponenten über ein paar Sekunden, dazu den RAM der Insel.
 # Usage: linuxmos-perf [SEKUNDEN]   (Default: 5)
 set -euo pipefail
 
@@ -26,3 +26,10 @@ LC_ALL=C top -b -n 2 -d "${SECONDS_TO_SAMPLE}" -w 200 \
         if (idle != "") printf "\nSystem idle: %s %%\n", idle
         if (total > 10) print "\nHinweis: >10 % im Leerlauf ist zu viel – siehe docs/ANLEITUNG.md, Abschnitt Performance."
       }'
+
+# Arbeitsspeicher der Insel: RSS (was top zeigt) und PSS (geteilte Bibliotheken anteilig)
+if PID="$(pgrep -x -n linuxmos-island)"; then
+  awk '/^Rss:/ {rss = $2} /^Pss:/ {pss = $2}
+       END { if (rss) printf "\nMosIsland RAM: RSS %.0f MB · PSS %.0f MB\n", rss / 1024, pss / 1024 }' \
+    "/proc/${PID}/smaps_rollup" 2>/dev/null || true
+fi

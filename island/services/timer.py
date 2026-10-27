@@ -2,6 +2,10 @@
 
 from gi.repository import GLib
 
+from island.i18n import _
+
+LABELS = {"timer": "Timer", "focus": "Fokus", "break": "Pause"}  # German source strings
+
 
 class Timer:
     def __init__(self, on_tick, on_done):
@@ -10,11 +14,15 @@ class Timer:
         self._end_us = None
         self._source = 0
         self.total = 0
-        self.label = "Timer"  # "Timer", "Fokus" or "Pause" (Pomodoro)
+        self.kind = "timer"  # "timer", "focus" or "break" (Pomodoro)
 
     @property
     def running(self):
         return self._end_us is not None
+
+    @property
+    def label(self):
+        return _(LABELS[self.kind])
 
     @property
     def remaining(self):
@@ -22,8 +30,8 @@ class Timer:
             return 0
         return max(0, int((self._end_us - GLib.get_monotonic_time()) / 1_000_000 + 0.999))
 
-    def start(self, seconds, label="Timer"):
-        self.label = label
+    def start(self, seconds, kind="timer"):
+        self.kind = kind
         self.total = int(seconds)
         self._end_us = GLib.get_monotonic_time() + self.total * 1_000_000
         if not self._source:
